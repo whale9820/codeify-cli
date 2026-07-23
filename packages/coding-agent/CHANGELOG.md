@@ -11,7 +11,8 @@
 
 ### Fixed
 
-- Fixed Codeify OAuth opening the authorization page twice and added a styled loopback success page.
+- Fixed Codeify OAuth opening the authorization page twice and added a compact, styled loopback success page.
+- Fixed source installations on Windows failing to launch the TypeScript compiler command shim.
 - Fixed Unix installs requiring a manual PATH change when an existing PATH directory is writable.
 - Fixed the universal installer incorrectly reporting that npm was missing on Windows.
 - Made `codeify update` stop before downloading or running the installer when the local and cloud versions match.

@@ -200,13 +200,11 @@ function oauthSuccessHtml(): string {
 <style>
 :root { color-scheme: dark; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
 * { box-sizing: border-box; }
-body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px; background: #09090b; color: #fafafa; }
-main { width: min(100%, 520px); border-top: 2px solid #fafafa; padding-top: 32px; }
-mark { display: inline-block; margin-bottom: 24px; padding: 6px 10px; background: #fafafa; color: #09090b; font: 700 12px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: .08em; text-transform: uppercase; }
-h1 { max-width: 12ch; margin: 0 0 16px; font-size: clamp(36px, 8vw, 64px); line-height: .98; letter-spacing: -.045em; }
-p { max-width: 42ch; margin: 0; color: #a1a1aa; font-size: 16px; line-height: 1.6; }
-.status { display: flex; align-items: center; gap: 10px; margin-top: 36px; color: #d4d4d8; font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-.status::before { width: 9px; height: 9px; border-radius: 50%; background: #4ade80; box-shadow: 0 0 0 4px rgb(74 222 128 / 12%); content: ""; }
+body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 20px; background: #09090b; color: #fafafa; }
+main { width: min(100%, 460px); border-top: 1px solid #fafafa; padding-top: 28px; }
+mark { display: inline-block; margin-bottom: 20px; padding: 5px 9px; background: #fafafa; color: #09090b; font: 700 11px/1 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: .08em; text-transform: uppercase; }
+h1 { max-width: 12ch; margin: 0 0 14px; font-size: clamp(32px, 7vw, 56px); line-height: .98; letter-spacing: -.045em; }
+p { max-width: 42ch; margin: 0; color: #a1a1aa; font-size: 15px; line-height: 1.55; }
 </style>
 </head>
 <body>
@@ -214,7 +212,6 @@ p { max-width: 42ch; margin: 0; color: #a1a1aa; font-size: 16px; line-height: 1.
 <mark>Codeify CLI</mark>
 <h1>You’re signed in.</h1>
 <p>Authentication is complete. Return to your terminal to continue working.</p>
-<div class="status">This window can be closed</div>
 </main>
 </body>
 </html>`;

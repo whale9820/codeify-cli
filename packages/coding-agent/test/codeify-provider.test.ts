@@ -222,6 +222,9 @@ describe("Codeify provider", () => {
 		const callbackHtml = await callbackResponse.text();
 		expect(callbackHtml).toContain("You’re signed in.");
 		expect(callbackHtml).toContain("Return to your terminal");
+		expect(callbackHtml).toContain("font-size: clamp(32px, 7vw, 56px)");
+		expect(callbackHtml).not.toContain("This window can be closed");
+		expect(callbackHtml).not.toContain("#4ade80");
 		expect(callbackHtml).toContain("<style>");
 
 		const credentials = await loginPromise;

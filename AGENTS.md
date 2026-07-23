@@ -33,6 +33,7 @@
 - Put issue-specific regressions under `packages/coding-agent/test/suite/regressions/` named `<issue-number>-<short-slug>.test.ts`.
 - For ad-hoc scripts, `write` them to a temp file (e.g. `/tmp`), run, edit if needed, remove when done. Don't embed multi-line scripts in `bash` commands.
 - Never commit unless the user asks.
+- After each user-requested fix, bump the lockstep patch version, commit only the session's files, and push `main` to `origin` after validation.
 
 ## Dependency and Install Security
 

@@ -4,6 +4,7 @@ import { spawnSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { getRuntimeCompilerInvocation } from "./runtime-compiler.ts";
 
 const packageRoot = join(dirname(fileURLToPath(import.meta.url)), "..");
 const providersDirectory = join(packageRoot, "src", "providers");
@@ -25,7 +26,8 @@ try {
 			writeFileSync(join(dataDirectory, `${file.slice(0, -".models.ts".length)}.json`), "{}\n", "utf8");
 		}
 	}
-	run(process.platform === "win32" ? "tsgo.cmd" : "tsgo", ["-p", "tsconfig.build.json"]);
+	const compiler = getRuntimeCompilerInvocation();
+	run(compiler.command, compiler.args);
 	rmSync(outputDirectory, { recursive: true, force: true });
 	cpSync(dataDirectory, outputDirectory, { recursive: true });
 } catch (error) {
