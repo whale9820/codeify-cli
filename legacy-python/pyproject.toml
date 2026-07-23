@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "codeify-cli"
+version = "0.1.0"
+description = "The official agentic coding CLI for Codeify"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{name = "Codeify"}]
+dependencies = []
+keywords = ["codeify", "coding-agent", "openai", "responses-api", "cli"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Programming Language :: Python :: 3",
+  "Topic :: Software Development :: Libraries :: Application Frameworks",
+]
+
+[project.scripts]
+codeify = "codeify_cli.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

@@ -1,0 +1,98 @@
+Codeify OAuth server implementation
+
+This file is the handoff for the Codeify website agent. Implement the OAuth server at codeify.cc so the Codeify CLI can sign in without exposing a token in a browser URL. The CLI is a public native application: it has no client secret. Do not add a client secret requirement to this flow.
+
+Client registration
+
+- Client ID: codeify-cli
+- Client type: public native/desktop client
+- Authorization endpoint: https://codeify.cc/oauth/authorize
+- Token endpoint: https://codeify.cc/oauth/token
+- Revocation endpoint: https://codeify.cc/oauth/revoke
+- Allowed redirect URI: loopback HTTP only, path /callback, host 127.0.0.1, with an ephemeral runtime port
+- The CLI sends the full redirect URI, for example http://127.0.0.1:43127/callback. Treat the port as dynamic, but require the scheme, host, and path exactly. Reject every other host, path, query, or fragment. Never accept a wildcard host.
+- Allowed scopes: codeify:invoke and offline_access. Reject unknown or excess scopes.
+
+GET /oauth/authorize
+
+Accept query parameters client_id, redirect_uri, response_type, state, scope, code_challenge, and code_challenge_method.
+
+1. Validate client_id is codeify-cli.
+2. Validate redirect_uri using the loopback rule above. Keep the exact value for the remainder of the flow.
+3. Require response_type=code.
+4. Require code_challenge_method=S256.
+5. Require a base64url SHA-256 code_challenge and reject malformed PKCE values.
+6. Normalize and validate the requested scopes against the allow-list. The CLI normally requests codeify:invoke offline_access.
+7. Require an authenticated Codeify website session. If there is no session, show the normal website login page and return to authorization after login.
+8. Show a short consent screen naming Codeify CLI, the Codeify account, and the requested permissions. Do not silently grant a new scope.
+9. Create a cryptographically random, one-time authorization code. Store only a hash of the code. Bind the record to the user, client_id, exact redirect_uri, PKCE challenge and method, approved scopes, and creation time. Expire it after five minutes.
+10. On approval, redirect to the exact redirect_uri with only code and the original state query parameters. The code must be single-use.
+11. On denial or validation failure after a valid redirect URI and state, redirect to that exact URI with error=access_denied or the appropriate OAuth error and the original state. Never put access tokens, refresh tokens, or user data in a redirect URL.
+
+POST /oauth/token
+
+Use application/x-www-form-urlencoded. Return JSON and set no-store and no-cache headers.
+
+Authorization-code exchange:
+
+- Require grant_type=authorization_code, client_id=codeify-cli, code, redirect_uri, and code_verifier.
+- Look up the hash of code, require that it is unexpired and unused, and require an exact redirect_uri and client_id match.
+- Verify code_verifier against the stored S256 code_challenge. Reject plain PKCE.
+- Atomically mark the code used before issuing tokens so concurrent exchanges cannot succeed twice.
+- Issue an opaque access token valid for 15 minutes and an opaque refresh token valid for 30 days. Store only hashes of both tokens.
+- Associate the access token with the user and approved scopes. The access token must authorize the Codeify API when sent as Authorization: Bearer <access_token>.
+- Return:
+
+  {
+    "access_token": "...",
+    "refresh_token": "...",
+    "token_type": "Bearer",
+    "expires_in": 900,
+    "scope": "codeify:invoke offline_access"
+  }
+
+Refresh-token exchange:
+
+- Require grant_type=refresh_token, client_id=codeify-cli, and refresh_token.
+- Validate the hashed token, expiry, client, and revocation state.
+- Rotate the refresh token on every successful refresh. Invalidate the presented token, issue a new access token and a new refresh token, and return both in the same response shape.
+- Model refresh tokens as a family with a parent/child relationship. If an already-used refresh token is presented again, treat it as reuse: revoke the whole family and require a new browser login.
+- Do not extend a family beyond its absolute lifetime (30 days from the original grant) and enforce idle expiry if the product wants it.
+- Return invalid_grant for invalid, expired, revoked, or reused tokens. Do not reveal which check failed.
+
+POST /oauth/revoke
+
+Accept application/x-www-form-urlencoded with token, client_id, and optional token_type_hint. Hash and revoke either an access token or refresh token owned by codeify-cli. Always return 200 for a syntactically valid request, as required by OAuth revocation semantics. Revoking a refresh token must revoke its entire family. The CLI currently removes local credentials on /logout; keeping this endpoint now allows server-side revocation to be added without changing the token design.
+
+API integration
+
+- Accept OAuth access tokens and existing Codeify API keys on the same /v1 endpoints.
+- Verify the token hash, expiry, revocation state, client, and required scope before serving a request. Responses/model discovery require codeify:invoke.
+- Return 401 with a WWW-Authenticate: Bearer header for missing, expired, malformed, or revoked tokens. Return 403 for a valid token without the required scope.
+- Do not log Authorization headers, raw authorization codes, access tokens, or refresh tokens. Redact token query parameters if any unrelated middleware logs URLs.
+
+Storage and security requirements
+
+- Generate codes and tokens with a cryptographically secure random generator and compare hashes in constant time.
+- Use HTTPS for every website endpoint. The loopback redirect is the only HTTP URL permitted, and it must resolve to 127.0.0.1.
+- Use the existing secure, HttpOnly, SameSite website session cookie for the authorization page. Do not put the website session cookie on the loopback callback.
+- Rate-limit authorization attempts, token exchanges, refresh attempts, and revocation requests per account, client, and IP. Audit successful grants, denials, refresh reuse, revocations, and repeated failures without recording secrets.
+- Keep server clock synchronization and use short leeway only where required. Use no-store on token responses and authorization pages that include sensitive state.
+- Do not issue an access token from /oauth/authorize and do not support implicit or password grants.
+
+Configuration
+
+- Keep the client ID, endpoint URLs, scope allow-list, access-token lifetime, refresh-token lifetime, and loopback redirect rule in server configuration rather than scattered literals.
+- The CLI supports CODEIFY_OAUTH_CLIENT_ID, CODEIFY_OAUTH_SCOPE, CODEIFY_OAUTH_AUTHORIZE_URL, and CODEIFY_OAUTH_TOKEN_URL for staging. Production defaults must remain the codeify.cc values above.
+
+Required server tests
+
+- Accept a valid authorization request and return a code plus the original state.
+- Reject an unknown client, non-loopback redirect, wrong path, query or fragment, response_type other than code, missing PKCE, plain PKCE, and unknown scopes.
+- Reject an unauthenticated approval unless the website login completes first.
+- Exchange a valid code once, then reject reuse, expiry, wrong redirect URI, wrong client, and wrong code_verifier.
+- Reject an authorization callback implementation that would return tokens in a URL.
+- Return the documented token response and enforce the access-token lifetime and scope at /v1.
+- Rotate refresh tokens, reject the old token after rotation, and revoke the whole family on reuse.
+- Revoke access and refresh tokens and confirm revoked tokens fail at /v1.
+- Verify rate limits, audit redaction, no-store headers, and that raw tokens never appear in logs.
