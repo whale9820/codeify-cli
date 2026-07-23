@@ -11,6 +11,7 @@
 
 ### Fixed
 
+- Made `codeify update` stop before downloading or running the installer when the local and cloud versions match.
 - Fixed clean-clone installation and updates to build without generated model catalog data, leaving Codeify model discovery to the runtime API refresh.
 - Fixed `codeify update` to bypass agent startup and run the universal installer hosted at `https://codeify.cc/install.cjs`.
 - Fixed Codeify model discovery to merge live Pi catalog metadata with the models exposed by the Codeify API and persist the result for fast offline startup.
