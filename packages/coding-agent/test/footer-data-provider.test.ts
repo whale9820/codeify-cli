@@ -87,6 +87,12 @@ async function waitFor(condition: () => boolean, timeoutMs = 3000): Promise<void
 	}
 }
 
+function emitReftableChange(provider: FooterDataProvider): void {
+	const watcher = (provider as unknown as { reftableWatcher: FSWatcher | null }).reftableWatcher;
+	expect(watcher).not.toBeNull();
+	watcher?.emit("change", "change", "tables.list");
+}
+
 describe("FooterDataProvider reftable branch detection", () => {
 	let originalCwd: string;
 	let tempDir: string;
@@ -168,7 +174,7 @@ describe("FooterDataProvider reftable branch detection", () => {
 	});
 
 	it("does not notify listeners when reftable updates keep the same branch", async () => {
-		const { worktreeDir, reftableDir } = createReftableWorktree(tempDir);
+		const { worktreeDir } = createReftableWorktree(tempDir);
 		process.chdir(worktreeDir);
 
 		const provider = new FooterDataProvider(worktreeDir);
@@ -178,7 +184,7 @@ describe("FooterDataProvider reftable branch detection", () => {
 			const onBranchChange = vi.fn();
 			provider.onBranchChange(onBranchChange);
 
-			writeFileSync(join(reftableDir, "tables.list"), "1\n");
+			emitReftableChange(provider);
 			await waitFor(() => vi.mocked(execFile).mock.calls.length === 1);
 
 			expect(vi.mocked(execFile)).toHaveBeenCalledTimes(1);
@@ -191,7 +197,7 @@ describe("FooterDataProvider reftable branch detection", () => {
 	});
 
 	it("debounces rapid reftable updates into a single async refresh", async () => {
-		const { worktreeDir, reftableDir } = createReftableWorktree(tempDir);
+		const { worktreeDir } = createReftableWorktree(tempDir);
 		process.chdir(worktreeDir);
 
 		const provider = new FooterDataProvider(worktreeDir);
@@ -199,9 +205,9 @@ describe("FooterDataProvider reftable branch detection", () => {
 			expect(provider.getGitBranch()).toBe("main");
 			vi.mocked(execFile).mockClear();
 
-			writeFileSync(join(reftableDir, "tables.list"), "1\n");
-			writeFileSync(join(reftableDir, "tables.list"), "2\n");
-			writeFileSync(join(reftableDir, "tables.list"), "3\n");
+			emitReftableChange(provider);
+			emitReftableChange(provider);
+			emitReftableChange(provider);
 			await waitFor(() => vi.mocked(execFile).mock.calls.length === 1);
 			await new Promise((resolve) => setTimeout(resolve, 650));
 
@@ -212,7 +218,7 @@ describe("FooterDataProvider reftable branch detection", () => {
 	});
 
 	it("updates the cached branch when the reftable directory changes", async () => {
-		const { worktreeDir, reftableDir } = createReftableWorktree(tempDir);
+		const { worktreeDir } = createReftableWorktree(tempDir);
 		process.chdir(worktreeDir);
 
 		const provider = new FooterDataProvider(worktreeDir);
@@ -222,7 +228,7 @@ describe("FooterDataProvider reftable branch detection", () => {
 			const onBranchChange = vi.fn();
 			provider.onBranchChange(onBranchChange);
 
-			writeFileSync(join(reftableDir, "tables.list"), "1\n");
+			emitReftableChange(provider);
 			await waitFor(() => vi.mocked(execFile).mock.calls.length === 1);
 			await waitFor(() => provider.getGitBranch() === "foo");
 
