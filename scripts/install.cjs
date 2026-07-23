@@ -32,14 +32,36 @@ function verifyCommand(command, args, message) {
 }
 
 function run(command, args, cwd) {
-	console.log(`> ${command} ${args.join(" ")}`);
-	execFileSync(command, args, { cwd, env: process.env, stdio: "inherit" });
+	try {
+		return execFileSync(command, args, {
+			cwd,
+			encoding: "utf8",
+			env: process.env,
+			stdio: ["ignore", "pipe", "pipe"],
+		});
+	} catch (error) {
+		if (error && typeof error === "object") {
+			if (error.stdout) process.stderr.write(String(error.stdout));
+			if (error.stderr) process.stderr.write(String(error.stderr));
+		}
+		throw error;
+	}
+}
+
+function step(number, message) {
+	console.log(`[${number}/4] ${message}`);
 }
 
 verifyCommand("git", ["--version"], "Git is required.");
 verifyCommand(npmCommand, ["--version"], "npm is required.");
 
-if (existsSync(join(installHome, ".git"))) {
+const existingCheckout = existsSync(join(installHome, ".git"));
+
+console.log("Codeify CLI");
+console.log("");
+step(1, existingCheckout ? "Updating source" : "Downloading source");
+
+if (existingCheckout) {
 	run("git", ["-C", installHome, "pull", "--ff-only"]);
 } else if (existsSync(installHome)) {
 	throw new Error(`${installHome} already exists and is not a Git checkout.`);
@@ -48,10 +70,13 @@ if (existsSync(join(installHome, ".git"))) {
 	run("git", ["clone", "--depth", "1", repository, installHome]);
 }
 
-run(npmCommand, ["--prefix", installHome, "ci", "--ignore-scripts"]);
-run(npmCommand, ["--prefix", installHome, "run", "build:offline"]);
+step(2, "Installing dependencies");
+run(npmCommand, ["ci", "--ignore-scripts"], installHome);
+step(3, "Building Codeify CLI");
+run(npmCommand, ["run", "build:runtime"], installHome);
 
 const cliPath = join(installHome, "packages", "coding-agent", "dist", "cli.js");
+step(4, "Creating the codeify command");
 mkdirSync(binDirectory, { recursive: true });
 
 if (isWindows) {
@@ -79,10 +104,17 @@ if (isWindows) {
 	symlinkSync(cliPath, launcherPath);
 }
 
-run(process.execPath, [cliPath, "--version"]);
+const version = run(process.execPath, [cliPath, "--version"]).trim();
 
 const pathEntries = (process.env.PATH || "").split(delimiter);
+console.log("");
+console.log(`Codeify CLI ${version} installed successfully.`);
 if (!pathEntries.includes(binDirectory)) {
-	console.log(`Add ${binDirectory} to PATH, then open a new terminal.`);
+	if (isWindows) {
+		console.log("Restart your terminal, then run: codeify");
+	} else {
+		console.log(`Add ${binDirectory} to PATH, then run: codeify`);
+	}
+} else {
+	console.log("Run: codeify");
 }
-console.log("Codeify CLI installed. Run: codeify");
