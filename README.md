@@ -4,99 +4,13 @@ Codeify CLI is the official terminal coding agent for [codeify.cc](https://codei
 
 ## Install
 
-Git and Node.js 22.19 or newer are required. Re-running the installer updates an existing installation.
+Run the same command in PowerShell, Command Prompt, Terminal, Bash, or Zsh:
 
-### macOS / Linux
-
-Paste this into a terminal:
-
-```sh
-set -eu
-
-CODEIFY_REPO="https://github.com/whale9820/codeify-cli.git"
-CODEIFY_HOME="${XDG_DATA_HOME:-$HOME/.local/share}/codeify-cli"
-CODEIFY_BIN="${XDG_BIN_HOME:-$HOME/.local/bin}"
-
-command -v git >/dev/null 2>&1 || { echo "Git is required." >&2; exit 1; }
-command -v node >/dev/null 2>&1 || { echo "Node.js 22.19 or newer is required." >&2; exit 1; }
-command -v npm >/dev/null 2>&1 || { echo "npm is required." >&2; exit 1; }
-node -e 'const [major, minor] = process.versions.node.split(".").map(Number); process.exit(major > 22 || (major === 22 && minor >= 19) ? 0 : 1)' || { echo "Node.js 22.19 or newer is required." >&2; exit 1; }
-
-if [ -d "$CODEIFY_HOME/.git" ]; then
-	git -C "$CODEIFY_HOME" pull --ff-only
-elif [ -e "$CODEIFY_HOME" ]; then
-	echo "$CODEIFY_HOME already exists and is not a Git checkout." >&2
-	exit 1
-else
-	git clone --depth 1 "$CODEIFY_REPO" "$CODEIFY_HOME"
-fi
-
-npm --prefix "$CODEIFY_HOME" ci --ignore-scripts
-npm --prefix "$CODEIFY_HOME" run build:offline
-mkdir -p "$CODEIFY_BIN"
-ln -sf "$CODEIFY_HOME/packages/coding-agent/dist/cli.js" "$CODEIFY_BIN/codeify"
-
-case ":$PATH:" in
-	*:"$CODEIFY_BIN":*) ;;
-	*) echo "Add $CODEIFY_BIN to PATH, then open a new terminal." ;;
-esac
-
-"$CODEIFY_BIN/codeify" --version
+```text
+node -e "fetch('https://raw.githubusercontent.com/whale9820/codeify-cli/main/scripts/install.cjs').then(r=>r.ok?r.text():Promise.reject(Error('Download failed: '+r.status))).then(s=>Function('require',s)(require))"
 ```
 
-### Windows
-
-Paste this into PowerShell:
-
-```powershell
-$ErrorActionPreference = "Stop"
-
-$repo = "https://github.com/whale9820/codeify-cli.git"
-$installRoot = Join-Path $env:LOCALAPPDATA "CodeifyCLI"
-$binDir = Join-Path $env:LOCALAPPDATA "Codeify\bin"
-
-foreach ($command in @("git.exe", "node.exe", "npm.cmd")) {
-	if (-not (Get-Command $command -ErrorAction SilentlyContinue)) {
-		throw "$command is required. Install Git and Node.js 22.19 or newer first."
-	}
-}
-
-$nodeVersion = [Version](& node.exe -p "process.versions.node")
-if ($nodeVersion -lt [Version]"22.19.0") {
-	throw "Node.js 22.19 or newer is required. Found $nodeVersion."
-}
-
-if (Test-Path (Join-Path $installRoot ".git")) {
-	& git.exe -C $installRoot pull --ff-only
-	if ($LASTEXITCODE -ne 0) { throw "Git update failed." }
-} elseif (Test-Path $installRoot) {
-	throw "$installRoot already exists and is not a Git checkout."
-} else {
-	& git.exe clone --depth 1 $repo $installRoot
-	if ($LASTEXITCODE -ne 0) { throw "Git clone failed." }
-}
-
-& npm.cmd --prefix $installRoot ci --ignore-scripts
-if ($LASTEXITCODE -ne 0) { throw "Dependency installation failed." }
-& npm.cmd --prefix $installRoot run build:offline
-if ($LASTEXITCODE -ne 0) { throw "Codeify build failed." }
-
-New-Item -ItemType Directory -Force -Path $binDir | Out-Null
-$cliPath = Join-Path $installRoot "packages\coding-agent\dist\cli.js"
-Set-Content -Path (Join-Path $binDir "codeify.cmd") -Encoding Ascii -Value "@echo off`r`nnode.exe `"$cliPath`" %*"
-
-$userPath = [Environment]::GetEnvironmentVariable("Path", "User")
-$pathEntries = @($userPath -split ";" | Where-Object { $_ })
-if ($pathEntries -notcontains $binDir) {
-	$newPath = (@($pathEntries) + $binDir) -join ";"
-	[Environment]::SetEnvironmentVariable("Path", $newPath, "User")
-}
-$env:Path = "$binDir;$env:Path"
-
-& (Join-Path $binDir "codeify.cmd") --version
-```
-
-Then run `codeify` from any project directory.
+Git and Node.js 22.19 or newer are required. Re-running the command updates an existing installation. Then run `codeify` from any project directory.
 
 ## First run
 
