@@ -16,6 +16,7 @@ import { listModels } from "./cli/list-models.ts";
 import { createProjectTrustContext } from "./cli/project-trust.ts";
 import { selectSession } from "./cli/session-picker.ts";
 import { shouldRunFirstTimeSetup, showFirstTimeSetup, showStartupSelector } from "./cli/startup-ui.ts";
+import { isCodeifyUpdateCommand, runCodeifyUpdate } from "./cli/update.ts";
 import { ENV_SESSION_DIR, expandTildePath, getAgentDir, VERSION } from "./config.ts";
 import { type CreateAgentSessionRuntimeFactory, createAgentSessionRuntime } from "./core/agent-session-runtime.ts";
 import {
@@ -463,6 +464,16 @@ async function promptForMissingSessionCwd(
 
 export async function main(args: string[]) {
 	resetTimings();
+	if (isCodeifyUpdateCommand(args)) {
+		try {
+			await runCodeifyUpdate();
+		} catch (error: unknown) {
+			const message = error instanceof Error ? error.message : String(error);
+			console.error(chalk.red(`Codeify update failed: ${message}`));
+			process.exitCode = 1;
+		}
+		return;
+	}
 	const offlineMode = args.includes("--offline") || isTruthyEnvFlag(process.env.CODEIFY_OFFLINE);
 	if (offlineMode) {
 		process.env.CODEIFY_OFFLINE = "1";

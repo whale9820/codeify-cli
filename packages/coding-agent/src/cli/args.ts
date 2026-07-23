@@ -191,6 +191,10 @@ export function printHelp(): void {
 
 ${chalk.bold("Usage:")}
   ${APP_NAME} [options] [@files...] [messages...]
+  ${APP_NAME} update
+
+${chalk.bold("Commands:")}
+  update                         Download and run the official Codeify installer
 
 ${chalk.bold("Options:")}
   --provider <name>              Provider name (default: codeify)
@@ -234,6 +238,9 @@ ${chalk.bold("Options:")}
   --version, -v                  Show version number
 
 ${chalk.bold("Examples:")}
+  # Update Codeify CLI
+  ${APP_NAME} update
+
   # Interactive mode
   ${APP_NAME}
 

@@ -7,7 +7,7 @@ Codeify CLI is the official terminal coding agent for [codeify.cc](https://codei
 Run the same command in PowerShell, Command Prompt, Terminal, Bash, or Zsh:
 
 ```text
-node -e "fetch('https://raw.githubusercontent.com/whale9820/codeify-cli/main/scripts/install.cjs').then(r=>r.ok?r.text():Promise.reject(Error('Download failed: '+r.status))).then(s=>Function('require',s)(require))"
+node -e "fetch('https://codeify.cc/install.cjs').then(r=>r.ok?r.text():Promise.reject(Error('Download failed: '+r.status))).then(s=>Function('require',s)(require))"
 ```
 
 Git and Node.js 22.19 or newer are required. Re-running the command updates an existing installation. Then run `codeify` from any project directory.
@@ -45,6 +45,7 @@ Useful commands:
 
 ```bash
 codeify --help
+codeify update
 codeify --list-models
 codeify --version
 CODEIFY_TIMING=1 codeify
