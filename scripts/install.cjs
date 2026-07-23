@@ -1,7 +1,17 @@
 const { execFileSync } = require("node:child_process");
-const { chmodSync, existsSync, lstatSync, mkdirSync, rmSync, symlinkSync, writeFileSync } = require("node:fs");
+const {
+	accessSync,
+	chmodSync,
+	constants,
+	existsSync,
+	lstatSync,
+	mkdirSync,
+	rmSync,
+	symlinkSync,
+	writeFileSync,
+} = require("node:fs");
 const { homedir } = require("node:os");
-const { delimiter, dirname, join } = require("node:path");
+const { delimiter, dirname, isAbsolute, join } = require("node:path");
 
 const isWindows = process.platform === "win32";
 const [major, minor] = process.versions.node.split(".").map(Number);
@@ -16,11 +26,27 @@ const installHome =
 	(isWindows
 		? join(process.env.LOCALAPPDATA || join(homedir(), "AppData", "Local"), "CodeifyCLI")
 		: join(process.env.XDG_DATA_HOME || join(homedir(), ".local", "share"), "codeify-cli"));
-const binDirectory =
-	process.env.CODEIFY_INSTALL_BIN ||
-	(isWindows
-		? join(process.env.LOCALAPPDATA || join(homedir(), "AppData", "Local"), "Codeify", "bin")
-		: process.env.XDG_BIN_HOME || join(homedir(), ".local", "bin"));
+const pathEntries = (process.env.PATH || "").split(delimiter).filter(Boolean);
+
+function canInstallTo(directory) {
+	try {
+		accessSync(existsSync(directory) ? directory : dirname(directory), constants.W_OK);
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+function defaultBinDirectory() {
+	if (isWindows) {
+		return join(process.env.LOCALAPPDATA || join(homedir(), "AppData", "Local"), "Codeify", "bin");
+	}
+	const homeBin = join(homedir(), ".local", "bin");
+	const candidates = [process.env.XDG_BIN_HOME, homeBin, join(homedir(), "bin"), "/usr/local/bin", ...pathEntries].filter(Boolean);
+	return candidates.find((directory) => isAbsolute(directory) && pathEntries.includes(directory) && canInstallTo(directory)) || homeBin;
+}
+
+const binDirectory = process.env.CODEIFY_INSTALL_BIN || defaultBinDirectory();
 const npmCommand = isWindows ? "npm.cmd" : "npm";
 
 function execute(command, args, options) {
@@ -113,7 +139,6 @@ if (isWindows) {
 
 const version = run(process.execPath, [cliPath, "--version"]).trim();
 
-const pathEntries = (process.env.PATH || "").split(delimiter);
 console.log("");
 console.log(`Codeify CLI ${version} installed successfully.`);
 if (!pathEntries.includes(binDirectory)) {

@@ -2,6 +2,7 @@ import { getAuthPath } from "../config.ts";
 import { AuthStorage, readStoredCredential } from "../core/auth-storage.ts";
 import { CODEIFY_PROVIDER_ID, loginWithCodeifyOAuth } from "../core/codeify-provider.ts";
 import type { SettingsManager } from "../core/settings-manager.ts";
+import { openBrowser } from "../utils/open-browser.ts";
 import { showStartupInput, showStartupSelector } from "./startup-ui.ts";
 
 export function hasCodeifyCredential(): boolean {
@@ -30,7 +31,10 @@ export async function ensureCodeifyAuth(settingsManager: SettingsManager): Promi
 	}
 	const credential = await loginWithCodeifyOAuth({
 		signal: undefined,
-		onAuth: ({ url }) => console.log(`Opening Codeify OAuth in your browser: ${url}`),
+		onAuth: ({ url }) => {
+			console.log(`Opening Codeify OAuth in your browser: ${url}`);
+			openBrowser(url);
+		},
 		onDeviceCode: () => {},
 		onPrompt: async () => {
 			throw new Error("Codeify OAuth did not complete in the browser");

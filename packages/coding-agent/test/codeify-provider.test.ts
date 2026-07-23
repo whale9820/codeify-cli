@@ -209,7 +209,7 @@ describe("Codeify provider", () => {
 		expect(authorizeUrl.searchParams.get("code_challenge_method")).toBe("S256");
 		expect(authorizeUrl.searchParams.get("scope")).toBe("codeify:invoke offline_access");
 		expect(authorizeUrl.searchParams.get("code_challenge")).toMatch(/^[A-Za-z0-9_-]{43}$/);
-		expect(openBrowser).toHaveBeenCalledWith(authorizeUrl.toString());
+		expect(openBrowser).not.toHaveBeenCalled();
 
 		const redirectUri = authorizeUrl.searchParams.get("redirect_uri");
 		expect(redirectUri).toBeTruthy();
@@ -218,6 +218,11 @@ describe("Codeify provider", () => {
 		callbackUrl.searchParams.set("code", "authorization-code");
 		const callbackResponse = await nativeFetch(callbackUrl);
 		expect(callbackResponse.status).toBe(200);
+		expect(callbackResponse.headers.get("content-type")).toBe("text/html; charset=utf-8");
+		const callbackHtml = await callbackResponse.text();
+		expect(callbackHtml).toContain("You’re signed in.");
+		expect(callbackHtml).toContain("Return to your terminal");
+		expect(callbackHtml).toContain("<style>");
 
 		const credentials = await loginPromise;
 		expect(credentials).toMatchObject({ access: "access-token", refresh: "refresh-token" });

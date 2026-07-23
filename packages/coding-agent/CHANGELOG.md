@@ -11,6 +11,8 @@
 
 ### Fixed
 
+- Fixed Codeify OAuth opening the authorization page twice and added a styled loopback success page.
+- Fixed Unix installs requiring a manual PATH change when an existing PATH directory is writable.
 - Fixed the universal installer incorrectly reporting that npm was missing on Windows.
 - Made `codeify update` stop before downloading or running the installer when the local and cloud versions match.
 - Fixed clean-clone installation and updates to build without generated model catalog data, leaving Codeify model discovery to the runtime API refresh.
