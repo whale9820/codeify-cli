@@ -220,6 +220,7 @@ describe("Codeify provider", () => {
 		expect(callbackResponse.status).toBe(200);
 		expect(callbackResponse.headers.get("content-type")).toBe("text/html; charset=utf-8");
 		const callbackHtml = await callbackResponse.text();
+		expect(callbackHtml).toContain("<title>Signed in to Codeify CLI</title>");
 		expect(callbackHtml).toContain("You’re signed in.");
 		expect(callbackHtml).toContain("Return to your terminal");
 		expect(callbackHtml).toContain("font-size: clamp(32px, 7vw, 56px)");

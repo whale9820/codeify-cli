@@ -469,7 +469,7 @@ export async function main(args: string[]) {
 			await runCodeifyUpdate();
 		} catch (error: unknown) {
 			const message = error instanceof Error ? error.message : String(error);
-			console.error(chalk.red(`Codeify update failed: ${message}`));
+			console.error(chalk.red(`Codeify CLI update failed: ${message}`));
 			process.exitCode = 1;
 		}
 		return;
@@ -540,11 +540,13 @@ export async function main(args: string[]) {
 	if (appMode === "interactive" && !parsed.help && parsed.listModels === undefined) {
 		try {
 			if (!(await ensureCodeifyAuth(startupSettingsManager))) {
-				console.log("Codeify sign-in cancelled.");
+				console.log("Codeify CLI sign-in cancelled.");
 				process.exit(0);
 			}
 		} catch (error) {
-			console.error(chalk.red(`Codeify sign-in failed: ${error instanceof Error ? error.message : String(error)}`));
+			console.error(
+				chalk.red(`Codeify CLI sign-in failed: ${error instanceof Error ? error.message : String(error)}`),
+			);
 			process.exit(1);
 		}
 	}

@@ -205,7 +205,7 @@ describe("FooterComponent width handling", () => {
 		expect(statsLine).toContain("CH25.0%");
 	});
 
-	it("marks Kimi Coding costs as subscription estimates", () => {
+	it("shows Kimi Coding costs without a subscription marker", () => {
 		const session = createSession({
 			sessionName: "",
 			provider: "kimi-coding",
@@ -219,6 +219,8 @@ describe("FooterComponent width handling", () => {
 		});
 		const footer = new FooterComponent(session, createFooterData(1));
 
-		expect(stripAnsi(footer.render(120)[1])).toContain("$1.234 (sub)");
+		const statsLine = stripAnsi(footer.render(120)[1]);
+		expect(statsLine).toContain("$1.234");
+		expect(statsLine).not.toContain("(sub)");
 	});
 });

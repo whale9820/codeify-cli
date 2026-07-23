@@ -629,7 +629,7 @@ export class InteractiveMode {
 
 		// Add header with keybindings from config (unless silenced)
 		if (this.options.verbose || !this.settingsManager.getQuietStartup()) {
-			const logo = theme.bold(theme.fg("accent", APP_NAME)) + theme.fg("dim", ` v${this.version}`);
+			const logo = theme.bold(theme.fg("accent", APP_TITLE)) + theme.fg("dim", ` v${this.version}`);
 			const smartModelsAnnouncement = (): string => {
 				const enabled = this.session.smartModelUsageEnabled;
 				const state = theme.fg(enabled ? "success" : "warning", enabled ? "on" : "off");
@@ -837,7 +837,7 @@ export class InteractiveMode {
 		}
 
 		if (extendedKeysFormat === "xterm") {
-			return "tmux extended-keys-format is xterm. Codeify works best with csi-u. Add `set -g extended-keys-format csi-u` to ~/.tmux.conf and restart tmux.";
+			return "tmux extended-keys-format is xterm. Codeify CLI works best with csi-u. Add `set -g extended-keys-format csi-u` to ~/.tmux.conf and restart tmux.";
 		}
 
 		return undefined;
@@ -2364,7 +2364,7 @@ export class InteractiveMode {
 			new Text(
 				theme.fg(
 					"warning",
-					`This project is not trusted. Project ${CONFIG_DIR_NAME} resources are ignored. Use /trust to save a trust decision, then restart Codeify.`,
+					`This project is not trusted. Project ${CONFIG_DIR_NAME} resources are ignored. Use /trust to save a trust decision, then restart Codeify CLI.`,
 				),
 				1,
 				0,
@@ -2479,7 +2479,7 @@ export class InteractiveMode {
 		try {
 			this.ui.stop();
 		} catch {}
-		console.error("Codeify exiting due to uncaughtException:");
+		console.error("Codeify CLI exiting due to uncaughtException:");
 		console.error(error);
 		process.exit(1);
 	}
@@ -2745,7 +2745,9 @@ export class InteractiveMode {
 			// Split by space to support editor arguments (e.g., "code --wait")
 			const [editor, ...editorArgs] = editorCmd.split(" ");
 
-			process.stdout.write(`Launching external editor: ${editorCmd}\nCodeify will resume when the editor exits.\n`);
+			process.stdout.write(
+				`Launching external editor: ${editorCmd}\nCodeify CLI will resume when the editor exits.\n`,
+			);
 
 			// Do not use spawnSync here. On Windows, synchronous child_process calls can keep
 			// Node/libuv's console input read active after ui.stop() pauses stdin, racing
@@ -3285,7 +3287,7 @@ export class InteractiveMode {
 					trustStore.setMany(selection.updates);
 					done();
 					this.showStatus(
-						`Saved trust decision: ${selection.trusted ? "trusted" : "untrusted"}. Restart Codeify for this to take effect.`,
+						`Saved trust decision: ${selection.trusted ? "trusted" : "untrusted"}. Restart Codeify CLI for this to take effect.`,
 					);
 				},
 				onCancel: () => {
@@ -3770,9 +3772,9 @@ export class InteractiveMode {
 			oauthProvider?.method && "loginLabel" in oauthProvider.method ? oauthProvider.method.loginLabel : undefined;
 		const isCodeify = providerOptions?.[0]?.id === "codeify";
 		const subscriptionLabel = isCodeify
-			? "Continue with Codeify OAuth"
+			? "Continue with Codeify CLI OAuth"
 			: (oauthLoginLabel ?? "Sign in with an account");
-		const apiKeyLabel = isCodeify ? "Enter Codeify API key" : "Sign in with an API key";
+		const apiKeyLabel = isCodeify ? "Enter Codeify CLI API key" : "Sign in with an API key";
 		const availableAuthTypes = providerOptions
 			? new Set(providerOptions.map((provider) => provider.authType))
 			: new Set<AuthSelectorProvider["authType"]>(["oauth", "api_key"]);
@@ -3799,7 +3801,7 @@ export class InteractiveMode {
 
 		const title = providerOptions?.[0]
 			? isCodeify
-				? "Sign in to Codeify"
+				? "Sign in to Codeify CLI"
 				: `Select authentication method for ${providerOptions[0].name}:`
 			: "Select authentication method:";
 		this.showSelector((done) => {
@@ -3985,7 +3987,11 @@ export class InteractiveMode {
 			providerOption.name,
 			`${providerOption.name} setup`,
 		);
-		dialog.showInfo(`${providerOption.method?.name ?? "Authentication"} is configured outside Codeify.`, [], true);
+		dialog.showInfo(
+			`${providerOption.method?.name ?? "Authentication"} is configured outside Codeify CLI.`,
+			[],
+			true,
+		);
 
 		this.editorContainer.clear();
 		this.editorContainer.addChild(dialog);

@@ -4,7 +4,7 @@
 
 import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
 import chalk from "chalk";
-import { APP_NAME, CONFIG_DIR_NAME, ENV_AGENT_DIR, ENV_SESSION_DIR } from "../config.ts";
+import { APP_NAME, APP_TITLE, CONFIG_DIR_NAME, ENV_AGENT_DIR, ENV_SESSION_DIR } from "../config.ts";
 
 export type Mode = "text" | "json" | "rpc";
 
@@ -187,14 +187,14 @@ export function parseArgs(args: string[]): Args {
 }
 
 export function printHelp(): void {
-	console.log(`${chalk.bold(APP_NAME)} - AI coding assistant with read, bash, edit, write tools
+	console.log(`${chalk.bold(APP_TITLE)} - AI coding assistant with read, bash, edit, write tools
 
 ${chalk.bold("Usage:")}
   ${APP_NAME} [options] [@files...] [messages...]
   ${APP_NAME} update
 
 ${chalk.bold("Commands:")}
-  update                         Download and run the official Codeify installer
+  update                         Download and run the official Codeify CLI installer
 
 ${chalk.bold("Options:")}
   --provider <name>              Provider name (default: codeify)
@@ -294,7 +294,7 @@ ${chalk.bold("Examples:")}
   ${APP_NAME} --export session.jsonl output.html
 
 ${chalk.bold("Environment Variables:")}
-  CODEIFY_API_KEY                  - Codeify API key
+  CODEIFY_API_KEY                  - Codeify CLI API key
   ANTHROPIC_API_KEY                - Anthropic Claude API key
   ANTHROPIC_OAUTH_TOKEN            - Anthropic OAuth token (alternative to API key)
   ANT_LING_API_KEY                 - Ant Ling API key

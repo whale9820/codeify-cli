@@ -131,7 +131,7 @@ try {
 const codeifyConfigName: string | undefined = pkg.codeifyConfig?.name;
 export const PACKAGE_NAME: string = pkg.name || "codeify-cli";
 export const APP_NAME: string = codeifyConfigName || "codeify";
-export const APP_TITLE: string = APP_NAME;
+export const APP_TITLE: string = APP_NAME === "codeify" ? "codeify cli" : APP_NAME;
 export const CONFIG_DIR_NAME: string = pkg.codeifyConfig?.configDir || ".codeify";
 export const VERSION: string = pkg.version || "0.0.0";
 

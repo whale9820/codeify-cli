@@ -34,7 +34,7 @@ const DEFAULT_MAX_TURNS = 8;
 const MAX_TURNS = 12;
 const DEFAULT_MAX_TOOL_CALLS = 24;
 const MAX_TOOL_CALLS = 64;
-const MAX_CONCURRENT_CALLS = 2;
+const MAX_CONCURRENT_CALLS = 5;
 const MAX_RESULT_CHARS = 80_000;
 const MAX_WALL_TIME_MS = 5 * 60_000;
 const DEFAULT_READ_ONLY_TOOLS = ["read", "grep", "find", "ls"];
@@ -67,9 +67,9 @@ const computerAccessSchema = Type.Object({
 
 const codeifyModelSchema = Type.Object({
 	action: Type.Union([Type.Literal("list"), Type.Literal("run")], {
-		description: "List eligible Codeify models or run a bounded fully agentic task on one model",
+		description: "List eligible Codeify CLI models or run a bounded fully agentic task on one model",
 	}),
-	model: Type.Optional(Type.String({ description: "Codeify model ID returned by the list action" })),
+	model: Type.Optional(Type.String({ description: "Codeify CLI model ID returned by the list action" })),
 	task: Type.Optional(Type.String({ description: "Standalone task and only the context the delegated agent needs" })),
 	allowedTools: Type.Optional(
 		Type.Array(Type.String(), {
@@ -218,7 +218,7 @@ async function getCodeifyModels(runtime: CodeifyModelToolRuntime): Promise<reado
 	try {
 		return await runtime.getAvailable(CODEIFY_PROVIDER_ID);
 	} catch {
-		throw new DelegationInputError("Unable to load delegated Codeify models.");
+		throw new DelegationInputError("Unable to load delegated Codeify CLI models.");
 	}
 }
 
@@ -278,11 +278,11 @@ function selectDelegatedTools(
 function delegatedSystemPrompt(cwd: string, restrictions: string | undefined, toolNames: readonly string[]): string {
 	const scope = restrictions?.trim() || "Complete only the assigned task and do not expand its scope.";
 	return [
-		"You are a fully agentic delegated Codeify coding agent.",
+		"You are a fully agentic delegated Codeify CLI coding agent.",
 		`Your working directory is ${cwd}.`,
 		`You may use only these tools: ${toolNames.length > 0 ? toolNames.join(", ") : "none"}.`,
 		"The main agent selected your model, tools, and restrictions. They are mandatory.",
-		"Do not attempt to delegate to another model, discover credentials, or access Codeify authentication.",
+		"Do not attempt to delegate to another model, discover credentials, or access Codeify CLI authentication.",
 		"Use tools autonomously until the task is complete, then return a concise result with material findings and changed files.",
 		`Restrictions: ${scope}`,
 	].join("\n");
@@ -353,10 +353,10 @@ export function createCodeifyModelToolDefinition(
 	let activeCalls = 0;
 	return {
 		name: "codeify_model",
-		label: "Codeify agent",
+		label: "Codeify CLI agent",
 		description:
-			"Securely list and delegate work to other models offered by Codeify. Delegated models run as bounded fully agentic coding agents with only the tools, domains, scope, and restrictions you grant. Authentication stays inside the Codeify CLI harness and is never visible to either agent.",
-		promptSnippet: "Delegate bounded work to a cheaper or specialized fully agentic Codeify model",
+			"Securely list and delegate work to other models offered by Codeify CLI. Delegated models run as bounded fully agentic coding agents with only the tools, domains, scope, and restrictions you grant. Authentication stays inside the Codeify CLI harness and is never visible to either agent.",
+		promptSnippet: "Delegate bounded work to a cheaper or specialized fully agentic Codeify CLI model",
 		promptGuidelines: [
 			"Delegation is available and recommended for menial, repetitive, low-judgment, search, formatting, test-triage, and inexpensive vision work so you preserve valuable reasoning and context for difficult decisions.",
 			"Delegated models are fully agentic: choose the model, exact tools, restrictions, turn limit, and task scope, then review their result before making final decisions.",
@@ -382,8 +382,8 @@ export function createCodeifyModelToolDefinition(
 				const toolNames = delegatedToolNames(options);
 				const text =
 					models.length > 0
-						? `Eligible delegated Codeify models, sorted by combined input/output price. Prices are USD per million tokens.${current}\nDelegated agents can use: ${toolNames.join(", ") || "no tools"}. Computer requires computerAccess.allowedDomains.\n${models.map(formatModel).join("\n")}`
-						: `No other Codeify models match this request.${current}`;
+						? `Eligible delegated Codeify CLI models, sorted by combined input/output price. Prices are USD per million tokens.${current}\nDelegated agents can use: ${toolNames.join(", ") || "no tools"}. Computer requires computerAccess.allowedDomains.\n${models.map(formatModel).join("\n")}`
+						: `No other Codeify CLI models match this request.${current}`;
 				return { content: [{ type: "text", text }], details: { action: "list", count: models.length, toolNames } };
 			}
 
@@ -393,9 +393,9 @@ export function createCodeifyModelToolDefinition(
 			if (task.length > MAX_PROMPT_CHARS) {
 				throw new Error(`Delegated tasks are limited to ${MAX_PROMPT_CHARS} characters.`);
 			}
-			if (signal?.aborted) throw new Error("Delegated Codeify agent request was cancelled.");
+			if (signal?.aborted) throw new Error("Delegated Codeify CLI agent request was cancelled.");
 			if (activeCalls >= MAX_CONCURRENT_CALLS) {
-				throw new Error(`At most ${MAX_CONCURRENT_CALLS} delegated Codeify agents can run concurrently.`);
+				throw new Error(`At most ${MAX_CONCURRENT_CALLS} delegated Codeify CLI agents can run concurrently.`);
 			}
 			activeCalls++;
 			let toolSet: DelegatedToolSet | undefined;
@@ -403,17 +403,17 @@ export function createCodeifyModelToolDefinition(
 				const modelId = params.model.replace(/^codeify\//u, "");
 				const models = await getCodeifyModels(runtime);
 				const model = models.find((candidate) => candidate.id === modelId);
-				if (!model) throw new DelegationInputError(`Codeify model is not available: ${modelId}`);
+				if (!model) throw new DelegationInputError(`Codeify CLI model is not available: ${modelId}`);
 				if (ctx.model?.provider === CODEIFY_PROVIDER_ID && ctx.model.id === model.id) {
 					throw new DelegationInputError("Choose a model other than the main model for delegation.");
 				}
 
 				const imagePaths = params.imagePaths ?? [];
 				if (imagePaths.length > 0 && options.imagesBlocked?.()) {
-					throw new DelegationInputError("Image sending is disabled in Codeify settings.");
+					throw new DelegationInputError("Image sending is disabled in Codeify CLI settings.");
 				}
 				if (imagePaths.length > 0 && !model.input.includes("image")) {
-					throw new DelegationInputError(`Codeify model does not support images: ${model.id}`);
+					throw new DelegationInputError(`Codeify CLI model does not support images: ${model.id}`);
 				}
 				const supportedEfforts = getSupportedThinkingLevels(model);
 				if (params.reasoningEffort && !supportedEfforts.includes(params.reasoningEffort)) {
@@ -544,11 +544,11 @@ export function createCodeifyModelToolDefinition(
 					clearTimeout(timeout);
 					signal?.removeEventListener("abort", forwardAbort);
 				}
-				if (timedOut) throw new Error("Delegated Codeify agent exceeded the five-minute limit.");
+				if (timedOut) throw new Error("Delegated Codeify CLI agent exceeded the five-minute limit.");
 				if (signal?.aborted || lastStopReason === "aborted") {
-					throw new Error("Delegated Codeify agent request was cancelled.");
+					throw new Error("Delegated Codeify CLI agent request was cancelled.");
 				}
-				if (lastStopReason === "error") throw new Error("Delegated Codeify agent request failed.");
+				if (lastStopReason === "error") throw new Error("Delegated Codeify CLI agent request failed.");
 				const rawText = responseText(messages);
 				const fallback =
 					turns >= maxTurns
@@ -575,17 +575,17 @@ export function createCodeifyModelToolDefinition(
 				if (
 					error instanceof Error &&
 					[
-						"Delegated Codeify agent request was cancelled.",
-						"Delegated Codeify agent request failed.",
-						"Delegated Codeify agent exceeded the five-minute limit.",
+						"Delegated Codeify CLI agent request was cancelled.",
+						"Delegated Codeify CLI agent request failed.",
+						"Delegated Codeify CLI agent exceeded the five-minute limit.",
 					].includes(error.message)
 				) {
 					throw error;
 				}
 				throw new Error(
 					signal?.aborted
-						? "Delegated Codeify agent request was cancelled."
-						: "Delegated Codeify agent request failed.",
+						? "Delegated Codeify CLI agent request was cancelled."
+						: "Delegated Codeify CLI agent request failed.",
 				);
 			} finally {
 				await toolSet?.dispose?.();

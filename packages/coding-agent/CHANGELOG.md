@@ -7,7 +7,11 @@
 - Added `/thinking` and `/effort` commands for selecting or directly setting model reasoning effort.
 - Added a PKCE-protected Codeify OAuth login with loopback callbacks and rotating refresh-token requirements.
 - Added opt-in smart model usage with protected delegation to other Codeify models, capability and price discovery, bounded vision inputs, reasoning controls, usage accounting, a `/smart` control, a startup announcement, and authenticated Codeify model refresh on every startup.
-- Upgraded smart model usage to run bounded fully agentic subagents with explicit tool restrictions, detailed live rendering, recursive-delegation protection, aggregated usage, changed-file summaries, and isolated allowlisted Chromium computer use.
+- Upgraded smart model usage to run up to five concurrent bounded fully agentic subagents with explicit tool restrictions, detailed live rendering, recursive-delegation protection, aggregated usage, changed-file summaries, and isolated allowlisted Chromium computer use.
+
+### Changed
+
+- Standardized user-visible branding as Codeify CLI, removed the block logo from first-time setup, and removed the subscription marker from the footer.
 
 ### Fixed
 

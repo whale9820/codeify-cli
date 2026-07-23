@@ -1,5 +1,5 @@
-import { describe, expect, test } from "vitest";
-import { parseArgs } from "../src/cli/args.ts";
+import { describe, expect, test, vi } from "vitest";
+import { parseArgs, printHelp } from "../src/cli/args.ts";
 
 describe("parseArgs", () => {
 	describe("--version flag", () => {
@@ -30,6 +30,18 @@ describe("parseArgs", () => {
 		test("parses -h shorthand", () => {
 			const result = parseArgs(["-h"]);
 			expect(result.help).toBe(true);
+		});
+
+		test("shows the Codeify CLI brand while preserving the codeify command", () => {
+			const log = vi.spyOn(console, "log").mockImplementation(() => {});
+			try {
+				printHelp();
+				const output = log.mock.calls.flat().join("\n");
+				expect(output).toContain("codeify cli - AI coding assistant");
+				expect(output).toContain("codeify [options]");
+			} finally {
+				log.mockRestore();
+			}
 		});
 	});
 

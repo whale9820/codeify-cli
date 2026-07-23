@@ -481,7 +481,7 @@ export class SettingsSelectorComponent extends Container {
 			{
 				id: "smart-model-usage",
 				label: "Smart model usage",
-				description: "Delegate complete agentic subtasks to cheaper or specialized Codeify models",
+				description: "Delegate complete agentic subtasks to cheaper or specialized Codeify CLI models",
 				currentValue: config.smartModelUsage ? "true" : "false",
 				values: ["true", "false"],
 			},

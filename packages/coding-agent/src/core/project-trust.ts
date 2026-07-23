@@ -30,7 +30,7 @@ export interface ResolveProjectTrustedOptions {
 }
 
 function formatProjectTrustPrompt(cwd: string): string {
-	return `Trust project folder?\n${cwd}\n\nThis allows Codeify to load ${CONFIG_DIR_NAME} settings and resources.`;
+	return `Trust project folder?\n${cwd}\n\nThis allows Codeify CLI to load ${CONFIG_DIR_NAME} settings and resources.`;
 }
 
 async function selectProjectTrustOption(

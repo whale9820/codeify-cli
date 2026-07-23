@@ -144,7 +144,7 @@ describe("codeify_model tool", () => {
 			],
 			(_selected, context, options) => {
 				expect(options?.apiKey).toBeUndefined();
-				expect(context.systemPrompt).toContain("fully agentic delegated Codeify coding agent");
+				expect(context.systemPrompt).toContain("fully agentic delegated Codeify CLI coding agent");
 				expect(context.systemPrompt).toContain("Only inspect notes.txt");
 			},
 		);
@@ -340,7 +340,7 @@ describe("codeify_model tool", () => {
 			undefined,
 			{ cwd: process.cwd(), model: main },
 		);
-		await expect(request).rejects.toThrow("Delegated Codeify agent request failed.");
+		await expect(request).rejects.toThrow("Delegated Codeify CLI agent request failed.");
 		await expect(request).rejects.not.toThrow("secret-codeify-key");
 		expect(JSON.stringify(tool.parameters)).not.toContain("apiKey");
 	});
@@ -361,7 +361,7 @@ describe("codeify_model tool", () => {
 			cwd: process.cwd(),
 			model: main,
 		});
-		await expect(request).rejects.toThrow("Unable to load delegated Codeify models.");
+		await expect(request).rejects.toThrow("Unable to load delegated Codeify CLI models.");
 		await expect(request).rejects.not.toThrow("secret-discovery-key");
 	});
 
@@ -371,25 +371,20 @@ describe("codeify_model tool", () => {
 		const { runtime } = runtimeWith([main, cheap], [{ text: "done", delayMs: 100 }]);
 		const tool = createCodeifyModelToolDefinition(process.cwd(), runtime);
 		const context = { cwd: process.cwd(), model: main };
-		const first = tool.execute(
-			"first",
-			{ action: "run", model: "cheap", task: "First" },
-			undefined,
-			undefined,
-			context,
-		);
-		const second = tool.execute(
-			"second",
-			{ action: "run", model: "cheap", task: "Second" },
-			undefined,
-			undefined,
-			context,
+		const requests = Array.from({ length: 5 }, (_, index) =>
+			tool.execute(
+				`request-${index}`,
+				{ action: "run", model: "cheap", task: `Task ${index}` },
+				undefined,
+				undefined,
+				context,
+			),
 		);
 
 		await expect(
-			tool.execute("third", { action: "run", model: "cheap", task: "Third" }, undefined, undefined, context),
-		).rejects.toThrow("At most 2 delegated Codeify agents");
-		await Promise.all([first, second]);
+			tool.execute("sixth", { action: "run", model: "cheap", task: "Sixth" }, undefined, undefined, context),
+		).rejects.toThrow("At most 5 delegated Codeify CLI agents");
+		await Promise.all(requests);
 	});
 
 	it("cancels before starting a delegated agent", async () => {
@@ -466,7 +461,7 @@ describe("codeify_model tool", () => {
 			expect(harness.session.getActiveToolNames()).not.toContain("codeify_model");
 			harness.session.setSmartModelUsageEnabled(true);
 			expect(harness.session.getActiveToolNames()).toContain("codeify_model");
-			expect(harness.session.systemPrompt).toContain("fully agentic Codeify model");
+			expect(harness.session.systemPrompt).toContain("fully agentic Codeify CLI model");
 			expect(harness.session.systemPrompt).toContain("recommended for menial");
 			harness.session.setSmartModelUsageEnabled(false);
 			expect(harness.session.getActiveToolNames()).not.toContain("codeify_model");
