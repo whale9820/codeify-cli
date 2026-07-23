@@ -1,7 +1,7 @@
 import { execSync, spawn } from "child_process";
 import { platform } from "os";
 import { isWaylandSession } from "./clipboard-image.ts";
-import { clipboard } from "./clipboard-native.ts";
+import { getClipboardNative } from "./clipboard-native.ts";
 
 type NativeClipboardExecOptions = {
 	input: string;
@@ -34,6 +34,7 @@ function emitOsc52(text: string): boolean {
 
 /** Read plain text from the system clipboard, if native clipboard access is available. */
 export async function readClipboardText(): Promise<string | null> {
+	const clipboard = getClipboardNative();
 	if (!clipboard) {
 		return null;
 	}
@@ -50,6 +51,7 @@ export async function copyToClipboard(text: string): Promise<void> {
 	let copied = false;
 
 	const p = platform();
+	const clipboard = p === "linux" ? null : getClipboardNative();
 
 	// Prefer direct clipboard writes. Emitting OSC 52 first can make terminals
 	// write the same native clipboard concurrently with the addon, and very large

@@ -4,7 +4,7 @@ import { readFileSync, unlinkSync } from "fs";
 import { tmpdir } from "os";
 import { join } from "path";
 
-import { clipboard } from "./clipboard-native.ts";
+import { getClipboardNative } from "./clipboard-native.ts";
 import { loadPhoton } from "./photon.ts";
 
 export type ClipboardImage = {
@@ -238,6 +238,7 @@ function readClipboardImageViaXclip(): ClipboardImage | null {
 }
 
 async function readClipboardImageViaNativeClipboard(): Promise<ClipboardImage | null> {
+	const clipboard = getClipboardNative();
 	if (!clipboard || !clipboard.hasImage()) {
 		return null;
 	}

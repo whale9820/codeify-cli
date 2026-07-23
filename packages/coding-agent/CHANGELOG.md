@@ -19,6 +19,7 @@
 - Fixed source installations on Windows failing to launch the TypeScript compiler command shim.
 - Fixed Unix installs requiring a manual PATH change when an existing PATH directory is writable.
 - Fixed the universal installer incorrectly reporting that npm was missing on Windows.
+- Fixed `codeify update` on Windows corrupting source installations when the running process locked the native clipboard module.
 - Made `codeify update` stop before downloading or running the installer when the local and cloud versions match.
 - Fixed clean-clone installation and updates to build without generated model catalog data, leaving Codeify model discovery to the runtime API refresh.
 - Fixed `codeify update` to bypass agent startup and run the universal installer hosted at `https://codeify.cc/install.cjs`.

@@ -104,7 +104,7 @@ if (existingCheckout) {
 }
 
 step(2, "Installing dependencies");
-run(npmCommand, ["ci", "--ignore-scripts"], installHome);
+run(npmCommand, [existingCheckout && isWindows ? "install" : "ci", "--ignore-scripts"], installHome);
 step(3, "Building Codeify CLI");
 run(npmCommand, ["run", "build:runtime"], installHome);
 

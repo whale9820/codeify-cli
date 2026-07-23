@@ -13,7 +13,6 @@ type ClipboardRequire = (id: string) => unknown;
 
 const moduleRequire = createRequire(import.meta.url);
 const executableDirRequire = createRequire(pathToFileURL(join(dirname(process.execPath), "package.json")).href);
-const hasDisplay = process.platform !== "linux" || Boolean(process.env.DISPLAY || process.env.WAYLAND_DISPLAY);
 
 export function loadClipboardNative(
 	requires: readonly ClipboardRequire[] = [moduleRequire, executableDirRequire],
@@ -28,6 +27,19 @@ export function loadClipboardNative(
 	return null;
 }
 
-const clipboard = !process.env.TERMUX_VERSION && hasDisplay ? loadClipboardNative() : null;
+export function createClipboardNativeLoader(
+	load: () => ClipboardModule | null = () => loadClipboardNative(),
+	isAvailable: () => boolean = () =>
+		!process.env.TERMUX_VERSION &&
+		(process.platform !== "linux" || Boolean(process.env.DISPLAY || process.env.WAYLAND_DISPLAY)),
+): () => ClipboardModule | null {
+	let clipboard: ClipboardModule | null | undefined;
+	return () => {
+		if (clipboard === undefined) {
+			clipboard = isAvailable() ? load() : null;
+		}
+		return clipboard;
+	};
+}
 
-export { clipboard };
+export const getClipboardNative = createClipboardNativeLoader();

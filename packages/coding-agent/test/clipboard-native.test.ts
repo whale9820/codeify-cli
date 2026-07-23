@@ -1,5 +1,9 @@
 import { describe, expect, test, vi } from "vitest";
-import { type ClipboardModule, loadClipboardNative } from "../src/utils/clipboard-native.ts";
+import {
+	type ClipboardModule,
+	createClipboardNativeLoader,
+	loadClipboardNative,
+} from "../src/utils/clipboard-native.ts";
 
 type ClipboardRequire = (id: string) => unknown;
 
@@ -11,6 +15,16 @@ const fakeClipboard: ClipboardModule = {
 };
 
 describe("loadClipboardNative", () => {
+	test("does not load the native module until clipboard access is requested", () => {
+		const load = vi.fn(() => fakeClipboard);
+		const getClipboard = createClipboardNativeLoader(load, () => true);
+
+		expect(load).not.toHaveBeenCalled();
+		expect(getClipboard()).toBe(fakeClipboard);
+		expect(getClipboard()).toBe(fakeClipboard);
+		expect(load).toHaveBeenCalledTimes(1);
+	});
+
 	test("falls back to the next require root", () => {
 		const primary = vi.fn<ClipboardRequire>(() => {
 			throw new Error("missing from bundled root");

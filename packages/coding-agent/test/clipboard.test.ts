@@ -18,7 +18,7 @@ const mocks = vi.hoisted(() => {
 
 vi.mock("../src/utils/clipboard-native.js", () => {
 	return {
-		clipboard: mocks.clipboard,
+		getClipboardNative: () => mocks.clipboard,
 	};
 });
 
