@@ -540,13 +540,11 @@ export async function main(args: string[]) {
 	if (appMode === "interactive" && !parsed.help && parsed.listModels === undefined) {
 		try {
 			if (!(await ensureCodeifyAuth(startupSettingsManager))) {
-				console.log("Codeify CLI sign-in cancelled.");
+				console.log("Codeify sign-in cancelled.");
 				process.exit(0);
 			}
 		} catch (error) {
-			console.error(
-				chalk.red(`Codeify CLI sign-in failed: ${error instanceof Error ? error.message : String(error)}`),
-			);
+			console.error(chalk.red(`Codeify sign-in failed: ${error instanceof Error ? error.message : String(error)}`));
 			process.exit(1);
 		}
 	}

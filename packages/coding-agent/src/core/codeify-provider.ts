@@ -196,7 +196,7 @@ function oauthSuccessHtml(): string {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Signed in to Codeify CLI</title>
+<title>Signed in to Codeify</title>
 <style>
 :root { color-scheme: dark; font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
 * { box-sizing: border-box; }
@@ -228,20 +228,20 @@ function parseOAuthTokenPayload(payload: unknown): OAuthCredentials {
 	const tokenPayload: OAuthTokenPayload =
 		typeof payload === "object" && payload !== null ? (payload as OAuthTokenPayload) : {};
 	if (typeof tokenPayload.access_token !== "string" || tokenPayload.access_token.length === 0) {
-		throw new Error("Codeify CLI OAuth did not return an access token");
+		throw new Error("Codeify OAuth did not return an access token");
 	}
 	if (typeof tokenPayload.refresh_token !== "string" || tokenPayload.refresh_token.length === 0) {
-		throw new Error("Codeify CLI OAuth did not return a refresh token");
+		throw new Error("Codeify OAuth did not return a refresh token");
 	}
 	if (
 		typeof tokenPayload.expires_in !== "number" ||
 		!Number.isFinite(tokenPayload.expires_in) ||
 		tokenPayload.expires_in <= 0
 	) {
-		throw new Error("Codeify CLI OAuth returned an invalid access-token lifetime");
+		throw new Error("Codeify OAuth returned an invalid access-token lifetime");
 	}
 	const expires = Date.now() + tokenPayload.expires_in * 1000;
-	if (!Number.isFinite(expires)) throw new Error("Codeify CLI OAuth returned an invalid access-token lifetime");
+	if (!Number.isFinite(expires)) throw new Error("Codeify OAuth returned an invalid access-token lifetime");
 	return {
 		access: tokenPayload.access_token,
 		refresh: tokenPayload.refresh_token,
@@ -274,7 +274,7 @@ async function exchangeOAuthCode(code: string, redirectUri: string, codeVerifier
 			code_verifier: codeVerifier,
 		}),
 	});
-	if (!response.ok) throw new Error(`Codeify CLI OAuth token exchange failed (${response.status})`);
+	if (!response.ok) throw new Error(`Codeify OAuth token exchange failed (${response.status})`);
 	return parseOAuthTokenPayload(await response.json());
 }
 
@@ -315,13 +315,13 @@ export async function loginWithCodeifyOAuth(callbacks: OAuthLoginCallbacks): Pro
 				const error = requestUrl.searchParams.get("error");
 				if (error) {
 					const description = requestUrl.searchParams.get("error_description");
-					throw new Error(`Codeify CLI OAuth failed: ${description ?? error}`);
+					throw new Error(`Codeify OAuth failed: ${description ?? error}`);
 				}
 				if (requestUrl.searchParams.has("access_token") || requestUrl.searchParams.has("refresh_token")) {
-					throw new Error("Codeify CLI OAuth callback must not contain tokens");
+					throw new Error("Codeify OAuth callback must not contain tokens");
 				}
 				const code = requestUrl.searchParams.get("code");
-				if (!code) throw new Error("Codeify CLI OAuth callback did not include an authorization code");
+				if (!code) throw new Error("Codeify OAuth callback did not include an authorization code");
 				const credential = await exchangeOAuthCode(code, redirectUri, codeVerifier);
 				completed = true;
 				response.writeHead(200, { "Content-Type": "text/html; charset=utf-8" }).end(oauthSuccessHtml());
@@ -331,7 +331,7 @@ export async function loginWithCodeifyOAuth(callbacks: OAuthLoginCallbacks): Pro
 				completed = true;
 				response
 					.writeHead(400, { "Content-Type": "text/plain; charset=utf-8" })
-					.end("Codeify CLI sign-in failed. Return to the CLI.");
+					.end("Codeify sign-in failed. Return to the CLI.");
 				reject(error);
 			}
 		});
@@ -342,18 +342,18 @@ export async function loginWithCodeifyOAuth(callbacks: OAuthLoginCallbacks): Pro
 	const address = server.address();
 	if (!address || typeof address === "string") {
 		server.close();
-		throw new Error("Unable to start the Codeify CLI OAuth callback server");
+		throw new Error("Unable to start the Codeify OAuth callback server");
 	}
 	redirectUri = `http://127.0.0.1:${address.port}/callback`;
 	let timeout: NodeJS.Timeout | undefined;
 	let onAbort: (() => void) | undefined;
 	try {
 		const url = oauthAuthorizeUrl(redirectUri, state, codeChallenge);
-		callbacks.onAuth({ url, instructions: "Complete Codeify CLI sign-in in your browser." });
+		callbacks.onAuth({ url, instructions: "Complete Codeify sign-in in your browser." });
 		return await Promise.race([
 			result,
 			new Promise<OAuthCredentials>((_, reject) => {
-				timeout = setTimeout(() => reject(new Error("Codeify CLI OAuth timed out")), 5 * 60 * 1000);
+				timeout = setTimeout(() => reject(new Error("Codeify OAuth timed out")), 5 * 60 * 1000);
 				onAbort = () => {
 					if (timeout) clearTimeout(timeout);
 					reject(new Error("Login cancelled"));
@@ -372,12 +372,12 @@ export async function loginWithCodeifyOAuth(callbacks: OAuthLoginCallbacks): Pro
 export function codeifyProvider(): RuntimeProviderConfig {
 	let networkRefreshed = false;
 	return {
-		name: "Codeify CLI",
+		name: "Codeify",
 		baseUrl: CODEIFY_BASE_URL,
 		api: "openai-responses",
 		apiKey: "$CODEIFY_API_KEY",
 		oauth: {
-			name: "Codeify CLI",
+			name: "Codeify",
 			login: loginWithCodeifyOAuth,
 			refreshToken: async (credentials) => {
 				const response = await fetch(getOAuthTokenUrl(), {
@@ -389,7 +389,7 @@ export function codeifyProvider(): RuntimeProviderConfig {
 						client_id: getOAuthClientId(),
 					}),
 				});
-				if (!response.ok) throw new Error(`Codeify CLI OAuth refresh failed (${response.status})`);
+				if (!response.ok) throw new Error(`Codeify OAuth refresh failed (${response.status})`);
 				return {
 					...credentials,
 					...parseOAuthTokenPayload(await response.json()),

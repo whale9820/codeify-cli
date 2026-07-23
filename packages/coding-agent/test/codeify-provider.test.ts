@@ -31,9 +31,11 @@ function oauthCallbacks(onAuth: (url: URL) => void): OAuthLoginCallbacks {
 }
 
 describe("Codeify provider", () => {
-	it("uses the bundled catalog for the initial default model", () => {
-		const model = codeifyProvider().models?.find((candidate) => candidate.id === "gpt-5.6-sol");
+	it("uses Codeify service branding and the bundled catalog for the initial default model", () => {
+		const provider = codeifyProvider();
+		const model = provider.models?.find((candidate) => candidate.id === "gpt-5.6-sol");
 
+		expect(provider).toMatchObject({ name: "Codeify", oauth: { name: "Codeify" } });
 		expect(model).toMatchObject({ contextWindow: 1_050_000, maxTokens: 128_000 });
 	});
 
@@ -220,7 +222,7 @@ describe("Codeify provider", () => {
 		expect(callbackResponse.status).toBe(200);
 		expect(callbackResponse.headers.get("content-type")).toBe("text/html; charset=utf-8");
 		const callbackHtml = await callbackResponse.text();
-		expect(callbackHtml).toContain("<title>Signed in to Codeify CLI</title>");
+		expect(callbackHtml).toContain("<title>Signed in to Codeify</title>");
 		expect(callbackHtml).toContain("You’re signed in.");
 		expect(callbackHtml).toContain("Return to your terminal");
 		expect(callbackHtml).toContain("font-size: clamp(32px, 7vw, 56px)");

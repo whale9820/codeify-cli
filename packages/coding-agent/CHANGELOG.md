@@ -11,7 +11,7 @@
 
 ### Changed
 
-- Standardized user-visible branding as Codeify CLI, removed the block logo from first-time setup, and removed the subscription marker from the footer.
+- Standardized user-visible tool branding as Codeify CLI while retaining Codeify service branding during authentication, removed the block logo from first-time setup, and removed the subscription marker from the footer.
 
 ### Fixed
 

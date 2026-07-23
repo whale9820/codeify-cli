@@ -3772,9 +3772,9 @@ export class InteractiveMode {
 			oauthProvider?.method && "loginLabel" in oauthProvider.method ? oauthProvider.method.loginLabel : undefined;
 		const isCodeify = providerOptions?.[0]?.id === "codeify";
 		const subscriptionLabel = isCodeify
-			? "Continue with Codeify CLI OAuth"
+			? "Continue with Codeify OAuth"
 			: (oauthLoginLabel ?? "Sign in with an account");
-		const apiKeyLabel = isCodeify ? "Enter Codeify CLI API key" : "Sign in with an API key";
+		const apiKeyLabel = isCodeify ? "Enter Codeify API key" : "Sign in with an API key";
 		const availableAuthTypes = providerOptions
 			? new Set(providerOptions.map((provider) => provider.authType))
 			: new Set<AuthSelectorProvider["authType"]>(["oauth", "api_key"]);
@@ -3801,7 +3801,7 @@ export class InteractiveMode {
 
 		const title = providerOptions?.[0]
 			? isCodeify
-				? "Sign in to Codeify CLI"
+				? "Sign in to Codeify"
 				: `Select authentication method for ${providerOptions[0].name}:`
 			: "Select authentication method:";
 		this.showSelector((done) => {

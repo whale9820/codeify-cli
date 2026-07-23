@@ -15,15 +15,15 @@ export function hasCodeifyCredential(): boolean {
 
 export async function ensureCodeifyAuth(settingsManager: SettingsManager): Promise<boolean> {
 	if (hasCodeifyCredential()) return true;
-	const choice = await showStartupSelector(settingsManager, "Sign in to Codeify CLI", [
-		{ label: "Continue with Codeify CLI OAuth", value: "oauth" as const },
-		{ label: "Enter Codeify CLI API key", value: "api_key" as const },
+	const choice = await showStartupSelector(settingsManager, "Sign in to Codeify", [
+		{ label: "Continue with Codeify OAuth", value: "oauth" as const },
+		{ label: "Enter Codeify API key", value: "api_key" as const },
 	]);
 	if (!choice) return false;
 	const storage = AuthStorage.create(getAuthPath());
 	if (choice === "api_key") {
 		const key = (
-			await showStartupInput(settingsManager, "Enter Codeify CLI API key", "codeify_...", { secret: true })
+			await showStartupInput(settingsManager, "Enter Codeify API key", "codeify_...", { secret: true })
 		)?.trim();
 		if (!key) return false;
 		await storage.modify(CODEIFY_PROVIDER_ID, async () => ({ type: "api_key", key }));
@@ -32,15 +32,15 @@ export async function ensureCodeifyAuth(settingsManager: SettingsManager): Promi
 	const credential = await loginWithCodeifyOAuth({
 		signal: undefined,
 		onAuth: ({ url }) => {
-			console.log(`Opening Codeify CLI OAuth in your browser: ${url}`);
+			console.log(`Opening Codeify OAuth in your browser: ${url}`);
 			openBrowser(url);
 		},
 		onDeviceCode: () => {},
 		onPrompt: async () => {
-			throw new Error("Codeify CLI OAuth did not complete in the browser");
+			throw new Error("Codeify OAuth did not complete in the browser");
 		},
 		onManualCodeInput: async () => {
-			throw new Error("Codeify CLI OAuth did not complete in the browser");
+			throw new Error("Codeify OAuth did not complete in the browser");
 		},
 		onSelect: async () => undefined,
 	});
