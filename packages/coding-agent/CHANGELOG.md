@@ -11,6 +11,7 @@
 
 ### Fixed
 
+- Fixed the universal installer incorrectly reporting that npm was missing on Windows.
 - Made `codeify update` stop before downloading or running the installer when the local and cloud versions match.
 - Fixed clean-clone installation and updates to build without generated model catalog data, leaving Codeify model discovery to the runtime API refresh.
 - Fixed `codeify update` to bypass agent startup and run the universal installer hosted at `https://codeify.cc/install.cjs`.

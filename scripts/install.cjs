@@ -23,9 +23,16 @@ const binDirectory =
 		: process.env.XDG_BIN_HOME || join(homedir(), ".local", "bin"));
 const npmCommand = isWindows ? "npm.cmd" : "npm";
 
+function execute(command, args, options) {
+	if (isWindows && command.endsWith(".cmd")) {
+		return execFileSync(process.env.ComSpec || "cmd.exe", ["/d", "/s", "/c", [command, ...args].join(" ")], options);
+	}
+	return execFileSync(command, args, options);
+}
+
 function verifyCommand(command, args, message) {
 	try {
-		execFileSync(command, args, { stdio: "ignore" });
+		execute(command, args, { stdio: "ignore" });
 	} catch {
 		throw new Error(message);
 	}
@@ -33,7 +40,7 @@ function verifyCommand(command, args, message) {
 
 function run(command, args, cwd) {
 	try {
-		return execFileSync(command, args, {
+		return execute(command, args, {
 			cwd,
 			encoding: "utf8",
 			env: process.env,
