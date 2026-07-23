@@ -21,6 +21,29 @@ On the first interactive launch, Codeify offers two authentication choices:
 
 Both credentials are saved under `~/.codeify/agent/auth.json` and can be replaced later with `/login` or removed with `/logout`. `CODEIFY_API_KEY` is also supported for CI and one-off sessions.
 
+## Smart Model Usage
+
+Smart Model Usage keeps your selected model in charge while letting it delegate suitable work to cheaper or specialized models available through Codeify. This saves the main model's context and reasoning for architecture, difficult implementation decisions, security-sensitive work, and final review.
+
+Enable it inside an interactive Codeify session:
+
+```text
+/smart on
+```
+
+Use `/smart` to check its state, `/smart off` to disable it, or change **Smart model usage** at the top of `/settings`. It is disabled by default.
+
+When enabled:
+
+- The main agent can inspect the current Codeify model catalog, including price and capability details, and choose another model for a bounded task.
+- Delegated models are fully agentic. They can inspect the repository, use approved tools, iterate across multiple turns, and return usage and changed-file summaries.
+- Read-only tools are the default. Shell commands, file mutations, custom tools, and browser control must be explicitly granted by the main agent for that task.
+- Codeify credentials remain inside the CLI harness. Neither the main model nor delegated models can read the API key or OAuth tokens.
+- Delegation is bounded by tool, turn, output, concurrency, and wall-clock limits, and delegated agents cannot recursively delegate again.
+- Vision work can be sent to a cheaper image-capable model. Browser tasks run in a fresh isolated headless session with a required domain allowlist, blocked downloads, no saved credentials, and network writes disabled unless explicitly authorized.
+
+Smart delegation is especially useful for repository search, repetitive inspection, summarization, formatting, test triage, mechanical edits, and inexpensive vision tasks.
+
 ## Features
 
 - OpenAI Responses API streaming with tool calls and reasoning levels
