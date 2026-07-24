@@ -6,7 +6,7 @@ import { VERSION } from "../config.ts";
 
 export const CODEIFY_INSTALLER_URL = "https://codeify.cc/install.cjs";
 export const CODEIFY_VERSION_URL =
-	"https://raw.githubusercontent.com/whale9820/codeify-cli/main/packages/coding-agent/package.json";
+	"https://api.github.com/repos/whale9820/codeify-cli/contents/packages/coding-agent/package.json?ref=main";
 
 export interface CodeifyUpdateOptions {
 	installerUrl?: string;
@@ -23,7 +23,7 @@ export function isCodeifyUpdateCommand(args: readonly string[]): boolean {
 
 async function fetchCloudVersion(fetchImpl: typeof globalThis.fetch, versionUrl: string): Promise<string> {
 	const response = await fetchImpl(versionUrl, {
-		headers: { accept: "application/json", "cache-control": "no-cache" },
+		headers: { accept: "application/vnd.github.raw", "cache-control": "no-cache" },
 		redirect: "follow",
 		signal: AbortSignal.timeout(30_000),
 	});

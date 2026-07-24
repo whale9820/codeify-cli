@@ -18,6 +18,7 @@
 
 ### Fixed
 
+- Fixed the `codeify update` version banner showing a stale target version by checking the GitHub contents API instead of the CDN-cached raw host.
 - Fixed Codeify OAuth opening the authorization page twice and added a compact, styled loopback success page.
 - Fixed source installations on Windows failing to launch the TypeScript compiler command shim.
 - Fixed Unix installs requiring a manual PATH change when an existing PATH directory is writable.

@@ -72,7 +72,7 @@ describe("Codeify updater", () => {
 	it("uses the hosted Codeify installer by default", () => {
 		expect(CODEIFY_INSTALLER_URL).toBe("https://codeify.cc/install.cjs");
 		expect(CODEIFY_VERSION_URL).toBe(
-			"https://raw.githubusercontent.com/whale9820/codeify-cli/main/packages/coding-agent/package.json",
+			"https://api.github.com/repos/whale9820/codeify-cli/contents/packages/coding-agent/package.json?ref=main",
 		);
 	});
 
