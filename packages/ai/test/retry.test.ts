@@ -46,6 +46,14 @@ describe("provider retry classification", () => {
 		).toBe(true);
 	});
 
+	it("matches transport stream read errors", () => {
+		expect(
+			isRetryableAssistantError(
+				fauxAssistantMessage("", { stopReason: "error", errorMessage: "Error: stream_read_error" }),
+			),
+		).toBe(true);
+	});
+
 	it("keeps provider limit errors non-retryable", () => {
 		expect(
 			isRetryableAssistantError(

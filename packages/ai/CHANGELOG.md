@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+- Fixed transport stream read errors (`stream_read_error`) to be classified as retryable provider errors.
+
 ## [0.81.1] - 2026-07-21
 
 ### Added

@@ -63,6 +63,11 @@ const RETRYABLE_PROVIDER_ERROR_PATTERN = buildProviderErrorPattern([
 	"websocket.?closed",
 	"websocket.?error",
 
+	// Transport-level failure reading the response stream body. Providers/SDKs can
+	// surface a partial read of an in-flight stream as "stream_read_error".
+	"stream_read_error",
+	"stream read error",
+
 	// Premature stream endings from SDKs and transports. Anthropic can throw
 	// "stream ended without ..." and "Anthropic stream ended before message_stop"
 	// (#4433); Bedrock/Smithy can throw an HTTP/2 no-response error (#3594).
