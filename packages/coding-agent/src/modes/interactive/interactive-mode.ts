@@ -34,6 +34,7 @@ import {
 } from "@earendil-works/pi-tui";
 import chalk from "chalk";
 import { spawn, spawnSync } from "child_process";
+import { checkForCodeifyUpdate } from "../../cli/update.ts";
 import {
 	APP_NAME,
 	APP_TITLE,
@@ -138,6 +139,7 @@ function isExpandable(obj: unknown): obj is Expandable {
 class ExpandableText extends Text implements Expandable {
 	private readonly getCollapsedText: () => string;
 	private readonly getExpandedText: () => string;
+	private expanded: boolean;
 
 	constructor(
 		getCollapsedText: () => string,
@@ -149,10 +151,16 @@ class ExpandableText extends Text implements Expandable {
 		super(expanded ? getExpandedText() : getCollapsedText(), paddingX, paddingY);
 		this.getCollapsedText = getCollapsedText;
 		this.getExpandedText = getExpandedText;
+		this.expanded = expanded;
 	}
 
 	setExpanded(expanded: boolean): void {
+		this.expanded = expanded;
 		this.setText(expanded ? this.getExpandedText() : this.getCollapsedText());
+	}
+
+	refresh(): void {
+		this.setText(this.expanded ? this.getExpandedText() : this.getCollapsedText());
 	}
 }
 
@@ -736,6 +744,13 @@ export class InteractiveMode {
 				.refresh()
 				.then(() => this.updateAvailableProviderCount())
 				.catch(() => {});
+			void checkForCodeifyUpdate().then((update) => {
+				if (update) {
+					this.showStatus(
+						`Update available: Codeify CLI ${update.latest} (you have ${update.current}). Run \`${APP_NAME} update\` to update.`,
+					);
+				}
+			});
 		}
 
 		// Check tmux keyboard setup asynchronously
@@ -2666,7 +2681,15 @@ export class InteractiveMode {
 			return;
 		}
 		this.session.setSmartModelUsageEnabled(value === "on");
+		this.refreshBuiltInHeader();
 		this.showStatus(`Smart model usage: ${value}`);
+	}
+
+	private refreshBuiltInHeader(): void {
+		if (this.builtInHeader instanceof ExpandableText) {
+			this.builtInHeader.refresh();
+			this.ui.requestRender();
+		}
 	}
 
 	private async cycleModel(direction: "forward" | "backward"): Promise<void> {
@@ -3082,6 +3105,7 @@ export class InteractiveMode {
 					},
 					onSmartModelUsageChange: (enabled) => {
 						this.session.setSmartModelUsageEnabled(enabled);
+						this.refreshBuiltInHeader();
 						this.showStatus(`Smart model usage: ${enabled ? "on" : "off"}`);
 					},
 					onDefaultProjectTrustChange: (defaultProjectTrust) => {

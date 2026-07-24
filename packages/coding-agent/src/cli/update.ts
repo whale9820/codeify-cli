@@ -88,3 +88,38 @@ export async function runCodeifyUpdate(options: CodeifyUpdateOptions = {}): Prom
 		await rm(directory, { recursive: true, force: true });
 	}
 }
+
+export interface CodeifyUpdateInfo {
+	current: string;
+	latest: string;
+}
+
+export function isNewerVersion(latest: string, current: string): boolean {
+	const parse = (version: string): number[] => {
+		const core = version.trim().replace(/^v/u, "").split("-")[0] ?? "";
+		return core.split(".").map((part) => Number.parseInt(part, 10) || 0);
+	};
+	const latestParts = parse(latest);
+	const currentParts = parse(current);
+	const length = Math.max(latestParts.length, currentParts.length);
+	for (let i = 0; i < length; i++) {
+		const latestPart = latestParts[i] ?? 0;
+		const currentPart = currentParts[i] ?? 0;
+		if (latestPart !== currentPart) return latestPart > currentPart;
+	}
+	return false;
+}
+
+export async function checkForCodeifyUpdate(
+	options: CodeifyUpdateOptions = {},
+): Promise<CodeifyUpdateInfo | undefined> {
+	const versionUrl = options.versionUrl ?? CODEIFY_VERSION_URL;
+	const currentVersion = options.currentVersion ?? VERSION;
+	const fetchImpl = options.fetchImpl ?? globalThis.fetch;
+	try {
+		const latest = await fetchCloudVersion(fetchImpl, versionUrl);
+		return isNewerVersion(latest, currentVersion) ? { current: currentVersion, latest } : undefined;
+	} catch {
+		return undefined;
+	}
+}

@@ -16,12 +16,19 @@ export const CODEIFY_MODEL_REFRESH_INTERVAL_MS = 4 * 60 * 60 * 1000;
 type CodeifyModel = {
 	id: string;
 	name?: string;
-	context_window?: number;
+	context?: number;
 	max_tokens?: number;
 	max_output_tokens?: number;
 	input?: string[];
 	capabilities?: { reasoning?: boolean; vision?: boolean };
 	cost?: ModelCost;
+	pricing?: {
+		input?: number;
+		output?: number;
+		cache_read?: number;
+		cache_write?: number;
+		unit?: string;
+	};
 };
 
 type RemoteCatalogModel = {
@@ -44,28 +51,42 @@ function positiveNumber(value: number | undefined): number | undefined {
 	return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : undefined;
 }
 
+function pricingToCost(pricing: CodeifyModel["pricing"]): ModelCost | undefined {
+	if (!pricing) return undefined;
+	const fields = [pricing.input, pricing.output, pricing.cache_read, pricing.cache_write];
+	if (!fields.some((value) => typeof value === "number" && Number.isFinite(value))) return undefined;
+	const rate = (value: number | undefined): number =>
+		typeof value === "number" && Number.isFinite(value) ? value : 0;
+	return {
+		input: rate(pricing.input),
+		output: rate(pricing.output),
+		cacheRead: rate(pricing.cache_read),
+		cacheWrite: rate(pricing.cache_write),
+	};
+}
+
 function supportsReasoning(id: string, model: CodeifyModel): boolean {
 	if (model.capabilities?.reasoning !== undefined) return model.capabilities.reasoning;
 	return /^(gpt-5|o[134]|claude|deepseek|gemini|glm|grok|kimi|mimo|minimax|qwen|nemotron|hy3|krenn|laguna)/i.test(id);
 }
 
 function toModelDefinition(model: CodeifyModel, remote?: RemoteCatalogModel): CodeifyModelDefinition {
-	const reasoning = remote?.reasoning ?? supportsReasoning(model.id, model);
 	const bundled = bundledModels.find((candidate) => candidate.id === model.id);
+	const reasoning = model.capabilities?.reasoning ?? remote?.reasoning ?? supportsReasoning(model.id, model);
 	const contextWindow =
+		positiveNumber(model.context) ??
 		positiveNumber(remote?.contextWindow) ??
-		positiveNumber(model.context_window) ??
 		positiveNumber(bundled?.contextWindow) ??
 		272_000;
 	const maxTokens =
-		positiveNumber(remote?.maxTokens) ??
 		positiveNumber(model.max_tokens ?? model.max_output_tokens) ??
+		positiveNumber(remote?.maxTokens) ??
 		positiveNumber(bundled?.maxTokens) ??
 		32_768;
 	const input = remote?.input ?? (bundled?.input as ("text" | "image")[] | undefined);
 	return {
 		id: model.id,
-		name: remote?.name ?? model.name ?? bundled?.name ?? model.id,
+		name: model.name ?? remote?.name ?? bundled?.name ?? model.id,
 		api: "openai-responses",
 		reasoning,
 		thinkingLevelMap:
@@ -73,7 +94,10 @@ function toModelDefinition(model: CodeifyModel, remote?: RemoteCatalogModel): Co
 			bundled?.thinkingLevelMap ??
 			(reasoning ? { off: "none", xhigh: "xhigh", max: "max" } : { off: null }),
 		input: model.capabilities?.vision || model.input?.includes("image") ? ["text", "image"] : (input ?? ["text"]),
-		cost: model.cost ?? remote?.cost ?? bundled?.cost ?? { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+		cost: pricingToCost(model.pricing) ??
+			model.cost ??
+			remote?.cost ??
+			bundled?.cost ?? { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
 		contextWindow,
 		maxTokens,
 		compat: { ...remote?.compat, supportsToolSearch: true },

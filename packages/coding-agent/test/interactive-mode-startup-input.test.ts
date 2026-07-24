@@ -41,6 +41,7 @@ type SmartModelsCommandContext = {
 		smartModelUsageEnabled: boolean;
 		setSmartModelUsageEnabled: (enabled: boolean) => void;
 	};
+	refreshBuiltInHeader: () => void;
 	showError: (message: string) => void;
 	showStatus: (message: string) => void;
 };
@@ -89,6 +90,7 @@ function createSmartModelsCommandContext(): SmartModelsCommandContext {
 	};
 	return {
 		session,
+		refreshBuiltInHeader: vi.fn(),
 		showError: vi.fn(),
 		showStatus: vi.fn(),
 	};
@@ -168,6 +170,7 @@ describe("InteractiveMode startup input", () => {
 		interactiveModePrototype.handleSmartModelsCommand.call(context, "/smart on");
 
 		expect(context.session.setSmartModelUsageEnabled).toHaveBeenCalledWith(true);
+		expect(context.refreshBuiltInHeader).toHaveBeenCalledTimes(1);
 		expect(context.showStatus).toHaveBeenCalledWith("Smart model usage: on");
 		expect(context.showError).not.toHaveBeenCalled();
 	});

@@ -67,6 +67,8 @@ export interface CreateModelRuntimeOptions {
 	/** Timeout for the create-time network model refresh. */
 	modelRefreshTimeoutMs?: number;
 	catalogBaseUrl?: string;
+	/** Register pi-ai's built-in providers. Defaults to true; the CLI disables it to stay Codeify-only. */
+	includeBuiltinProviders?: boolean;
 }
 
 export interface ModelRuntimeAuthOverrides {
@@ -140,19 +142,22 @@ export class ModelRuntime implements Models {
 			(modelsPath
 				? new FileModelsStore(options.modelsStorePath ?? join(dirname(modelsPath), "models-store.json"))
 				: new InMemoryCodingAgentModelsStore());
-		const providers = builtinProviderCatalog
-			.builtinProviders()
-			.map((provider) =>
-				provider.id === "radius"
-					? provider
-					: withRemoteCatalog(
-							provider,
-							options.catalogBaseUrl,
-							builtinProviderCatalog.getBuiltinModelDataUrl(
-								provider.id as builtinProviderCatalog.BuiltinProvider,
-							),
-						),
-			);
+		const providers =
+			options.includeBuiltinProviders === false
+				? []
+				: builtinProviderCatalog
+						.builtinProviders()
+						.map((provider) =>
+							provider.id === "radius"
+								? provider
+								: withRemoteCatalog(
+										provider,
+										options.catalogBaseUrl,
+										builtinProviderCatalog.getBuiltinModelDataUrl(
+											provider.id as builtinProviderCatalog.BuiltinProvider,
+										),
+									),
+						);
 		const runtime = new ModelRuntime(
 			credentials,
 			config,

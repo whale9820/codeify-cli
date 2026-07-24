@@ -91,6 +91,63 @@ describe("Codeify provider", () => {
 		});
 	});
 
+	it("prefers Codeify v1 model metadata and pricing over the remote catalog", async () => {
+		vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+			const url = String(input);
+			if (url === `${CODEIFY_BASE_URL}/models`) {
+				return new Response(
+					JSON.stringify({
+						data: [
+							{
+								id: "gpt-5.6-sol",
+								name: "GPT-5.6 Sol (Codeify)",
+								context: 400_000,
+								max_tokens: 64_000,
+								capabilities: { reasoning: false },
+								pricing: {
+									input: 1,
+									output: 4,
+									cache_read: 0.1,
+									cache_write: 0.2,
+									unit: "usd_per_million_tokens",
+								},
+							},
+						],
+					}),
+					{ status: 200 },
+				);
+			}
+			return new Response(
+				JSON.stringify({
+					"gpt-5.6-sol": {
+						id: "gpt-5.6-sol",
+						name: "GPT-5.6 Sol",
+						contextWindow: 1_050_000,
+						maxTokens: 128_000,
+						reasoning: true,
+						cost: { input: 5, output: 30, cacheRead: 0.5, cacheWrite: 6.25 },
+					},
+				}),
+				{ status: 200 },
+			);
+		});
+		const provider = codeifyProvider();
+		const models = await provider.refreshModels?.({
+			credential: { type: "api_key", key: "test-key" },
+			store: { read: async () => undefined, write: async () => {}, delete: async () => {} },
+			allowNetwork: true,
+			force: true,
+		});
+
+		expect(models?.[0]).toMatchObject({
+			name: "GPT-5.6 Sol (Codeify)",
+			reasoning: false,
+			contextWindow: 400_000,
+			maxTokens: 64_000,
+			cost: { input: 1, output: 4, cacheRead: 0.1, cacheWrite: 0.2 },
+		});
+	});
+
 	it("restores a cached remote catalog without network access", async () => {
 		const fetchSpy = vi.spyOn(globalThis, "fetch");
 		const provider = codeifyProvider();

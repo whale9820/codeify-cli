@@ -6,7 +6,9 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
 	CODEIFY_INSTALLER_URL,
 	CODEIFY_VERSION_URL,
+	checkForCodeifyUpdate,
 	isCodeifyUpdateCommand,
+	isNewerVersion,
 	runCodeifyUpdate,
 } from "../src/cli/update.ts";
 
@@ -159,5 +161,63 @@ describe("Codeify updater", () => {
 			await hosted.close();
 		}
 		expect(hosted.requests).toEqual(["/package.json"]);
+	});
+});
+
+describe("Codeify update detection", () => {
+	it("compares semantic versions", () => {
+		expect(isNewerVersion("0.0.4", "0.0.3")).toBe(true);
+		expect(isNewerVersion("0.1.0", "0.0.9")).toBe(true);
+		expect(isNewerVersion("1.0.0", "0.99.99")).toBe(true);
+		expect(isNewerVersion("v0.0.4", "0.0.3")).toBe(true);
+		expect(isNewerVersion("0.0.4-beta", "0.0.3")).toBe(true);
+		expect(isNewerVersion("0.0.3", "0.0.3")).toBe(false);
+		expect(isNewerVersion("0.0.2", "0.0.3")).toBe(false);
+		expect(isNewerVersion("0.0.3", "0.0.4-beta")).toBe(false);
+	});
+
+	it("reports an available update when the cloud version is newer", async () => {
+		const hosted = await serve({
+			"/package.json": { body: JSON.stringify({ version: "0.0.4" }), contentType: "application/json", status: 200 },
+		});
+		try {
+			const update = await checkForCodeifyUpdate({
+				currentVersion: "0.0.3",
+				versionUrl: `${hosted.baseUrl}/package.json`,
+			});
+			expect(update).toEqual({ current: "0.0.3", latest: "0.0.4" });
+		} finally {
+			await hosted.close();
+		}
+	});
+
+	it("returns nothing when already up to date", async () => {
+		const hosted = await serve({
+			"/package.json": { body: JSON.stringify({ version: "0.0.3" }), contentType: "application/json", status: 200 },
+		});
+		try {
+			const update = await checkForCodeifyUpdate({
+				currentVersion: "0.0.3",
+				versionUrl: `${hosted.baseUrl}/package.json`,
+			});
+			expect(update).toBeUndefined();
+		} finally {
+			await hosted.close();
+		}
+	});
+
+	it("returns nothing when the version check fails", async () => {
+		const hosted = await serve({
+			"/package.json": { body: "unavailable", contentType: "text/plain", status: 503 },
+		});
+		try {
+			const update = await checkForCodeifyUpdate({
+				currentVersion: "0.0.3",
+				versionUrl: `${hosted.baseUrl}/package.json`,
+			});
+			expect(update).toBeUndefined();
+		} finally {
+			await hosted.close();
+		}
 	});
 });

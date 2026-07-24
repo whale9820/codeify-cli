@@ -621,6 +621,7 @@ export async function main(args: string[]) {
 			cwd,
 			agentDir,
 			settingsManager: runtimeSettingsManager,
+			includeBuiltinProviders: false,
 			resourceLoaderReloadOptions: shouldResolveProjectTrust
 				? {
 						resolveProjectTrust: async () => {
