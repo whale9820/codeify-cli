@@ -1,4 +1,4 @@
-import { uuidv7 } from "@earendil-works/pi-ai";
+import { uuidv7 } from "codeify-ai";
 import type {
 	FileSystem,
 	JsonlSessionMetadata,

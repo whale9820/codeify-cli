@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
-import { Text } from "@earendil-works/pi-tui";
+import { Text } from "codeify-tui";
 import type { Browser, BrowserContext, BrowserType, Page } from "playwright-core";
 import { type Static, Type } from "typebox";
 import type { Theme } from "../../modes/interactive/theme/theme.ts";

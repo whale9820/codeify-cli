@@ -1,7 +1,7 @@
 {
-	"name": "@earendil-works/pi-storage-sqlite-node",
-	"version": "0.81.9",
-	"description": "Node sqlite storage backend for @earendil-works/pi-agent-core sessions",
+	"name": "codeify-storage-sqlite-node",
+	"version": "0.82.0",
+	"description": "Node sqlite storage backend for codeify-agent-core sessions",
 	"type": "module",
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
@@ -32,7 +32,7 @@
 		"node": ">=22.19.0"
 	},
 	"dependencies": {
-		"@earendil-works/pi-ai": "^0.81.9",
-		"@earendil-works/pi-agent-core": "^0.81.9"
+		"codeify-ai": "^0.82.0",
+		"codeify-agent-core": "^0.82.0"
 	}
 }

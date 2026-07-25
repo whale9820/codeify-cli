@@ -1,10 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type {
-	AgentSessionEvent,
-	AgentSessionEventListener,
-	RpcCommand,
-	RpcResponse,
-} from "@earendil-works/pi-coding-agent";
+import type { AgentSessionEvent, AgentSessionEventListener, RpcCommand, RpcResponse } from "codeify-coding-agent";
 import { radiusPresence } from "./radius.ts";
 import { createRpcProcessInstance, type RpcProcessInstance } from "./rpc-process.ts";
 import { getInstance, loadInstances, removeInstance, saveInstances, upsertInstance } from "./storage.ts";

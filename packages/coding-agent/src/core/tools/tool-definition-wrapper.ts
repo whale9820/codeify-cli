@@ -1,4 +1,4 @@
-import type { AgentTool } from "@earendil-works/pi-agent-core";
+import type { AgentTool } from "codeify-agent-core";
 import type { ToolDefinition, ToolExecutionContext } from "./types.ts";
 
 /** Wrap a ToolDefinition into an AgentTool for the core runtime. */

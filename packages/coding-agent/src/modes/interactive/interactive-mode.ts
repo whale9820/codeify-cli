@@ -7,9 +7,11 @@ import * as crypto from "node:crypto";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
-import type { AgentMessage, ThinkingLevel } from "@earendil-works/pi-agent-core";
-import type { AuthEvent, AuthPrompt } from "@earendil-works/pi-ai";
-import type { AssistantMessage, ImageContent, Message, Model } from "@earendil-works/pi-ai/compat";
+import chalk from "chalk";
+import { spawn, spawnSync } from "child_process";
+import type { AgentMessage, ThinkingLevel } from "codeify-agent-core";
+import type { AuthEvent, AuthPrompt } from "codeify-ai";
+import type { AssistantMessage, ImageContent, Message, Model } from "codeify-ai/compat";
 import type {
 	AutocompleteItem,
 	AutocompleteProvider,
@@ -17,7 +19,7 @@ import type {
 	Keybinding,
 	MarkdownTheme,
 	SlashCommand,
-} from "@earendil-works/pi-tui";
+} from "codeify-tui";
 import {
 	CombinedAutocompleteProvider,
 	type Component,
@@ -31,9 +33,7 @@ import {
 	TruncatedText,
 	TUI,
 	visibleWidth,
-} from "@earendil-works/pi-tui";
-import chalk from "chalk";
-import { spawn, spawnSync } from "child_process";
+} from "codeify-tui";
 import { checkForCodeifyUpdate } from "../../cli/update.ts";
 import {
 	APP_NAME,

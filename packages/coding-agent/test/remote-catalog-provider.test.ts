@@ -5,7 +5,7 @@ import {
 	type Model,
 	type ModelsStoreEntry,
 	type ProviderModelsStore,
-} from "@earendil-works/pi-ai";
+} from "codeify-ai";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { VERSION } from "../src/config.ts";
 import { withRemoteCatalog } from "../src/core/remote-catalog-provider.ts";

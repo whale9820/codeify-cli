@@ -2,8 +2,8 @@
  * CLI argument parsing and help display
  */
 
-import type { ThinkingLevel } from "@earendil-works/pi-agent-core";
 import chalk from "chalk";
+import type { ThinkingLevel } from "codeify-agent-core";
 import { APP_NAME, APP_TITLE, CONFIG_DIR_NAME, ENV_AGENT_DIR, ENV_SESSION_DIR } from "../config.ts";
 
 export type Mode = "text" | "json" | "rpc";

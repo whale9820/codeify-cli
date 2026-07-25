@@ -2,7 +2,7 @@ import { type ChildProcess, spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
-import type { AgentSessionEvent, RpcCommand, RpcResponse } from "@earendil-works/pi-coding-agent";
+import type { AgentSessionEvent, RpcCommand, RpcResponse } from "codeify-coding-agent";
 import { isBunBinary } from "./config.ts";
 
 interface PendingRequest {
@@ -49,7 +49,7 @@ export class RpcProcessInstance {
 		}
 		return {
 			command: process.execPath,
-			args: [require.resolve("@earendil-works/pi-coding-agent/rpc-entry")],
+			args: [require.resolve("codeify-coding-agent/rpc-entry")],
 		};
 	}
 

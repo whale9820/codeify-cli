@@ -6,8 +6,8 @@
  */
 
 import { createInterface } from "node:readline";
-import { type ImageContent, modelsAreEqual } from "@earendil-works/pi-ai";
 import chalk from "chalk";
+import { type ImageContent, modelsAreEqual } from "codeify-ai";
 import { type Args, type Mode, parseArgs, printHelp } from "./cli/args.ts";
 import { ensureCodeifyAuth } from "./cli/codeify-auth.ts";
 import { processFileArguments } from "./cli/file-processor.ts";
@@ -27,9 +27,9 @@ import {
 import { formatNoModelsAvailableMessage } from "./core/auth-guidance.ts";
 import { exportFromFile } from "./core/export-html/index.ts";
 import { applyHttpProxySettings, configureHttpDispatcher } from "./core/http-dispatcher.ts";
+import { setupMcp } from "./core/mcp/index.ts";
 import { resolveCliModel, resolveModelScope, type ScopedModel } from "./core/model-resolver.ts";
 import type { ModelRuntime } from "./core/model-runtime.ts";
-import { setupMcp } from "./core/mcp/index.ts";
 import { restoreStdout, takeOverStdout } from "./core/output-guard.ts";
 import { type AppMode, resolveProjectTrusted } from "./core/project-trust.ts";
 import type { CreateAgentSessionOptions } from "./core/sdk.ts";

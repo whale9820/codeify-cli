@@ -1,5 +1,5 @@
 import { readFile, stat } from "node:fs/promises";
-import { type AgentMessage, type AgentTool, runAgentLoop } from "@earendil-works/pi-agent-core";
+import { type AgentMessage, type AgentTool, runAgentLoop } from "codeify-agent-core";
 import type {
 	Api,
 	AssistantMessage,
@@ -10,9 +10,9 @@ import type {
 	Model,
 	ModelsSimpleStreamOptions,
 	Usage,
-} from "@earendil-works/pi-ai";
-import { getSupportedThinkingLevels } from "@earendil-works/pi-ai";
-import { Text } from "@earendil-works/pi-tui";
+} from "codeify-ai";
+import { getSupportedThinkingLevels } from "codeify-ai";
+import { Text } from "codeify-tui";
 import { type Static, Type } from "typebox";
 import type { Theme } from "../../modes/interactive/theme/theme.ts";
 import { processImage } from "../../utils/image-process.ts";

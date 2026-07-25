@@ -7,7 +7,7 @@ import {
 	type RetryCallbacks,
 	type RetryPolicy,
 	type UserMessage,
-} from "@earendil-works/pi-ai";
+} from "codeify-ai";
 import { runAgentLoop } from "../agent-loop.ts";
 import type {
 	AgentContext,

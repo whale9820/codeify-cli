@@ -1,4 +1,4 @@
-import { ProcessTerminal, setKeybindings, TUI } from "@earendil-works/pi-tui";
+import { ProcessTerminal, setKeybindings, TUI } from "codeify-tui";
 import { existsSync } from "fs";
 import { ENV_AGENT_DIR, getSettingsPath } from "../config.ts";
 import { KeybindingsManager } from "../core/keybindings.ts";

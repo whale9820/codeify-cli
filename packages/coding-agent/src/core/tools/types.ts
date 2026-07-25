@@ -1,6 +1,6 @@
-import type { AgentToolResult, AgentToolUpdateCallback, ToolExecutionMode } from "@earendil-works/pi-agent-core";
-import type { ImageContent, Model, TextContent } from "@earendil-works/pi-ai";
-import type { Component } from "@earendil-works/pi-tui";
+import type { AgentToolResult, AgentToolUpdateCallback, ToolExecutionMode } from "codeify-agent-core";
+import type { ImageContent, Model, TextContent } from "codeify-ai";
+import type { Component } from "codeify-tui";
 import type { Static, TSchema } from "typebox";
 import type { Theme } from "../../modes/interactive/theme/theme.ts";
 import type { SourceInfo } from "../source-info.ts";

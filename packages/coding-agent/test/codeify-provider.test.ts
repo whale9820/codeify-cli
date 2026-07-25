@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { OAuthLoginCallbacks } from "@earendil-works/pi-ai";
+import type { OAuthLoginCallbacks } from "codeify-ai";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
 	CODEIFY_BASE_URL,

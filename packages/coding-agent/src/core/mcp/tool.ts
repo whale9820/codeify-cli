@@ -1,19 +1,19 @@
-import type { AgentToolResult } from "@earendil-works/pi-agent-core";
-import type { ImageContent, TextContent } from "@earendil-works/pi-ai";
-import { type Static, Type } from "typebox";
+import type { AgentToolResult } from "codeify-agent-core";
+import type { ImageContent, TextContent } from "codeify-ai";
+import { Type } from "typebox";
 import { type AnyToolDefinition, defineTool } from "../tools/types.ts";
 import type { McpContentBlock, McpManager, McpToolInfo } from "./manager.ts";
 
 const mcpSchema = Type.Object({
 	tool: Type.Optional(Type.String({ description: "MCP tool name to call" })),
-	args: Type.Optional(Type.String({ description: "Tool arguments as a JSON object string, e.g. '{\"key\": \"value\"}'" })),
+	args: Type.Optional(
+		Type.String({ description: 'Tool arguments as a JSON object string, e.g. \'{"key": "value"}\'' }),
+	),
 	connect: Type.Optional(Type.String({ description: "Server name to connect to and list its tools" })),
 	describe: Type.Optional(Type.String({ description: "Tool name to describe (shows its parameter schema)" })),
 	search: Type.Optional(Type.String({ description: "Search available tools by name or description" })),
 	server: Type.Optional(Type.String({ description: "Server name to filter a listing or disambiguate a tool call" })),
 });
-
-type McpToolInput = Static<typeof mcpSchema>;
 
 interface McpToolDetails {
 	mode: string;
@@ -34,7 +34,11 @@ function mcpContentToBlocks(content: McpContentBlock[]): (TextContent | ImageCon
 			blocks.push({ type: "text", text: typeof item.text === "string" ? item.text : JSON.stringify(item) });
 		} else if (item.type === "image") {
 			const data = typeof item.data === "string" ? item.data : "";
-			blocks.push({ type: "image", data, mimeType: typeof item.mimeType === "string" ? item.mimeType : "image/png" });
+			blocks.push({
+				type: "image",
+				data,
+				mimeType: typeof item.mimeType === "string" ? item.mimeType : "image/png",
+			});
 		} else if (item.type === "resource") {
 			const resource = item.resource;
 			const uri = resource?.uri ?? "(no URI)";
@@ -62,7 +66,7 @@ function buildDescription(serverNames: string[]): string {
 		`Configured servers: ${serverList}.`,
 		"",
 		"Usage:",
-		'- No arguments: show server status.',
+		"- No arguments: show server status.",
 		'- connect: "<server>" — connect to a server and list its tools.',
 		'- server: "<server>" — list a specific server\'s tools.',
 		'- search: "<query>" — search tools across servers by name or description.',
@@ -79,7 +83,7 @@ export function createMcpToolDefinition(manager: McpManager, serverNames: string
 		promptSnippet: "Gateway to MCP servers: connect, list, search, describe, and call their tools.",
 		parameters: mcpSchema,
 		executionMode: "sequential",
-		async execute(_toolCallId, params, signal) {
+		async execute(_toolCallId, params, _signal) {
 			let parsedArgs: Record<string, unknown> | undefined;
 			if (params.args !== undefined) {
 				try {
@@ -99,23 +103,27 @@ export function createMcpToolDefinition(manager: McpManager, serverNames: string
 			try {
 				if (params.connect) {
 					if (!manager.hasServer(params.connect)) {
-						return result(`Unknown MCP server "${params.connect}". Configured: ${manager.serverNames.join(", ")}.`, {
-							mode: "connect",
-							server: params.connect,
-							isError: true,
-						});
+						return result(
+							`Unknown MCP server "${params.connect}". Configured: ${manager.serverNames.join(", ")}.`,
+							{
+								mode: "connect",
+								server: params.connect,
+								isError: true,
+							},
+						);
 					}
 					const tools = await manager.refreshTools(params.connect);
-					const lines = [`Connected to "${params.connect}" (${tools.length} tools):`, ...tools.map(formatToolLine)];
+					const lines = [
+						`Connected to "${params.connect}" (${tools.length} tools):`,
+						...tools.map(formatToolLine),
+					];
 					return result(lines.join("\n"), { mode: "connect", server: params.connect });
 				}
 
 				if (params.tool) {
 					const callResult = await manager.callTool(params.tool, parsedArgs, params.server);
 					const blocks = mcpContentToBlocks(callResult.content);
-					const text = blocks
-						.map((block) => (block.type === "text" ? block.text : "[image]"))
-						.join("\n");
+					const text = blocks.map((block) => (block.type === "text" ? block.text : "[image]")).join("\n");
 					return {
 						content: blocks,
 						details: {
@@ -132,11 +140,14 @@ export function createMcpToolDefinition(manager: McpManager, serverNames: string
 					const tools = await manager.listTools(params.server);
 					const match = tools.find((tool) => tool.name === params.describe);
 					if (!match) {
-						return result(`Tool "${params.describe}" not found.${params.server ? ` (server: ${params.server})` : ""}`, {
-							mode: "describe",
-							tool: params.describe,
-							isError: true,
-						});
+						return result(
+							`Tool "${params.describe}" not found.${params.server ? ` (server: ${params.server})` : ""}`,
+							{
+								mode: "describe",
+								tool: params.describe,
+								isError: true,
+							},
+						);
 					}
 					const schema = JSON.stringify(match.inputSchema ?? {}, null, 2);
 					const text = `${match.server} / ${match.name}\n${match.description ?? "(no description)"}\n\nParameters:\n${schema}`;
@@ -154,17 +165,23 @@ export function createMcpToolDefinition(manager: McpManager, serverNames: string
 					if (matches.length === 0) {
 						return result(`No tools matched "${params.search}".`, { mode: "search" });
 					}
-					const lines = [`Found ${matches.length} tool(s):`, ...matches.map((tool) => `- [${tool.server}] ${formatToolLine(tool)}`)];
+					const lines = [
+						`Found ${matches.length} tool(s):`,
+						...matches.map((tool) => `- [${tool.server}] ${formatToolLine(tool)}`),
+					];
 					return result(lines.join("\n"), { mode: "search" });
 				}
 
 				if (params.server) {
 					if (!manager.hasServer(params.server)) {
-						return result(`Unknown MCP server "${params.server}". Configured: ${manager.serverNames.join(", ")}.`, {
-							mode: "list",
-							server: params.server,
-							isError: true,
-						});
+						return result(
+							`Unknown MCP server "${params.server}". Configured: ${manager.serverNames.join(", ")}.`,
+							{
+								mode: "list",
+								server: params.server,
+								isError: true,
+							},
+						);
 					}
 					const tools = await manager.refreshTools(params.server);
 					const lines = [`"${params.server}" (${tools.length} tools):`, ...tools.map(formatToolLine)];

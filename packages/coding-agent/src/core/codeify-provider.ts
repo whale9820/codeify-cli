@@ -1,7 +1,7 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { createServer } from "node:http";
-import type { Model, ModelCost, ModelsStoreEntry, OAuthCredentials, OAuthLoginCallbacks } from "@earendil-works/pi-ai";
-import { getBuiltinModels } from "@earendil-works/pi-ai/providers/all";
+import type { Model, ModelCost, ModelsStoreEntry, OAuthCredentials, OAuthLoginCallbacks } from "codeify-ai";
+import { getBuiltinModels } from "codeify-ai/providers/all";
 import { VERSION } from "../config.ts";
 import { getCodeifyUserAgent } from "../utils/codeify-user-agent.ts";
 import type { RuntimeProviderConfig } from "./provider-composer.ts";

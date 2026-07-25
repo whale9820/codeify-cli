@@ -1,7 +1,7 @@
 import { createInterface } from "node:readline";
-import type { AgentTool } from "@earendil-works/pi-agent-core";
-import { Text } from "@earendil-works/pi-tui";
 import { spawn } from "child_process";
+import type { AgentTool } from "codeify-agent-core";
+import { Text } from "codeify-tui";
 import path from "path";
 import { type Static, Type } from "typebox";
 import { keyHint } from "../../modes/interactive/components/keybinding-hints.ts";

@@ -5,7 +5,7 @@
  * ~/.codeify/agent. Model chosen from settings or first available.
  */
 
-import { createAgentSession } from "@earendil-works/pi-coding-agent";
+import { createAgentSession } from "codeify-coding-agent";
 
 const { session } = await createAgentSession();
 

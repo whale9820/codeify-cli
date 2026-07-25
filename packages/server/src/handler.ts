@@ -1,4 +1,4 @@
-import type { AgentSessionEvent, RpcCommand, RpcResponse } from "@earendil-works/pi-coding-agent";
+import type { AgentSessionEvent, RpcCommand, RpcResponse } from "codeify-coding-agent";
 import type {
 	ErrorResponse,
 	InstanceSummary,

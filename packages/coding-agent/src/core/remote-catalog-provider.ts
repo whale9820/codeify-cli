@@ -1,5 +1,5 @@
 import { stat } from "node:fs/promises";
-import type { Api, Model, ModelsStoreEntry, Provider } from "@earendil-works/pi-ai";
+import type { Api, Model, ModelsStoreEntry, Provider } from "codeify-ai";
 import { VERSION } from "../config.ts";
 import { getCodeifyUserAgent } from "../utils/codeify-user-agent.ts";
 

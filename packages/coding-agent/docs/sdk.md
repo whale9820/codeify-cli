@@ -3,7 +3,7 @@
 The coding-agent package exposes the same session runtime used by the `codeify` command.
 
 ```typescript
-import { createAgentSession, SessionManager } from "@earendil-works/pi-coding-agent";
+import { createAgentSession, SessionManager } from "codeify-coding-agent";
 
 const { session } = await createAgentSession({
   thinkingLevel: "high",
