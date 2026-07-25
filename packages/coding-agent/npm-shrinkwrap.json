@@ -22,7 +22,6 @@
 				"hosted-git-info": "9.0.3",
 				"ignore": "7.0.5",
 				"minimatch": "10.2.5",
-				"playwright-core": "1.61.1",
 				"proper-lockfile": "4.1.2",
 				"typebox": "1.1.38",
 				"undici": "8.5.0",
@@ -2329,18 +2328,6 @@
 			"license": "MIT",
 			"engines": {
 				"node": ">=16.20.0"
-			}
-		},
-		"node_modules/playwright-core": {
-			"version": "1.61.1",
-			"resolved": "https://registry.npmjs.org/playwright-core/-/playwright-core-1.61.1.tgz",
-			"integrity": "sha512-h7Qlt6m4REp25qvIdvbDtVmD4LqVXfpRxhORv9L0jzETM05p4fuPJ3dKyuSXQxDSbXnmS79HAgi9589lGSpLkg==",
-			"license": "Apache-2.0",
-			"bin": {
-				"playwright-core": "cli.js"
-			},
-			"engines": {
-				"node": ">=18"
 			}
 		},
 		"node_modules/proper-lockfile": {

@@ -19,7 +19,7 @@
 - Added `/thinking` and `/effort` commands for selecting or directly setting model reasoning effort.
 - Added a PKCE-protected Codeify OAuth login with loopback callbacks and rotating refresh-token requirements.
 - Added opt-in smart model usage with protected delegation to other Codeify models, capability and price discovery, bounded vision inputs, reasoning controls, usage accounting, a `/smart` control, a startup announcement, and authenticated Codeify model refresh on every startup.
-- Upgraded smart model usage to run up to five concurrent bounded fully agentic subagents with explicit tool restrictions, detailed live rendering, recursive-delegation protection, aggregated usage, changed-file summaries, and isolated allowlisted Chromium computer use.
+- Upgraded smart model usage to run up to five concurrent bounded fully agentic subagents with explicit tool restrictions, detailed live rendering, recursive-delegation protection, aggregated usage, and changed-file summaries.
 - Added a startup check that notifies the user when a newer Codeify CLI version is available and can be installed with `codeify update`.
 - Added a shared output cap for MCP and delegated-agent tool results, keeping a bounded head of the output in context and writing the full text to a temp file whose path is reported to the model.
 
@@ -47,6 +47,10 @@
 - Fixed missing default skill and theme directories being reported as startup conflicts.
 - Fixed the startup `Smart model usage` announcement not updating when toggled with `/smart` or `/settings`.
 - Fixed MCP tool calls rendering without their action, server, tool name, or argument context.
+
+### Removed
+
+- Removed the `computer` browser-automation tool, its delegated `computerAccess` parameter, and the `playwright-core` dependency. The tool was unused, and `playwright-core` referenced a `chromium-bidi` bundle it does not ship, which broke compiled Bun binary builds.
 
 ## [0.81.1] - 2026-07-21
 

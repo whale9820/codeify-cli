@@ -85,6 +85,14 @@ export const OPENROUTER_MODELS = values as {
 		id: "anthropic/claude-opus-4.8-fast";
 		provider: "openrouter";
 	};
+	"anthropic/claude-opus-5": Model<"openai-completions"> & {
+		id: "anthropic/claude-opus-5";
+		provider: "openrouter";
+	};
+	"anthropic/claude-opus-5-fast": Model<"openai-completions"> & {
+		id: "anthropic/claude-opus-5-fast";
+		provider: "openrouter";
+	};
 	"anthropic/claude-sonnet-4": Model<"openai-completions"> & {
 		id: "anthropic/claude-sonnet-4";
 		provider: "openrouter";
@@ -275,6 +283,10 @@ export const OPENROUTER_MODELS = values as {
 	};
 	"inclusionai/ling-2.6-flash": Model<"openai-completions"> & {
 		id: "inclusionai/ling-2.6-flash";
+		provider: "openrouter";
+	};
+	"inclusionai/ling-3.0-flash:free": Model<"openai-completions"> & {
+		id: "inclusionai/ling-3.0-flash:free";
 		provider: "openrouter";
 	};
 	"inclusionai/ring-2.6-1t": Model<"openai-completions"> & {

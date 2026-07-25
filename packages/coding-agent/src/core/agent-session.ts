@@ -76,7 +76,6 @@ import { createSyntheticSourceInfo, type SourceInfo } from "./source-info.ts";
 import { type BuildSystemPromptOptions, buildSystemPrompt } from "./system-prompt.ts";
 import { type BashOperations, createLocalBashOperations } from "./tools/bash.ts";
 import { createCodeifyModelToolDefinition } from "./tools/codeify-model.ts";
-import { createComputerToolController } from "./tools/computer.ts";
 import { createAllToolDefinitions } from "./tools/index.ts";
 import { createToolDefinitionFromAgentTool, wrapToolDefinition } from "./tools/tool-definition-wrapper.ts";
 import type { ToolDefinition, ToolExecutionContext, ToolInfo } from "./tools/types.ts";
@@ -1843,17 +1842,10 @@ export class AgentSession {
 			baseToolDefinitions.codeify_model = createCodeifyModelToolDefinition(this._cwd, this._modelRuntime, {
 				imagesBlocked: () => this.settingsManager.getBlockImages(),
 				autoResizeImages: () => this.settingsManager.getImageAutoResize(),
-				getDelegatedToolNames: () =>
-					[...this._toolRegistry.keys()].filter((name) => name !== "codeify_model" && name !== "computer"),
-				createDelegatedTools: (computerPolicy) => {
-					const tools = [...this._toolRegistry.values()].filter(
-						(tool) => tool.name !== "codeify_model" && tool.name !== "computer",
-					);
-					if (!computerPolicy) return { tools };
-					const computer = createComputerToolController({ policy: computerPolicy });
-					tools.push(wrapToolDefinition(computer.definition, () => ({ cwd: this._cwd, model: this.model })));
-					return { tools, dispose: () => computer.dispose() };
-				},
+				getDelegatedToolNames: () => [...this._toolRegistry.keys()].filter((name) => name !== "codeify_model"),
+				createDelegatedTools: () => ({
+					tools: [...this._toolRegistry.values()].filter((tool) => tool.name !== "codeify_model"),
+				}),
 			});
 		}
 

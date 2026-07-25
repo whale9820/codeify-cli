@@ -17,17 +17,6 @@ export {
 	createCodeifyModelToolDefinition,
 } from "./codeify-model.ts";
 export {
-	type ComputerOperations,
-	type ComputerPolicy,
-	type ComputerSession,
-	type ComputerSnapshot,
-	type ComputerToolDetails,
-	type ComputerToolInput,
-	type ComputerToolOptions,
-	createComputerToolController,
-	createComputerToolDefinition,
-} from "./computer.ts";
-export {
 	createEditTool,
 	createEditToolDefinition,
 	type EditOperations,

@@ -19,7 +19,6 @@ import { processImage } from "../../utils/image-process.ts";
 import { detectSupportedImageMimeTypeFromFile } from "../../utils/mime.ts";
 import { resolvePath } from "../../utils/paths.ts";
 import { CODEIFY_PROVIDER_ID } from "../codeify-provider.ts";
-import type { ComputerPolicy } from "./computer.ts";
 import { getTextOutput } from "./render-utils.ts";
 import { capOutputWithNotice } from "./spill.ts";
 import type { ToolDefinition, ToolRenderResultOptions } from "./types.ts";
@@ -51,20 +50,6 @@ const effortSchema = Type.Union([
 	Type.Literal("max"),
 ]);
 
-const computerAccessSchema = Type.Object({
-	allowedDomains: Type.Array(Type.String(), {
-		description: "Exact domains the isolated browser may reach. Subdomains are included.",
-		minItems: 1,
-		maxItems: 32,
-	}),
-	allowNetworkWrites: Type.Optional(
-		Type.Boolean({
-			description:
-				"Allow POST, PUT, PATCH, and DELETE browser requests. Keep false unless the user authorized them.",
-		}),
-	),
-});
-
 const codeifyModelSchema = Type.Object({
 	action: Type.Union([Type.Literal("list"), Type.Literal("run")], {
 		description: "List eligible Codeify CLI models or run a bounded fully agentic task on one model",
@@ -74,7 +59,7 @@ const codeifyModelSchema = Type.Object({
 	allowedTools: Type.Optional(
 		Type.Array(Type.String(), {
 			description:
-				"Exact tools the delegated agent may use. Defaults to available read-only tools. Mutation, shell, and computer tools must be explicitly granted. Use '*' to grant every available delegated tool.",
+				"Exact tools the delegated agent may use. Defaults to available read-only tools. Mutation and shell tools must be explicitly granted. Use '*' to grant every available delegated tool.",
 			maxItems: 32,
 		}),
 	),
@@ -84,7 +69,6 @@ const codeifyModelSchema = Type.Object({
 			maxLength: MAX_RESTRICTION_CHARS,
 		}),
 	),
-	computerAccess: Type.Optional(computerAccessSchema),
 	imagePaths: Type.Optional(
 		Type.Array(Type.String(), {
 			description: "Image files to attach for a vision task",
@@ -153,7 +137,7 @@ export interface CodeifyModelToolOptions {
 	imagesBlocked?: () => boolean;
 	autoResizeImages?: () => boolean;
 	getDelegatedToolNames?: () => readonly string[];
-	createDelegatedTools?: (computerPolicy?: ComputerPolicy) => DelegatedToolSet;
+	createDelegatedTools?: () => DelegatedToolSet;
 }
 
 function emptyUsage(): Usage {
@@ -246,22 +230,14 @@ async function loadImages(paths: readonly string[], cwd: string, autoResizeImage
 }
 
 function delegatedToolNames(options: CodeifyModelToolOptions): string[] {
-	return [...new Set([...(options.getDelegatedToolNames?.() ?? []), "computer"])]
-		.filter((name) => name !== "codeify_model")
-		.sort();
+	return [...new Set(options.getDelegatedToolNames?.() ?? [])].filter((name) => name !== "codeify_model").sort();
 }
 
 function selectDelegatedTools(
 	params: CodeifyModelToolInput,
 	options: CodeifyModelToolOptions,
 ): { toolSet: DelegatedToolSet; tools: AgentTool[]; names: string[] } {
-	const computerPolicy = params.computerAccess
-		? {
-				allowedDomains: params.computerAccess.allowedDomains,
-				allowNetworkWrites: params.computerAccess.allowNetworkWrites,
-			}
-		: undefined;
-	const toolSet = options.createDelegatedTools?.(computerPolicy) ?? { tools: [] };
+	const toolSet = options.createDelegatedTools?.() ?? { tools: [] };
 	const available = new Map(
 		toolSet.tools.filter((tool) => tool.name !== "codeify_model").map((tool) => [tool.name, tool]),
 	);
@@ -269,9 +245,6 @@ function selectDelegatedTools(
 	const names = requested.includes("*") ? [...available.keys()] : [...new Set(requested)];
 	const unknown = names.filter((name) => !available.has(name));
 	if (unknown.length > 0) throw new DelegationInputError(`Delegated tools are unavailable: ${unknown.join(", ")}`);
-	if (names.includes("computer") && !computerPolicy) {
-		throw new DelegationInputError("Delegated computer use requires computerAccess.allowedDomains.");
-	}
 	return { toolSet, tools: names.map((name) => available.get(name)!), names };
 }
 
@@ -361,7 +334,7 @@ export function createCodeifyModelToolDefinition(
 			"Delegation is available and recommended for menial, repetitive, low-judgment, search, formatting, test-triage, and inexpensive vision work so you preserve valuable reasoning and context for difficult decisions.",
 			"Delegated models are fully agentic: choose the model, exact tools, restrictions, turn limit, and task scope, then review their result before making final decisions.",
 			"Prefer the cheapest suitable model, list models when price or capability is unknown, and pass only the minimum context required.",
-			"Read-only tools are the default. Explicitly grant bash, edit, write, custom mutation tools, or computer only when required. Computer use also requires a narrow domain allowlist.",
+			"Read-only tools are the default. Explicitly grant bash, edit, write, or custom mutation tools only when required.",
 			"Keep architecture, security-sensitive judgment, final review, and user-facing decisions in the main model.",
 		],
 		parameters: codeifyModelSchema,
@@ -382,7 +355,7 @@ export function createCodeifyModelToolDefinition(
 				const toolNames = delegatedToolNames(options);
 				const text =
 					models.length > 0
-						? `Eligible delegated Codeify CLI models, sorted by combined input/output price. Prices are USD per million tokens.${current}\nDelegated agents can use: ${toolNames.join(", ") || "no tools"}. Computer requires computerAccess.allowedDomains.\n${models.map(formatModel).join("\n")}`
+						? `Eligible delegated Codeify CLI models, sorted by combined input/output price. Prices are USD per million tokens.${current}\nDelegated agents can use: ${toolNames.join(", ") || "no tools"}.\n${models.map(formatModel).join("\n")}`
 						: `No other Codeify CLI models match this request.${current}`;
 				return { content: [{ type: "text", text }], details: { action: "list", count: models.length, toolNames } };
 			}

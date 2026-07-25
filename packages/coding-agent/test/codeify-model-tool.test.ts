@@ -126,10 +126,10 @@ describe("codeify_model tool", () => {
 
 		expect(text).toContain("cheap-vision");
 		expect(text).toContain("input:0.05 output:0.4");
-		expect(text).toContain("computer, read, write");
+		expect(text).toContain("read, write");
 		expect(text).not.toContain("text-only");
 		expect(text).not.toMatch(/^- main /mu);
-		expect(result.details).toEqual({ action: "list", count: 1, toolNames: ["computer", "read", "write"] });
+		expect(result.details).toEqual({ action: "list", count: 1, toolNames: ["read", "write"] });
 	});
 
 	it("runs a delegated model as a multi-turn agent with explicitly granted tools", async () => {
@@ -314,26 +314,6 @@ describe("codeify_model tool", () => {
 			undefined,
 			{ cwd: directory, model: main },
 		);
-	});
-
-	it("requires an explicit computer domain policy", async () => {
-		const main = model("main");
-		const cheap = model("cheap");
-		const computer = { ...readTool(), name: "computer", label: "computer" } as unknown as AgentTool;
-		const { runtime } = runtimeWith([main, cheap]);
-		const tool = createCodeifyModelToolDefinition(process.cwd(), runtime, {
-			createDelegatedTools: () => ({ tools: [computer] }),
-		});
-
-		await expect(
-			tool.execute(
-				"computer",
-				{ action: "run", model: "cheap", task: "Browse", allowedTools: ["computer"] },
-				undefined,
-				undefined,
-				{ cwd: process.cwd(), model: main },
-			),
-		).rejects.toThrow("computerAccess.allowedDomains");
 	});
 
 	it("rejects delegation to the main model", async () => {
