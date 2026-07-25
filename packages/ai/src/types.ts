@@ -546,6 +546,12 @@ export interface OpenAIResponsesCompat {
 	supportsLongCacheRetention?: boolean;
 	/** Whether the model supports client-executed tool search for deferred tools. Default: false. */
 	supportsToolSearch?: boolean;
+	/**
+	 * Whether images in a tool result must be sent as a following user message
+	 * instead of nested inside `function_call_output`. Enable for gateways that
+	 * silently drop images nested in tool output. Default: false.
+	 */
+	promoteToolResultImages?: boolean;
 }
 
 /** Compatibility settings for Anthropic Messages-compatible APIs. */

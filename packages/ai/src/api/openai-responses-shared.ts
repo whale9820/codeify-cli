@@ -21,6 +21,7 @@ import type {
 	Context,
 	ImageContent,
 	Model,
+	OpenAIResponsesCompat,
 	StopReason,
 	TextContent,
 	TextSignatureV1,
@@ -234,9 +235,14 @@ export function convertResponsesMessages<TApi extends Api>(
 			const hasImages = msg.content.some((c): c is ImageContent => c.type === "image");
 			const hasText = textResult.length > 0;
 			const [callId] = msg.toolCallId.split("|");
+			const responsesCompat = model.compat as OpenAIResponsesCompat | undefined;
+			// Some gateways silently drop images nested in function_call_output. Send the
+			// text result there and carry the images in a following user message instead.
+			const promoteImages =
+				hasImages && model.input.includes("image") && responsesCompat?.promoteToolResultImages === true;
 
 			let output: string | ResponseFunctionCallOutputItemList;
-			if (hasImages && model.input.includes("image")) {
+			if (hasImages && model.input.includes("image") && !promoteImages) {
 				const contentParts: ResponseFunctionCallOutputItemList = [];
 
 				if (hasText) {
@@ -257,6 +263,10 @@ export function convertResponsesMessages<TApi extends Api>(
 				}
 
 				output = contentParts;
+			} else if (promoteImages) {
+				output = sanitizeSurrogates(
+					hasText ? `${textResult}\n(image attached in the next message)` : "(image attached in the next message)",
+				);
 			} else {
 				output = sanitizeSurrogates(hasText ? textResult : hasImages ? "(see attached image)" : "(no tool output)");
 			}
@@ -266,6 +276,22 @@ export function convertResponsesMessages<TApi extends Api>(
 				call_id: callId,
 				output,
 			});
+
+			if (promoteImages) {
+				messages.push({
+					role: "user",
+					content: [
+						{ type: "input_text", text: `Image output from the ${msg.toolName} tool call:` },
+						...msg.content
+							.filter((block): block is ImageContent => block.type === "image")
+							.map((block) => ({
+								type: "input_image" as const,
+								detail: "auto" as const,
+								image_url: `data:${block.mimeType};base64,${block.data}`,
+							})),
+					],
+				});
+			}
 
 			const deferredTools: Tool[] = [];
 			for (const name of msg.addedToolNames ?? []) {
@@ -389,6 +415,16 @@ export async function processResponsesStream<TApi extends Api>(
 	const getOrCreateSlot = (outputIndex: number, item: ResponseOutputItem): ResponsesOutputSlot | undefined => {
 		return outputSlots.get(outputIndex) ?? createSlot(outputIndex, item);
 	};
+	// Some OpenAI-compatible providers stream text deltas without first emitting
+	// `response.output_item.added`, so there is no slot to append to and the text
+	// is dropped, yielding an assistant message with no content. Open a text slot
+	// on first delta instead of discarding it.
+	const getOrCreateTextSlot = (outputIndex: number): Extract<ResponsesOutputSlot, { type: "text" }> | undefined => {
+		const existing = outputSlots.get(outputIndex);
+		if (existing) return existing.type === "text" ? existing : undefined;
+		const created = createSlot(outputIndex, { type: "message" } as ResponseOutputItem);
+		return created?.type === "text" ? created : undefined;
+	};
 	// Azure OpenAI can omit reasoning.encrypted_content from response.output_item.done
 	// and provide it only in response.completed.response.output. Backfill the
 	// persisted reasoning signature from the terminal response to keep store:false
@@ -433,6 +469,15 @@ export async function processResponsesStream<TApi extends Api>(
 			};
 		}
 		calculateCost(model, output.usage);
+		// Last resort for providers that report text only in the terminal response and
+		// emit no usable item/delta events: recover it instead of returning empty content.
+		if (output.content.length === 0) {
+			for (const item of response.output ?? []) {
+				if (item.type !== "message") continue;
+				const text = item.content?.map((part) => (part.type === "output_text" ? part.text : part.refusal)).join("");
+				if (text) output.content.push({ type: "text", text });
+			}
+		}
 		if (options?.applyServiceTierPricing) {
 			const serviceTier = options.resolveServiceTier
 				? options.resolveServiceTier(response?.service_tier, options.serviceTier)
@@ -482,7 +527,7 @@ export async function processResponsesStream<TApi extends Api>(
 				partial: output,
 			});
 		} else if (event.type === "response.output_text.delta") {
-			const slot = getSlot(event.output_index, "text");
+			const slot = getOrCreateTextSlot(event.output_index);
 			if (!slot) continue;
 			slot.block.text += event.delta;
 			stream.push({
@@ -492,7 +537,7 @@ export async function processResponsesStream<TApi extends Api>(
 				partial: output,
 			});
 		} else if (event.type === "response.refusal.delta") {
-			const slot = getSlot(event.output_index, "text");
+			const slot = getOrCreateTextSlot(event.output_index);
 			if (!slot) continue;
 			slot.block.text += event.delta;
 			stream.push({

@@ -264,6 +264,28 @@ describe("codeify_model tool", () => {
 		expect(result.content[0]).toMatchObject({ type: "text", text: expect.stringContaining("final summary") });
 	});
 
+	it("reports an exhausted output budget instead of a missing summary", async () => {
+		const main = model("main");
+		const cheap = model("cheap");
+		const { runtime } = runtimeWith([main, cheap], [{ text: "", stopReason: "length" }]);
+		const tool = createCodeifyModelToolDefinition(process.cwd(), runtime, {
+			createDelegatedTools: () => ({ tools: [] }),
+		});
+
+		const result = await tool.execute(
+			"length-stop",
+			{ action: "run", model: "cheap", task: "Summarize", allowedTools: [], maxOutputTokens: 64 },
+			undefined,
+			undefined,
+			{ cwd: process.cwd(), model: main },
+		);
+
+		const text = (result.content[0] as { text: string }).text;
+		expect(text).toContain("64-token output limit");
+		expect(text).toContain("maxOutputTokens");
+		expect(text).not.toContain("without a text summary");
+	});
+
 	it("loads bounded image paths for vision delegation", async () => {
 		const directory = await mkdtemp(join(tmpdir(), "codeify-model-tool-"));
 		tempDirs.push(directory);

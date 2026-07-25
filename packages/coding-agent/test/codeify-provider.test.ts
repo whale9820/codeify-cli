@@ -238,6 +238,72 @@ describe("Codeify provider", () => {
 		expect(codeifyFetches).toHaveLength(2);
 	});
 
+	it("keeps vision enabled for models missing from both catalogs", async () => {
+		vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+			const url = String(input);
+			if (url === `${CODEIFY_BASE_URL}/models`) {
+				return new Response(
+					JSON.stringify({
+						data: [
+							{ id: "claude-opus-5", context: 1_000_000 },
+							{ id: "claude-haiku-4-5-20251001", context: 200_000 },
+							{ id: "glm-5", context: 200_000 },
+							{ id: "future-text-model", context: 200_000 },
+							{ id: "future-declared-text-model", capabilities: { vision: false } },
+						],
+					}),
+					{ status: 200 },
+				);
+			}
+			throw new Error("remote catalog unavailable");
+		});
+		const models = await codeifyProvider().refreshModels?.({
+			credential: { type: "api_key", key: "test-key" },
+			store: { read: async () => undefined, write: async () => {}, delete: async () => {} },
+			allowNetwork: true,
+			force: true,
+		});
+		const input = (id: string) => models?.find((model) => model.id === id)?.input;
+
+		expect(input("claude-opus-5")).toEqual(["text", "image"]);
+		expect(input("claude-haiku-4-5-20251001")).toEqual(["text", "image"]);
+		expect(input("glm-5")).toEqual(["text"]);
+		expect(input("future-text-model")).toEqual(["text"]);
+		expect(input("future-declared-text-model")).toEqual(["text"]);
+	});
+
+	it("re-derives vision support from a cache that downgraded it", async () => {
+		const fetchSpy = vi.spyOn(globalThis, "fetch");
+		const models = await codeifyProvider().refreshModels?.({
+			credential: undefined,
+			store: {
+				read: async () => ({
+					models: [
+						{
+							id: "claude-opus-5",
+							name: "Claude Opus 5",
+							provider: "codeify",
+							baseUrl: CODEIFY_BASE_URL,
+							api: "openai-responses",
+							reasoning: true,
+							input: ["text"],
+							cost: { input: 5, output: 25, cacheRead: 0.5, cacheWrite: 6.25 },
+							contextWindow: 1_000_000,
+							maxTokens: 128_000,
+						},
+					],
+					checkedAt: Date.now(),
+				}),
+				write: async () => {},
+				delete: async () => {},
+			},
+			allowNetwork: false,
+		});
+
+		expect(fetchSpy).not.toHaveBeenCalled();
+		expect(models?.[0]).toMatchObject({ id: "claude-opus-5", contextWindow: 1_000_000, input: ["text", "image"] });
+	});
+
 	it("uses PKCE and exchanges only an authorization code", async () => {
 		const tokenUrl = "https://auth.codeify.test/oauth/token";
 		vi.stubEnv("CODEIFY_OAUTH_TOKEN_URL", tokenUrl);

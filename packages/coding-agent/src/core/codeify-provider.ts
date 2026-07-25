@@ -70,6 +70,47 @@ function supportsReasoning(id: string, model: CodeifyModel): boolean {
 	return /^(gpt-5|o[134]|claude|deepseek|gemini|glm|grok|kimi|mimo|minimax|qwen|nemotron|hy3|krenn|laguna)/i.test(id);
 }
 
+const VISION_MODEL_FAMILIES = /^(claude|gpt-[5-9]|o[134]|gemini|grok-\d)/i;
+
+function toInput(input: readonly string[] | undefined): ("text" | "image")[] | undefined {
+	if (!input?.length) return undefined;
+	return input.includes("image") ? ["text", "image"] : ["text"];
+}
+
+/**
+ * Codeify ids often carry a date or variant suffix (claude-haiku-4-5-20251001,
+ * gpt-5.6-sol-uncensored) that no catalog lists. Fall back to the longest bundled
+ * id the requested model is derived from before guessing by family.
+ */
+function relatedBundledInput(id: string): ("text" | "image")[] | undefined {
+	let best: Model<"openai-responses"> | undefined;
+	for (const candidate of bundledModels) {
+		if (candidate.id === id || !id.startsWith(`${candidate.id}-`)) continue;
+		if (!best || candidate.id.length > best.id.length) best = candidate;
+	}
+	return toInput(best?.input);
+}
+
+/**
+ * Resolve vision support from the most authoritative source available. Models newer
+ * than both the bundled and remote catalogs used to silently degrade to text-only,
+ * which stripped images from requests to models that do support them.
+ */
+function resolveInput(
+	model: CodeifyModel,
+	remote: RemoteCatalogModel | undefined,
+	bundled: Model<"openai-responses"> | undefined,
+): ("text" | "image")[] {
+	if (model.capabilities?.vision !== undefined) return model.capabilities.vision ? ["text", "image"] : ["text"];
+	return (
+		toInput(model.input) ??
+		toInput(remote?.input) ??
+		toInput(bundled?.input) ??
+		relatedBundledInput(model.id) ??
+		(VISION_MODEL_FAMILIES.test(model.id) ? ["text", "image"] : ["text"])
+	);
+}
+
 function toModelDefinition(model: CodeifyModel, remote?: RemoteCatalogModel): CodeifyModelDefinition {
 	const bundled = bundledModels.find((candidate) => candidate.id === model.id);
 	const reasoning = model.capabilities?.reasoning ?? remote?.reasoning ?? supportsReasoning(model.id, model);
@@ -83,7 +124,6 @@ function toModelDefinition(model: CodeifyModel, remote?: RemoteCatalogModel): Co
 		positiveNumber(remote?.maxTokens) ??
 		positiveNumber(bundled?.maxTokens) ??
 		32_768;
-	const input = remote?.input ?? (bundled?.input as ("text" | "image")[] | undefined);
 	return {
 		id: model.id,
 		name: model.name ?? remote?.name ?? bundled?.name ?? model.id,
@@ -93,14 +133,14 @@ function toModelDefinition(model: CodeifyModel, remote?: RemoteCatalogModel): Co
 			remote?.thinkingLevelMap ??
 			bundled?.thinkingLevelMap ??
 			(reasoning ? { off: "none", xhigh: "xhigh", max: "max" } : { off: null }),
-		input: model.capabilities?.vision || model.input?.includes("image") ? ["text", "image"] : (input ?? ["text"]),
+		input: resolveInput(model, remote, bundled),
 		cost: pricingToCost(model.pricing) ??
 			model.cost ??
 			remote?.cost ??
 			bundled?.cost ?? { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
 		contextWindow,
 		maxTokens,
-		compat: { ...remote?.compat, supportsToolSearch: true },
+		compat: { ...remote?.compat, supportsToolSearch: true, promoteToolResultImages: true },
 	};
 }
 
@@ -142,6 +182,15 @@ async function fetchRemoteCatalog(signal?: AbortSignal): Promise<{
 	};
 }
 
+/**
+ * Caches written by earlier versions can hold a wrongly downgraded text-only entry.
+ * Keep cached metadata but let vision support be re-derived unless the cache proves it.
+ */
+function cachedCatalogEntry(model: Model<"openai-responses">): RemoteCatalogModel {
+	const { input, ...rest } = model;
+	return input?.includes("image") ? { ...rest, input: ["text", "image"] } : rest;
+}
+
 async function fetchModels(
 	apiKey: string,
 	store: { read: () => Promise<ModelsStoreEntry | undefined>; write: (entry: ModelsStoreEntry) => Promise<void> },
@@ -152,7 +201,7 @@ async function fetchModels(
 	const stored = await store.read();
 	const cached = stored?.models
 		.filter((model): model is Model<"openai-responses"> => model.provider === CODEIFY_PROVIDER_ID)
-		.map((model) => toModelDefinition({ id: model.id, name: model.name }, model));
+		.map((model) => toModelDefinition({ id: model.id, name: model.name }, cachedCatalogEntry(model)));
 	if (!allowNetwork || signal?.aborted)
 		return cached?.length ? cached : [toModelDefinition({ id: CODEIFY_DEFAULT_MODEL })];
 	if (

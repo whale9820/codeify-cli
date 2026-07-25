@@ -551,9 +551,11 @@ export function createCodeifyModelToolDefinition(
 				if (lastStopReason === "error") throw new Error("Delegated Codeify CLI agent request failed.");
 				const rawText = responseText(messages);
 				const fallback =
-					turns >= maxTurns
-						? `Delegated agent reached its ${maxTurns}-turn limit after ${completedToolCalls} completed tool calls.`
-						: "Delegated agent completed without a text summary.";
+					lastStopReason === "length"
+						? `Delegated agent produced no text: it hit the ${maxTokens}-token output limit${usage.reasoning ? ` after spending ${usage.reasoning} tokens on reasoning` : ""}. Retry with a higher maxOutputTokens, or a lower reasoningEffort.`
+						: turns >= maxTurns
+							? `Delegated agent reached its ${maxTurns}-turn limit after ${completedToolCalls} completed tool calls.`
+							: "Delegated agent completed without a text summary.";
 				const answer = rawText || fallback;
 				const capped = capOutputWithNotice(answer, { tempFilePrefix: "codeify-delegate" });
 				const text = capped.text;

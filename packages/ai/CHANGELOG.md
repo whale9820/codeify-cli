@@ -5,6 +5,11 @@
 ### Fixed
 
 - Fixed transport stream read errors (`stream_read_error`) to be classified as retryable provider errors.
+- Fixed OpenAI Responses streams losing all assistant text when a provider emits `response.output_text.delta` without a preceding `response.output_item.added`, which surfaced as empty replies and delegated agents finishing without a text summary. Text reported only in the terminal response is now recovered as well.
+
+### Added
+
+- Added the `promoteToolResultImages` OpenAI Responses compat flag for gateways that drop images nested inside `function_call_output`, sending them as a following user message instead.
 
 ## [0.81.1] - 2026-07-21
 

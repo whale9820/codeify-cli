@@ -42,6 +42,8 @@
 - Fixed clean-clone installation and updates to build without generated model catalog data, leaving Codeify model discovery to the runtime API refresh.
 - Fixed `codeify update` to bypass agent startup and run the universal installer hosted at `https://codeify.cc/install.cjs`.
 - Fixed Codeify model discovery to merge live Pi catalog metadata with the models exposed by the Codeify API and persist the result for fast offline startup.
+- Fixed vision-capable Codeify models being treated as text-only when they are absent from both the bundled and remote catalogs, which made `read` report that the model does not support images and stripped images from requests. Vision support now falls back to the closest bundled model id and a model-family default, and a cached text-only entry no longer suppresses it.
+- Fixed images read through tools not reaching Codeify models by sending them as a following user message, since the gateway drops images nested inside tool output.
 - Fixed missing default skill and theme directories being reported as startup conflicts.
 - Fixed the startup `Smart model usage` announcement not updating when toggled with `/smart` or `/settings`.
 - Fixed MCP tool calls rendering without their action, server, tool name, or argument context.
