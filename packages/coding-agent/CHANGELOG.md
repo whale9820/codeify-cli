@@ -30,6 +30,7 @@
 - Fixed Codeify model discovery to merge live Pi catalog metadata with the models exposed by the Codeify API and persist the result for fast offline startup.
 - Fixed missing default skill and theme directories being reported as startup conflicts.
 - Fixed the startup `Smart model usage` announcement not updating when toggled with `/smart` or `/settings`.
+- Fixed MCP tool calls rendering without their action, server, tool name, or argument context.
 
 ## [0.81.1] - 2026-07-21
 

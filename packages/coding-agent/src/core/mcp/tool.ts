@@ -1,6 +1,8 @@
 import type { AgentToolResult } from "codeify-agent-core";
 import type { ImageContent, TextContent } from "codeify-ai";
-import { Type } from "typebox";
+import { Text } from "codeify-tui";
+import { type Static, Type } from "typebox";
+import type { Theme } from "../../modes/interactive/theme/theme.ts";
 import { type AnyToolDefinition, defineTool } from "../tools/types.ts";
 import type { McpContentBlock, McpManager, McpToolInfo } from "./manager.ts";
 
@@ -14,6 +16,8 @@ const mcpSchema = Type.Object({
 	search: Type.Optional(Type.String({ description: "Search available tools by name or description" })),
 	server: Type.Optional(Type.String({ description: "Server name to filter a listing or disambiguate a tool call" })),
 });
+
+type McpToolInput = Static<typeof mcpSchema>;
 
 interface McpToolDetails {
 	mode: string;
@@ -73,6 +77,32 @@ function buildDescription(serverNames: string[]): string {
 		'- describe: "<tool>" — show a tool\'s parameter schema.',
 		'- tool: "<tool>", args: \'{...}\' — call a tool. Add server: "<server>" to disambiguate.',
 	].join("\n");
+}
+
+function formatMcpCall(args: McpToolInput | undefined, theme: Theme): string {
+	let operation = "status";
+	if (args?.connect) {
+		operation = `connect ${args.connect}`;
+	} else if (args?.tool) {
+		operation = `call ${args.server ? `${args.server} / ` : ""}${args.tool}`;
+	} else if (args?.describe) {
+		operation = `describe ${args.server ? `${args.server} / ` : ""}${args.describe}`;
+	} else if (args?.search) {
+		operation = `search "${args.search}"${args.server ? ` · ${args.server}` : ""}`;
+	} else if (args?.server) {
+		operation = `list ${args.server}`;
+	}
+
+	let text = `${theme.fg("toolTitle", theme.bold("mcp"))} ${theme.fg("toolOutput", operation)}`;
+	if (args?.tool && args.args?.trim()) {
+		let preview = args.args.trim();
+		try {
+			preview = JSON.stringify(JSON.parse(preview));
+		} catch {}
+		if (preview.length > 500) preview = `${preview.slice(0, 497)}...`;
+		text += `\n${theme.fg("muted", preview)}`;
+	}
+	return text;
 }
 
 export function createMcpToolDefinition(manager: McpManager, serverNames: string[]): AnyToolDefinition {
@@ -205,6 +235,11 @@ export function createMcpToolDefinition(manager: McpManager, serverNames: string
 					isError: true,
 				});
 			}
+		},
+		renderCall(args, theme, context) {
+			const text = (context.lastComponent as Text | undefined) ?? new Text("", 0, 0);
+			text.setText(formatMcpCall(args, theme));
+			return text;
 		},
 	});
 }
