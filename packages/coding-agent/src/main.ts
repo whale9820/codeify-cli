@@ -29,6 +29,7 @@ import { exportFromFile } from "./core/export-html/index.ts";
 import { applyHttpProxySettings, configureHttpDispatcher } from "./core/http-dispatcher.ts";
 import { resolveCliModel, resolveModelScope, type ScopedModel } from "./core/model-resolver.ts";
 import type { ModelRuntime } from "./core/model-runtime.ts";
+import { setupMcp } from "./core/mcp/index.ts";
 import { restoreStdout, takeOverStdout } from "./core/output-guard.ts";
 import { type AppMode, resolveProjectTrusted } from "./core/project-trust.ts";
 import type { CreateAgentSessionOptions } from "./core/sdk.ts";
@@ -677,6 +678,14 @@ export async function main(args: string[]) {
 			settingsManager,
 		);
 		diagnostics.push(...sessionOptionDiagnostics);
+
+		const mcpSetup = setupMcp(agentDir);
+		for (const message of mcpSetup.diagnostics) {
+			diagnostics.push({ type: "warning", message });
+		}
+		if (mcpSetup.tools.length > 0) {
+			sessionOptions.customTools = [...(sessionOptions.customTools ?? []), ...mcpSetup.tools];
+		}
 
 		if (parsed.apiKey) {
 			if (!sessionOptions.model) {

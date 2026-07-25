@@ -238,6 +238,14 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 		options.tools ? [...options.tools] : options.noTools ? [] : defaultActiveToolNames
 	).filter((name) => !excludedToolNameSet?.has(name));
 
+	if (options.customTools) {
+		for (const tool of options.customTools) {
+			if (!excludedToolNameSet?.has(tool.name) && !initialActiveToolNames.includes(tool.name)) {
+				initialActiveToolNames.push(tool.name);
+			}
+		}
+	}
+
 	let agent: Agent;
 
 	// Create convertToLlm wrapper that filters images if blockImages is enabled (defense-in-depth)
