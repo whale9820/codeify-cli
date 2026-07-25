@@ -1,6 +1,6 @@
 {
 	"name": "codeify-storage-sqlite-node",
-	"version": "0.82.1",
+	"version": "0.82.2",
 	"description": "Node sqlite storage backend for codeify-agent-core sessions",
 	"type": "module",
 	"main": "./dist/index.js",

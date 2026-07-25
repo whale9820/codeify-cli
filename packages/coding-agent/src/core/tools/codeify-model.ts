@@ -21,6 +21,7 @@ import { resolvePath } from "../../utils/paths.ts";
 import { CODEIFY_PROVIDER_ID } from "../codeify-provider.ts";
 import type { ComputerPolicy } from "./computer.ts";
 import { getTextOutput } from "./render-utils.ts";
+import { capOutputWithNotice } from "./spill.ts";
 import type { ToolDefinition, ToolRenderResultOptions } from "./types.ts";
 
 const MAX_PROMPT_CHARS = 32_000;
@@ -35,7 +36,6 @@ const MAX_TURNS = 12;
 const DEFAULT_MAX_TOOL_CALLS = 24;
 const MAX_TOOL_CALLS = 64;
 const MAX_CONCURRENT_CALLS = 5;
-const MAX_RESULT_CHARS = 80_000;
 const MAX_WALL_TIME_MS = 5 * 60_000;
 const DEFAULT_READ_ONLY_TOOLS = ["read", "grep", "find", "ls"];
 
@@ -555,10 +555,8 @@ export function createCodeifyModelToolDefinition(
 						? `Delegated agent reached its ${maxTurns}-turn limit after ${completedToolCalls} completed tool calls.`
 						: "Delegated agent completed without a text summary.";
 				const answer = rawText || fallback;
-				const text =
-					answer.length > MAX_RESULT_CHARS
-						? `${answer.slice(0, MAX_RESULT_CHARS)}\n\n[Delegated response truncated by Codeify CLI.]`
-						: answer;
+				const capped = capOutputWithNotice(answer, { tempFilePrefix: "codeify-delegate" });
+				const text = capped.text;
 				const fileLine = filesChanged.size > 0 ? `\nFiles changed: ${[...filesChanged].join(", ")}` : "";
 				return {
 					content: [

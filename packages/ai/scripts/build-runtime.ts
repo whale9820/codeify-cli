@@ -27,7 +27,8 @@ try {
 		}
 	}
 	const compiler = getRuntimeCompilerInvocation();
-	run(compiler.command, compiler.args);
+	const extraArgs = (process.env.CODEIFY_TSGO_ARGS || "").split(" ").filter(Boolean);
+	run(compiler.command, [...compiler.args, ...extraArgs]);
 	rmSync(outputDirectory, { recursive: true, force: true });
 	cpSync(dataDirectory, outputDirectory, { recursive: true });
 } catch (error) {

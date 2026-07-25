@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.82.2] - 2025-01-29
+
+### Added
+
+- Added a shared output cap for MCP and delegated-agent tool results, keeping a bounded head of the output in context and writing the full text to a temp file whose path is reported to the model.
+
+### Changed
+
+- `grep`, `find`, and `ls` now write their full output to a temp file when truncated instead of discarding the omitted results, and their truncation notices report the kept range and the spill path.
+
+## [0.82.1] - 2025-01-27
+
 ## [Unreleased]
 
 ### Added
@@ -9,12 +21,14 @@
 - Added opt-in smart model usage with protected delegation to other Codeify models, capability and price discovery, bounded vision inputs, reasoning controls, usage accounting, a `/smart` control, a startup announcement, and authenticated Codeify model refresh on every startup.
 - Upgraded smart model usage to run up to five concurrent bounded fully agentic subagents with explicit tool restrictions, detailed live rendering, recursive-delegation protection, aggregated usage, changed-file summaries, and isolated allowlisted Chromium computer use.
 - Added a startup check that notifies the user when a newer Codeify CLI version is available and can be installed with `codeify update`.
+- Added a shared output cap for MCP and delegated-agent tool results, keeping a bounded head of the output in context and writing the full text to a temp file whose path is reported to the model.
 
 ### Changed
 
 - Standardized user-visible tool branding as Codeify CLI while retaining Codeify service branding during authentication, removed the block logo from first-time setup, and removed the subscription marker from the footer.
 - Restricted the CLI to the Codeify provider only; built-in third-party providers are no longer registered in the CLI, while SDK consumers can still opt in through `ModelRuntime.create()`.
 - Codeify model discovery now prefers the Codeify models API for pricing (`pricing`) and context length (`context`) over the remote Pi catalog, keeping the footer price accurate.
+- `grep`, `find`, and `ls` now write their full output to a temp file when truncated instead of discarding the omitted results, and their truncation notices report the kept range and the spill path.
 
 ### Fixed
 

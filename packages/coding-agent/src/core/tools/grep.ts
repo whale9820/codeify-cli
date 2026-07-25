@@ -10,6 +10,7 @@ import type { Theme } from "../../modes/interactive/theme/theme.ts";
 import { ensureTool } from "../../utils/tools-manager.ts";
 import { resolveToCwd } from "./path-utils.ts";
 import { getTextOutput, invalidArgText, shortenPath, str } from "./render-utils.ts";
+import { formatSpillNotice, writeSpillFile } from "./spill.ts";
 import { wrapToolDefinition } from "./tool-definition-wrapper.ts";
 import {
 	DEFAULT_MAX_BYTES,
@@ -42,6 +43,7 @@ export interface GrepToolDetails {
 	truncation?: TruncationResult;
 	matchLimitReached?: number;
 	linesTruncated?: boolean;
+	fullOutputPath?: string;
 }
 
 /**
@@ -344,8 +346,10 @@ export function createGrepToolDefinition(
 								details.matchLimitReached = effectiveLimit;
 							}
 							if (truncation.truncated) {
-								notices.push(`${formatSize(DEFAULT_MAX_BYTES)} limit reached`);
+								const spillPath = writeSpillFile(rawOutput, "codeify-grep");
+								notices.push(formatSpillNotice(truncation, spillPath));
 								details.truncation = truncation;
+								details.fullOutputPath = spillPath;
 							}
 							if (linesTruncated) {
 								notices.push(

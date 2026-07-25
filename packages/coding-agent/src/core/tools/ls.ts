@@ -7,6 +7,7 @@ import { keyHint } from "../../modes/interactive/components/keybinding-hints.ts"
 import type { Theme } from "../../modes/interactive/theme/theme.ts";
 import { pathExists, resolveToCwd } from "./path-utils.ts";
 import { getTextOutput, renderToolPath, str } from "./render-utils.ts";
+import { formatSpillNotice, writeSpillFile } from "./spill.ts";
 import { wrapToolDefinition } from "./tool-definition-wrapper.ts";
 import { DEFAULT_MAX_BYTES, formatSize, type TruncationResult, truncateHead } from "./truncate.ts";
 import type { ToolDefinition, ToolRenderResultOptions } from "./types.ts";
@@ -23,6 +24,7 @@ const DEFAULT_LIMIT = 500;
 export interface LsToolDetails {
 	truncation?: TruncationResult;
 	entryLimitReached?: number;
+	fullOutputPath?: string;
 }
 
 /**
@@ -189,8 +191,10 @@ export function createLsToolDefinition(
 							details.entryLimitReached = effectiveLimit;
 						}
 						if (truncation.truncated) {
-							notices.push(`${formatSize(DEFAULT_MAX_BYTES)} limit reached`);
+							const spillPath = writeSpillFile(rawOutput, "codeify-ls");
+							notices.push(formatSpillNotice(truncation, spillPath));
 							details.truncation = truncation;
+							details.fullOutputPath = spillPath;
 						}
 						if (notices.length > 0) {
 							output += `\n\n[${notices.join(". ")}]`;

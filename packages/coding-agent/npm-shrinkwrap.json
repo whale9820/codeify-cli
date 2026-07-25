@@ -1,12 +1,12 @@
 {
 	"name": "codeify-coding-agent",
-	"version": "0.82.1",
+	"version": "0.82.2",
 	"lockfileVersion": 3,
 	"requires": true,
 	"packages": {
 		"": {
 			"name": "codeify-coding-agent",
-			"version": "0.82.1",
+			"version": "0.82.2",
 			"license": "MIT",
 			"dependencies": {
 				"codeify-agent-core": "^0.82.1",
@@ -1175,8 +1175,8 @@
 			}
 		},
 		"node_modules/codeify-agent-core": {
-			"version": "0.82.1",
-			"resolved": "https://registry.npmjs.org/codeify-agent-core/-/codeify-agent-core-0.82.1.tgz",
+			"version": "0.82.2",
+			"resolved": "https://registry.npmjs.org/codeify-agent-core/-/codeify-agent-core-0.82.2.tgz",
 			"license": "MIT",
 			"dependencies": {
 				"codeify-ai": "^0.82.1",
@@ -1189,8 +1189,8 @@
 			}
 		},
 		"node_modules/codeify-ai": {
-			"version": "0.82.1",
-			"resolved": "https://registry.npmjs.org/codeify-ai/-/codeify-ai-0.82.1.tgz",
+			"version": "0.82.2",
+			"resolved": "https://registry.npmjs.org/codeify-ai/-/codeify-ai-0.82.2.tgz",
 			"license": "MIT",
 			"dependencies": {
 				"@anthropic-ai/sdk": "0.91.1",
@@ -1213,8 +1213,8 @@
 			}
 		},
 		"node_modules/codeify-tui": {
-			"version": "0.82.1",
-			"resolved": "https://registry.npmjs.org/codeify-tui/-/codeify-tui-0.82.1.tgz",
+			"version": "0.82.2",
+			"resolved": "https://registry.npmjs.org/codeify-tui/-/codeify-tui-0.82.2.tgz",
 			"license": "MIT",
 			"dependencies": {
 				"get-east-asian-width": "1.6.0",

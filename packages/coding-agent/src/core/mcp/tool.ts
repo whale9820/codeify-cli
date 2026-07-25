@@ -3,6 +3,8 @@ import type { ImageContent, TextContent } from "codeify-ai";
 import { Text } from "codeify-tui";
 import { type Static, Type } from "typebox";
 import type { Theme } from "../../modes/interactive/theme/theme.ts";
+import { capOutputWithNotice } from "../tools/spill.ts";
+import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES } from "../tools/truncate.ts";
 import { type AnyToolDefinition, defineTool } from "../tools/types.ts";
 import type { McpContentBlock, McpManager, McpToolInfo } from "./manager.ts";
 
@@ -19,16 +21,23 @@ const mcpSchema = Type.Object({
 
 type McpToolInput = Static<typeof mcpSchema>;
 
+const MCP_SPILL_PREFIX = "codeify-mcp";
+
 interface McpToolDetails {
 	mode: string;
 	server?: string;
 	tool?: string;
 	isError?: boolean;
 	text: string;
+	fullOutputPath?: string;
 }
 
 function result(text: string, details: Omit<McpToolDetails, "text">): AgentToolResult<McpToolDetails> {
-	return { content: [{ type: "text", text }], details: { ...details, text } };
+	const capped = capOutputWithNotice(text, { tempFilePrefix: MCP_SPILL_PREFIX });
+	return {
+		content: [{ type: "text", text: capped.text }],
+		details: { ...details, text: capped.text, fullOutputPath: capped.fullOutputPath },
+	};
 }
 
 function mcpContentToBlocks(content: McpContentBlock[]): (TextContent | ImageContent)[] {
@@ -76,6 +85,8 @@ function buildDescription(serverNames: string[]): string {
 		'- search: "<query>" — search tools across servers by name or description.',
 		'- describe: "<tool>" — show a tool\'s parameter schema.',
 		'- tool: "<tool>", args: \'{...}\' — call a tool. Add server: "<server>" to disambiguate.',
+		"",
+		`Output is capped at ${DEFAULT_MAX_LINES} lines or ${DEFAULT_MAX_BYTES / 1024}KB (whichever is hit first). If capped, the full output is written to a temp file and the path is included in the result; use the read tool on that path to see the rest.`,
 	].join("\n");
 }
 
@@ -153,15 +164,25 @@ export function createMcpToolDefinition(manager: McpManager, serverNames: string
 				if (params.tool) {
 					const callResult = await manager.callTool(params.tool, parsedArgs, params.server);
 					const blocks = mcpContentToBlocks(callResult.content);
-					const text = blocks.map((block) => (block.type === "text" ? block.text : "[image]")).join("\n");
+					const rawText = blocks.map((block) => (block.type === "text" ? block.text : "[image]")).join("\n");
+					const capped = capOutputWithNotice(rawText, { tempFilePrefix: MCP_SPILL_PREFIX });
+					// Replace the text blocks with a single capped block, keeping images intact
+					// so attachments still reach the model.
+					const cappedBlocks: (TextContent | ImageContent)[] = capped.truncation.truncated
+						? [
+								{ type: "text", text: capped.text },
+								...blocks.filter((block): block is ImageContent => block.type === "image"),
+							]
+						: blocks;
 					return {
-						content: blocks,
+						content: cappedBlocks,
 						details: {
 							mode: "call",
 							tool: params.tool,
 							server: params.server,
 							isError: callResult.isError,
-							text,
+							text: capped.text,
+							fullOutputPath: capped.fullOutputPath,
 						},
 					};
 				}

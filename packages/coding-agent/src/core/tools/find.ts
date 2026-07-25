@@ -9,6 +9,7 @@ import type { Theme } from "../../modes/interactive/theme/theme.ts";
 import { ensureTool } from "../../utils/tools-manager.ts";
 import { pathExists, resolveToCwd } from "./path-utils.ts";
 import { getTextOutput, invalidArgText, shortenPath, str } from "./render-utils.ts";
+import { formatSpillNotice, writeSpillFile } from "./spill.ts";
 import { wrapToolDefinition } from "./tool-definition-wrapper.ts";
 import { DEFAULT_MAX_BYTES, formatSize, type TruncationResult, truncateHead } from "./truncate.ts";
 import type { ToolDefinition, ToolRenderResultOptions } from "./types.ts";
@@ -32,6 +33,7 @@ const DEFAULT_LIMIT = 1000;
 export interface FindToolDetails {
 	truncation?: TruncationResult;
 	resultLimitReached?: number;
+	fullOutputPath?: string;
 }
 
 /**
@@ -195,8 +197,10 @@ export function createFindToolDefinition(
 								details.resultLimitReached = effectiveLimit;
 							}
 							if (truncation.truncated) {
-								notices.push(`${formatSize(DEFAULT_MAX_BYTES)} limit reached`);
+								const spillPath = writeSpillFile(rawOutput, "codeify-find");
+								notices.push(formatSpillNotice(truncation, spillPath));
 								details.truncation = truncation;
+								details.fullOutputPath = spillPath;
 							}
 							if (notices.length > 0) {
 								resultOutput += `\n\n[${notices.join(". ")}]`;
@@ -332,8 +336,10 @@ export function createFindToolDefinition(
 								details.resultLimitReached = effectiveLimit;
 							}
 							if (truncation.truncated) {
-								notices.push(`${formatSize(DEFAULT_MAX_BYTES)} limit reached`);
+								const spillPath = writeSpillFile(rawOutput, "codeify-find");
+								notices.push(formatSpillNotice(truncation, spillPath));
 								details.truncation = truncation;
+								details.fullOutputPath = spillPath;
 							}
 							if (notices.length > 0) {
 								resultOutput += `\n\n[${notices.join(". ")}]`;

@@ -10,7 +10,7 @@ const {
 	symlinkSync,
 	writeFileSync,
 } = require("node:fs");
-const { homedir } = require("node:os");
+const { homedir, totalmem } = require("node:os");
 const { delimiter, dirname, isAbsolute, join } = require("node:path");
 
 const isWindows = process.platform === "win32";
@@ -48,6 +48,24 @@ function defaultBinDirectory() {
 
 const binDirectory = process.env.CODEIFY_INSTALL_BIN || defaultBinDirectory();
 const npmCommand = isWindows ? "npm.cmd" : "npm";
+const LOW_MEMORY_THRESHOLD_BYTES = 2.5 * 1024 * 1024 * 1024;
+const forcedLowMemory = process.env.CODEIFY_INSTALL_LOW_MEMORY;
+const detectedMemoryBytes = typeof totalmem === "function" ? totalmem() : 0;
+const lowMemory =
+	forcedLowMemory === "1"
+		? true
+		: forcedLowMemory === "0"
+			? false
+			: detectedMemoryBytes > 0 && detectedMemoryBytes < LOW_MEMORY_THRESHOLD_BYTES;
+const childEnv = {
+	...process.env,
+	GIT_TERMINAL_PROMPT: "0",
+	GIT_ASKPASS: "",
+	SSH_ASKPASS: "",
+	npm_config_audit: "false",
+	npm_config_fund: "false",
+	npm_config_progress: "false",
+};
 
 function execute(command, args, options) {
 	if (isWindows && command.endsWith(".cmd")) {
@@ -64,18 +82,29 @@ function verifyCommand(command, args, message) {
 	}
 }
 
-function run(command, args, cwd) {
+function run(command, args, cwd, silent = false, extraEnv) {
+	const options = {
+		cwd,
+		encoding: "utf8",
+		env: extraEnv ? { ...childEnv, ...extraEnv } : childEnv,
+		stdio: silent ? ["ignore", "pipe", "pipe"] : ["ignore", "inherit", "inherit"],
+	};
+	if (silent) {
+		options.maxBuffer = 50 * 1024 * 1024;
+	}
 	try {
-		return execute(command, args, {
-			cwd,
-			encoding: "utf8",
-			env: process.env,
-			stdio: ["ignore", "pipe", "pipe"],
-		});
+		return execute(command, args, options);
 	} catch (error) {
-		if (error && typeof error === "object") {
+		if (silent && error && typeof error === "object") {
 			if (error.stdout) process.stderr.write(String(error.stdout));
 			if (error.stderr) process.stderr.write(String(error.stderr));
+		}
+		if (error && typeof error === "object" && (error.signal === "SIGKILL" || error.signal === "SIGTERM")) {
+			throw new Error(
+				`${command} was killed by the operating system (${error.signal}), which almost always means it ran out of memory.\n` +
+					"Add swap space and retry, for example:\n" +
+					"  sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile",
+			);
 		}
 		throw error;
 	}
@@ -104,9 +133,21 @@ if (existingCheckout) {
 }
 
 step(2, "Installing dependencies");
-run(npmCommand, [existingCheckout && isWindows ? "install" : "ci", "--ignore-scripts"], installHome);
-step(3, "Building Codeify CLI");
-run(npmCommand, ["run", "build:runtime"], installHome);
+run(
+	npmCommand,
+	[existingCheckout && isWindows ? "install" : "ci", "--ignore-scripts"],
+	installHome,
+	false,
+	lowMemory ? { NODE_OPTIONS: "--max-old-space-size=256", npm_config_maxsockets: "3" } : undefined,
+);
+if (lowMemory) {
+	const gigabytes = (detectedMemoryBytes / (1024 * 1024 * 1024)).toFixed(1);
+	step(3, `Building Codeify CLI (low-memory mode, ${gigabytes} GB detected)`);
+	run(process.execPath, [join(installHome, "scripts", "build-lowmem.mjs")], installHome);
+} else {
+	step(3, "Building Codeify CLI");
+	run(npmCommand, ["run", "build:runtime"], installHome);
+}
 
 const cliPath = join(installHome, "packages", "coding-agent", "dist", "cli.js");
 step(4, "Creating the codeify command");
@@ -137,7 +178,7 @@ if (isWindows) {
 	symlinkSync(cliPath, launcherPath);
 }
 
-const version = run(process.execPath, [cliPath, "--version"]).trim();
+const version = run(process.execPath, [cliPath, "--version"], installHome, true).trim();
 
 console.log("");
 console.log(`Codeify CLI ${version} installed successfully.`);
