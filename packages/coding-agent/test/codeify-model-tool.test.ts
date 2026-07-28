@@ -109,7 +109,7 @@ afterEach(async () => {
 });
 
 describe("codeify_model tool", () => {
-	it("lists other models by price with capability and delegated tool details", async () => {
+	it("lists all models by price with capability and delegated tool details", async () => {
 		const main = model("main", { inputCost: 5, outputCost: 30 });
 		const cheapVision = model("cheap-vision", { inputCost: 0.05, outputCost: 0.4 });
 		const textOnly = model("text-only", { vision: false, inputCost: 0, outputCost: 0 });
@@ -128,8 +128,8 @@ describe("codeify_model tool", () => {
 		expect(text).toContain("input:0.05 output:0.4");
 		expect(text).toContain("read, write");
 		expect(text).not.toContain("text-only");
-		expect(text).not.toMatch(/^- main /mu);
-		expect(result.details).toEqual({ action: "list", count: 1, toolNames: ["read", "write"] });
+		expect(text).toMatch(/^- main /mu);
+		expect(result.details).toEqual({ action: "list", count: 2, toolNames: ["read", "write"] });
 	});
 
 	it("runs a delegated model as a multi-turn agent with explicitly granted tools", async () => {
@@ -316,17 +316,24 @@ describe("codeify_model tool", () => {
 		);
 	});
 
-	it("rejects delegation to the main model", async () => {
+	it("allows delegation to the main model", async () => {
 		const main = model("main");
-		const { runtime } = runtimeWith([main]);
+		const { runtime, contexts } = runtimeWith([main], ["self delegated answer"]);
 		const tool = createCodeifyModelToolDefinition(process.cwd(), runtime);
 
-		await expect(
-			tool.execute("run-main", { action: "run", model: "main", task: "Do work" }, undefined, undefined, {
-				cwd: process.cwd(),
-				model: main,
-			}),
-		).rejects.toThrow("other than the main model");
+		const result = await tool.execute(
+			"run-main",
+			{ action: "run", model: "main", task: "Do work" },
+			undefined,
+			undefined,
+			{ cwd: process.cwd(), model: main },
+		);
+
+		expect(contexts).toHaveLength(1);
+		expect(result.content[0]).toMatchObject({
+			type: "text",
+			text: expect.stringContaining("Delegated agent: main"),
+		});
 	});
 
 	it("redacts provider failures that could contain a credential", async () => {

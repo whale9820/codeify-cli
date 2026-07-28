@@ -29,9 +29,11 @@
 - Restricted the CLI to the Codeify provider only; built-in third-party providers are no longer registered in the CLI, while SDK consumers can still opt in through `ModelRuntime.create()`.
 - Codeify model discovery now prefers the Codeify models API for pricing (`pricing`) and context length (`context`) over the remote Pi catalog, keeping the footer price accurate.
 - `grep`, `find`, and `ls` now write their full output to a temp file when truncated instead of discarding the omitted results, and their truncation notices report the kept range and the spill path.
+- Smart model delegation now allows the main model to delegate to itself; only recursive `codeify_model` access inside a delegated agent stays blocked.
 
 ### Fixed
 
+- Fixed skill discovery not loading the documented `.agents/skills` locations. `~/.agents/skills` now loads as a user resource, and `.agents/skills` in `cwd` and ancestors up to the git repo root loads as a project resource once the project is trusted, with root `*.md` files ignored in those directories.
 - Fixed the `codeify update` version banner showing a stale target version by checking the GitHub contents API instead of the CDN-cached raw host.
 - Fixed Codeify OAuth opening the authorization page twice and added a compact, styled loopback success page.
 - Fixed source installations on Windows failing to launch the TypeScript compiler command shim.

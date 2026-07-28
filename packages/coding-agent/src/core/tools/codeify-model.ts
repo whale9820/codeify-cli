@@ -328,7 +328,7 @@ export function createCodeifyModelToolDefinition(
 		name: "codeify_model",
 		label: "Codeify CLI agent",
 		description:
-			"Securely list and delegate work to other models offered by Codeify CLI. Delegated models run as bounded fully agentic coding agents with only the tools, domains, scope, and restrictions you grant. Authentication stays inside the Codeify CLI harness and is never visible to either agent.",
+			"Securely list and delegate work to any model offered by Codeify CLI, including the main model itself. Delegated models run as bounded fully agentic coding agents with only the tools, domains, scope, and restrictions you grant. Authentication stays inside the Codeify CLI harness and is never visible to either agent.",
 		promptSnippet: "Delegate bounded work to a cheaper or specialized fully agentic Codeify CLI model",
 		promptGuidelines: [
 			"Delegation is available and recommended for menial, repetitive, low-judgment, search, formatting, test-triage, and inexpensive vision work so you preserve valuable reasoning and context for difficult decisions.",
@@ -341,22 +341,20 @@ export function createCodeifyModelToolDefinition(
 		executionMode: "parallel",
 		async execute(_toolCallId, params, signal, onUpdate, ctx) {
 			if (params.action === "list") {
-				let models = [...(await getCodeifyModels(runtime))].filter(
-					(model) => !(ctx.model?.provider === CODEIFY_PROVIDER_ID && ctx.model.id === model.id),
-				);
+				let models = [...(await getCodeifyModels(runtime))];
 				if (params.capability === "vision") models = models.filter((model) => model.input.includes("image"));
 				if (params.capability === "reasoning") models = models.filter((model) => model.reasoning);
 				models.sort((left, right) => modelPrice(left) - modelPrice(right) || left.id.localeCompare(right.id));
 				models = models.slice(0, params.limit ?? 50);
 				const current =
 					ctx.model?.provider === CODEIFY_PROVIDER_ID
-						? ` The main model ${ctx.model.id} is intentionally excluded.`
+						? ` The main model ${ctx.model.id} is also eligible for delegation.`
 						: "";
 				const toolNames = delegatedToolNames(options);
 				const text =
 					models.length > 0
 						? `Eligible delegated Codeify CLI models, sorted by combined input/output price. Prices are USD per million tokens.${current}\nDelegated agents can use: ${toolNames.join(", ") || "no tools"}.\n${models.map(formatModel).join("\n")}`
-						: `No other Codeify CLI models match this request.${current}`;
+						: `No Codeify CLI models match this request.${current}`;
 				return { content: [{ type: "text", text }], details: { action: "list", count: models.length, toolNames } };
 			}
 
@@ -377,9 +375,6 @@ export function createCodeifyModelToolDefinition(
 				const models = await getCodeifyModels(runtime);
 				const model = models.find((candidate) => candidate.id === modelId);
 				if (!model) throw new DelegationInputError(`Codeify CLI model is not available: ${modelId}`);
-				if (ctx.model?.provider === CODEIFY_PROVIDER_ID && ctx.model.id === model.id) {
-					throw new DelegationInputError("Choose a model other than the main model for delegation.");
-				}
 
 				const imagePaths = params.imagePaths ?? [];
 				if (imagePaths.length > 0 && options.imagesBlocked?.()) {
