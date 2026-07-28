@@ -238,6 +238,12 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 		options.tools ? [...options.tools] : options.noTools ? [] : defaultActiveToolNames
 	).filter((name) => !excludedToolNameSet?.has(name));
 
+	// context_usage is session introspection rather than a coding tool, so it is not part of
+	// the named tool set. Activate it unless the caller opted out of tools entirely.
+	if (!options.noTools && !options.tools && !excludedToolNameSet?.has("context_usage")) {
+		initialActiveToolNames.push("context_usage");
+	}
+
 	if (options.customTools) {
 		for (const tool of options.customTools) {
 			if (!excludedToolNameSet?.has(tool.name) && !initialActiveToolNames.includes(tool.name)) {
