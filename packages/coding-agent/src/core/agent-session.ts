@@ -76,6 +76,7 @@ import { createSyntheticSourceInfo, type SourceInfo } from "./source-info.ts";
 import { type BuildSystemPromptOptions, buildSystemPrompt } from "./system-prompt.ts";
 import { type BashOperations, createLocalBashOperations } from "./tools/bash.ts";
 import { createCodeifyModelToolDefinition } from "./tools/codeify-model.ts";
+import { type ContextUsageSnapshot, createContextUsageToolDefinition } from "./tools/context-usage.ts";
 import { createAllToolDefinitions } from "./tools/index.ts";
 import { createToolDefinitionFromAgentTool, wrapToolDefinition } from "./tools/tool-definition-wrapper.ts";
 import type { ToolDefinition, ToolExecutionContext, ToolInfo } from "./tools/types.ts";
@@ -123,6 +124,7 @@ export type AgentSessionEvent =
 			followUp: readonly string[];
 	  }
 	| { type: "compaction_start"; reason: "manual" | "threshold" | "overflow" }
+	| { type: "compaction_requested"; rationale: string }
 	| { type: "entry_appended"; entry: SessionEntry }
 	| { type: "session_info_changed"; name: string | undefined }
 	| { type: "thinking_level_changed"; level: ThinkingLevel }
@@ -287,6 +289,9 @@ export class AgentSession {
 	private _compactionAbortController: AbortController | undefined = undefined;
 	private _autoCompactionAbortController: AbortController | undefined = undefined;
 	private _overflowRecoveryAttempted = false;
+	// Set when the model asks the user to approve compaction. Consumed by the host after the
+	// turn settles, since compaction aborts the agent and cannot run inside a tool call.
+	private _pendingCompactionRequest: string | undefined = undefined;
 
 	// Branch summarization state
 	private _branchSummaryAbortController: AbortController | undefined = undefined;
@@ -1842,10 +1847,26 @@ export class AgentSession {
 			baseToolDefinitions.codeify_model = createCodeifyModelToolDefinition(this._cwd, this._modelRuntime, {
 				imagesBlocked: () => this.settingsManager.getBlockImages(),
 				autoResizeImages: () => this.settingsManager.getImageAutoResize(),
-				getDelegatedToolNames: () => [...this._toolRegistry.keys()].filter((name) => name !== "codeify_model"),
+				// context_usage reports the parent session's window, so it is meaningless to a
+				// delegated agent running its own context.
+				getDelegatedToolNames: () =>
+					[...this._toolRegistry.keys()].filter((name) => name !== "codeify_model" && name !== "context_usage"),
 				createDelegatedTools: () => ({
-					tools: [...this._toolRegistry.values()].filter((tool) => tool.name !== "codeify_model"),
+					tools: [...this._toolRegistry.values()].filter(
+						(tool) => tool.name !== "codeify_model" && tool.name !== "context_usage",
+					),
 				}),
+			});
+		}
+		if (!this._baseToolsOverride) {
+			baseToolDefinitions.context_usage = createContextUsageToolDefinition({
+				getSnapshot: () => this.getContextUsageSnapshot(),
+				requestCompaction: (rationale) => {
+					// Compaction aborts the running agent, so it cannot run from inside a tool call.
+					// Record the request and let the host prompt the user once the turn settles.
+					this._pendingCompactionRequest = rationale;
+					this._emit({ type: "compaction_requested", rationale });
+				},
 			});
 		}
 
@@ -1855,7 +1876,7 @@ export class AgentSession {
 
 		const defaultActiveToolNames = this._baseToolsOverride
 			? Object.keys(this._baseToolsOverride)
-			: ["read", "bash", "edit", "write"];
+			: ["read", "bash", "edit", "write", "context_usage"];
 		const baseActiveToolNames = [...(options.activeToolNames ?? defaultActiveToolNames)];
 		if (this.settingsManager.getSmartModelUsage()) baseActiveToolNames.push("codeify_model");
 		this._refreshToolRegistry({ activeToolNames: baseActiveToolNames });
@@ -2376,6 +2397,35 @@ export class AgentSession {
 			contextWindow,
 			percent,
 		};
+	}
+
+	/**
+	 * Context usage plus the session facts the model needs to reason about its own cost.
+	 * Cost grows with the square of session length, since each turn resends the transcript.
+	 */
+	getContextUsageSnapshot(): ContextUsageSnapshot | undefined {
+		const usage = this.getContextUsage();
+		if (!usage) return undefined;
+		const branchEntries = this.sessionManager.getBranch();
+		let turns = 0;
+		for (const entry of branchEntries) {
+			if (entry.type === "message" && entry.message.role === "assistant") turns++;
+		}
+		return {
+			tokens: usage.tokens,
+			contextWindow: usage.contextWindow,
+			percent: usage.percent,
+			turns,
+			compacted: getLatestCompactionEntry(branchEntries) !== null,
+			costUsd: this.getSessionStats().cost,
+		};
+	}
+
+	/** Take the model's pending compaction request, if it made one. */
+	takePendingCompactionRequest(): string | undefined {
+		const rationale = this._pendingCompactionRequest;
+		this._pendingCompactionRequest = undefined;
+		return rationale;
 	}
 
 	/**

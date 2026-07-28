@@ -17,6 +17,13 @@ export {
 	createCodeifyModelToolDefinition,
 } from "./codeify-model.ts";
 export {
+	type ContextUsageOperations,
+	type ContextUsageSnapshot,
+	type ContextUsageToolDetails,
+	type ContextUsageToolInput,
+	createContextUsageToolDefinition,
+} from "./context-usage.ts";
+export {
 	createEditTool,
 	createEditToolDefinition,
 	type EditOperations,

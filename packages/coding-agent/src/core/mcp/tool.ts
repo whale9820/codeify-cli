@@ -3,10 +3,109 @@ import type { ImageContent, TextContent } from "codeify-ai";
 import { Text } from "codeify-tui";
 import { type Static, Type } from "typebox";
 import type { Theme } from "../../modes/interactive/theme/theme.ts";
+import { processImage } from "../../utils/image-process.ts";
 import { capOutputWithNotice } from "../tools/spill.ts";
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES } from "../tools/truncate.ts";
 import { type AnyToolDefinition, defineTool } from "../tools/types.ts";
 import type { McpContentBlock, McpManager, McpToolInfo } from "./manager.ts";
+
+export interface McpToolOptions {
+	autoResizeImages?: () => boolean;
+}
+
+// MCP servers commonly return full-resolution viewport captures (1920x1052 and up).
+// Every such image is re-billed on every later turn of the session, so cap them well
+// below the generic 2000px attachment limit before they enter the transcript.
+const MCP_IMAGE_MAX_DIMENSION = 1024;
+
+// Range parameter names used by this agent's own `read` tool. The system prompt tells the
+// model to page large files with offset/limit, so it reaches for these names on MCP tools
+// too. When the target tool does not declare them they are silently dropped, and a tool
+// that defaults to returning everything sends back the whole file instead of the requested
+// slice. That full payload is then re-billed on every later turn.
+const NATIVE_RANGE_PARAMS = ["offset", "limit"];
+
+interface SchemaShape {
+	properties: Record<string, unknown>;
+	booleanDefaultsTrue: string[];
+}
+
+function schemaShape(inputSchema: unknown): SchemaShape | null {
+	if (typeof inputSchema !== "object" || inputSchema === null) return null;
+	const properties = (inputSchema as { properties?: unknown }).properties;
+	if (typeof properties !== "object" || properties === null) return null;
+	const booleanDefaultsTrue: string[] = [];
+	for (const [name, definition] of Object.entries(properties as Record<string, unknown>)) {
+		if (typeof definition !== "object" || definition === null) continue;
+		const {
+			type,
+			default: defaultValue,
+			description,
+		} = definition as {
+			type?: unknown;
+			default?: unknown;
+			description?: unknown;
+		};
+		if (type !== "boolean") continue;
+		// Servers express the default either as a JSON Schema `default` or only in prose.
+		const describedAsDefaultTrue = typeof description === "string" && /defaults?\s+to\s+true/i.test(description);
+		if (defaultValue === true || describedAsDefaultTrue) booleanDefaultsTrue.push(name);
+	}
+	return { properties: properties as Record<string, unknown>, booleanDefaultsTrue };
+}
+
+/**
+ * Detect a call whose arguments express a bounded read but whose effective behavior is an
+ * unbounded one. Returns guidance for the model, or undefined when the call is coherent.
+ *
+ * Two shapes are caught, both schema-valid and both silent on the server:
+ * - Range parameters the target tool does not declare, so they are ignored entirely.
+ * - Range parameters the tool does declare, alongside an unset boolean that defaults to
+ *   true and overrides them.
+ */
+function describeIgnoredRangeArgs(
+	toolName: string,
+	args: Record<string, unknown> | undefined,
+	inputSchema: unknown,
+): string | undefined {
+	if (!args) return undefined;
+	const shape = schemaShape(inputSchema);
+	if (!shape) return undefined;
+
+	const unsupported = NATIVE_RANGE_PARAMS.filter((name) => name in args && !(name in shape.properties));
+	const rangeParams = Object.keys(shape.properties).filter((name) => /(^|_)(start|end)(_|$)|line/i.test(name));
+	const suppliedRangeParams = rangeParams.filter((name) => name in args);
+	const overriding = shape.booleanDefaultsTrue.filter((name) => args[name] !== false);
+
+	if (unsupported.length > 0) {
+		const lines = [
+			`Refused: "${toolName}" does not accept ${unsupported.map((name) => `\`${name}\``).join(" or ")}.`,
+			"Unknown arguments are dropped silently, so this call would have returned the entire",
+			"result instead of the range you asked for, and that full payload stays in context for",
+			"the rest of the session.",
+		];
+		if (rangeParams.length > 0) {
+			lines.push(`Use ${rangeParams.map((name) => `\`${name}\``).join(" and ")} instead.`);
+		}
+		if (overriding.length > 0) {
+			lines.push(`Also set ${overriding.map((name) => `\`${name}\`: false`).join(", ")} or the range is ignored.`);
+		}
+		lines.push(`Call describe: "${toolName}" to see the full schema.`);
+		return lines.join("\n");
+	}
+
+	if (suppliedRangeParams.length > 0 && overriding.length > 0) {
+		return [
+			`Refused: this "${toolName}" call sets ${suppliedRangeParams.map((name) => `\`${name}\``).join(" and ")},`,
+			`but ${overriding.map((name) => `\`${name}\``).join(" and ")} defaults to true and overrides it.`,
+			"The call would have returned everything rather than the requested range, and that full",
+			"payload stays in context for the rest of the session.",
+			`Set ${overriding.map((name) => `\`${name}\`: false`).join(", ")} to keep the range.`,
+		].join("\n");
+	}
+
+	return undefined;
+}
 
 const mcpSchema = Type.Object({
 	tool: Type.Optional(Type.String({ description: "MCP tool name to call" })),
@@ -40,17 +139,41 @@ function result(text: string, details: Omit<McpToolDetails, "text">): AgentToolR
 	};
 }
 
-function mcpContentToBlocks(content: McpContentBlock[]): (TextContent | ImageContent)[] {
+async function shrinkMcpImage(data: string, mimeType: string): Promise<{ data: string; mimeType: string } | null> {
+	let bytes: Buffer;
+	try {
+		bytes = Buffer.from(data, "base64");
+	} catch {
+		return null;
+	}
+	if (bytes.length === 0) return null;
+	const processed = await processImage(bytes, mimeType, {
+		autoResizeImages: true,
+		resizeOptions: { maxWidth: MCP_IMAGE_MAX_DIMENSION, maxHeight: MCP_IMAGE_MAX_DIMENSION },
+	});
+	if (!processed.ok) return null;
+	// Re-encoding can inflate simple synthetic images. Only take the rewrite when it
+	// actually costs fewer tokens than the original payload.
+	if (processed.data.length >= data.length) return null;
+	return { data: processed.data, mimeType: processed.mimeType };
+}
+
+async function mcpContentToBlocks(
+	content: McpContentBlock[],
+	resizeImages: boolean,
+): Promise<(TextContent | ImageContent)[]> {
 	const blocks: (TextContent | ImageContent)[] = [];
 	for (const item of content) {
 		if (item.type === "text") {
 			blocks.push({ type: "text", text: typeof item.text === "string" ? item.text : JSON.stringify(item) });
 		} else if (item.type === "image") {
 			const data = typeof item.data === "string" ? item.data : "";
+			const mimeType = typeof item.mimeType === "string" ? item.mimeType : "image/png";
+			const shrunk = resizeImages && data ? await shrinkMcpImage(data, mimeType) : null;
 			blocks.push({
 				type: "image",
-				data,
-				mimeType: typeof item.mimeType === "string" ? item.mimeType : "image/png",
+				data: shrunk?.data ?? data,
+				mimeType: shrunk?.mimeType ?? mimeType,
 			});
 		} else if (item.type === "resource") {
 			const resource = item.resource;
@@ -116,7 +239,11 @@ function formatMcpCall(args: McpToolInput | undefined, theme: Theme): string {
 	return text;
 }
 
-export function createMcpToolDefinition(manager: McpManager, serverNames: string[]): AnyToolDefinition {
+export function createMcpToolDefinition(
+	manager: McpManager,
+	serverNames: string[],
+	options?: McpToolOptions,
+): AnyToolDefinition {
 	return defineTool({
 		name: "mcp",
 		label: "MCP",
@@ -162,8 +289,20 @@ export function createMcpToolDefinition(manager: McpManager, serverNames: string
 				}
 
 				if (params.tool) {
+					const known = (await manager.listTools(params.server)).find((tool) => tool.name === params.tool);
+					const ignoredRange = known
+						? describeIgnoredRangeArgs(params.tool, parsedArgs, known.inputSchema)
+						: undefined;
+					if (ignoredRange) {
+						return result(ignoredRange, {
+							mode: "call",
+							tool: params.tool,
+							server: params.server ?? known?.server,
+							isError: true,
+						});
+					}
 					const callResult = await manager.callTool(params.tool, parsedArgs, params.server);
-					const blocks = mcpContentToBlocks(callResult.content);
+					const blocks = await mcpContentToBlocks(callResult.content, options?.autoResizeImages?.() ?? true);
 					const rawText = blocks.map((block) => (block.type === "text" ? block.text : "[image]")).join("\n");
 					const capped = capOutputWithNotice(rawText, { tempFilePrefix: MCP_SPILL_PREFIX });
 					// Replace the text blocks with a single capped block, keeping images intact

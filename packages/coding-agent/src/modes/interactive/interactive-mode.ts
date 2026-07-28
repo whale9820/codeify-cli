@@ -1968,6 +1968,11 @@ export class InteractiveMode {
 
 			case "agent_settled":
 				await this.checkShutdownRequested();
+				await this.handleRequestedCompaction();
+				break;
+
+			case "compaction_requested":
+				// Handled once the agent settles; compaction cannot run mid-turn.
 				break;
 
 			case "compaction_start": {
@@ -4790,6 +4795,15 @@ export class InteractiveMode {
 
 		this.bashComponent = undefined;
 		this.ui.requestRender();
+	}
+
+	private async handleRequestedCompaction(): Promise<void> {
+		const rationale = this.session.takePendingCompactionRequest();
+		if (rationale === undefined) return;
+
+		const choice = await this.showDialogSelector(`Compact now? ${rationale}`, ["Keep context", "Compact"]);
+		if (choice !== "Compact") return;
+		await this.handleCompactCommand();
 	}
 
 	private async handleCompactCommand(customInstructions?: string): Promise<void> {

@@ -679,7 +679,9 @@ export async function main(args: string[]) {
 		);
 		diagnostics.push(...sessionOptionDiagnostics);
 
-		const mcpSetup = setupMcp(agentDir);
+		const mcpSetup = setupMcp(agentDir, {
+			autoResizeImages: () => settingsManager.getImageAutoResize(),
+		});
 		for (const message of mcpSetup.diagnostics) {
 			diagnostics.push({ type: "warning", message });
 		}

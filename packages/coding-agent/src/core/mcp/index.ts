@@ -1,7 +1,7 @@
 import type { ToolDefinition } from "../tools/types.ts";
 import { loadMcpConfig } from "./config.ts";
 import { McpManager } from "./manager.ts";
-import { createMcpToolDefinition } from "./tool.ts";
+import { createMcpToolDefinition, type McpToolOptions } from "./tool.ts";
 
 export interface McpSetup {
 	tools: ToolDefinition[];
@@ -24,7 +24,7 @@ function trackManager(manager: McpManager): void {
 	});
 }
 
-export function setupMcp(agentDir: string): McpSetup {
+export function setupMcp(agentDir: string, options?: McpToolOptions): McpSetup {
 	const cached = setupCache.get(agentDir);
 	if (cached) return cached;
 
@@ -39,7 +39,7 @@ export function setupMcp(agentDir: string): McpSetup {
 	const manager = new McpManager(config);
 	trackManager(manager);
 	const setup: McpSetup = {
-		tools: [createMcpToolDefinition(manager, serverNames)],
+		tools: [createMcpToolDefinition(manager, serverNames, options)],
 		manager,
 		diagnostics,
 	};

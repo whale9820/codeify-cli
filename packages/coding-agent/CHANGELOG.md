@@ -22,6 +22,7 @@
 - Upgraded smart model usage to run up to five concurrent bounded fully agentic subagents with explicit tool restrictions, detailed live rendering, recursive-delegation protection, aggregated usage, and changed-file summaries.
 - Added a startup check that notifies the user when a newer Codeify CLI version is available and can be installed with `codeify update`.
 - Added a shared output cap for MCP and delegated-agent tool results, keeping a bounded head of the output in context and writing the full text to a temp file whose path is reported to the model.
+- Added a `context_usage` tool so the model can see how much of the context window the session is using, how many tokens each additional turn resends, and the session cost so far. It can ask the user to approve compaction; the request is surfaced after the turn settles and compaction runs only on approval. The tool is not offered to delegated agents, whose context is separate.
 
 ### Changed
 
@@ -30,6 +31,8 @@
 - Codeify model discovery now prefers the Codeify models API for pricing (`pricing`) and context length (`context`) over the remote Pi catalog, keeping the footer price accurate.
 - `grep`, `find`, and `ls` now write their full output to a temp file when truncated instead of discarding the omitted results, and their truncation notices report the kept range and the spill path.
 - Smart model delegation now allows the main model to delegate to itself; only recursive `codeify_model` access inside a delegated agent stays blocked.
+- MCP tool results now downscale returned images to 1024px on the longest edge before they enter the transcript, honoring the existing image auto-resize setting. Servers that return full viewport captures (such as Roblox Studio `screen_capture` at 1920x1052) previously carried their full-resolution payload through every later turn of the session. The original payload is kept when it is already smaller or cannot be decoded.
+- MCP tool calls that ask for a bounded read but would return everything are now refused with the correct parameter shape instead of being sent. This catches range arguments the target tool does not declare (such as the `offset`/`limit` names used by the built-in `read` tool) and range arguments overridden by an unset boolean that defaults to true (such as Roblox Studio `script_read`'s `should_read_entire_file`). Both shapes were previously accepted silently and returned whole files that stayed in context for the rest of the session. The check is derived from each tool's advertised schema rather than hardcoded tool names.
 
 ### Fixed
 
