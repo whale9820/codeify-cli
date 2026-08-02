@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "fs";
 import ignore from "ignore";
+import { homedir } from "os";
 import { basename, dirname, join, relative, resolve, sep } from "path";
 import { CONFIG_DIR_NAME, getAgentDir } from "../config.ts";
 import { parseFrontmatter } from "../utils/frontmatter.ts";
@@ -15,7 +16,49 @@ const MAX_DESCRIPTION_LENGTH = 1024;
 
 const IGNORE_FILE_NAMES = [".gitignore", ".ignore", ".fdignore"];
 
+const AGENTS_DIR_NAME = ".agents";
+const SKILLS_DIR_NAME = "skills";
+
 type IgnoreMatcher = ReturnType<typeof ignore>;
+
+/** Global `~/.agents/skills` directory shared with other agent harnesses. */
+export function getUserAgentsSkillsDir(): string {
+	return join(resolvePath(process.env.HOME || homedir()), AGENTS_DIR_NAME, SKILLS_DIR_NAME);
+}
+
+function isAgentsSkillsDir(path: string): boolean {
+	const normalized = resolve(path);
+	return basename(normalized) === SKILLS_DIR_NAME && basename(dirname(normalized)) === AGENTS_DIR_NAME;
+}
+
+/**
+ * Find `.agents/skills` directories in cwd and its ancestors, nearest first,
+ * stopping at the git repo root (or the filesystem root when not in a repo).
+ * The global `~/.agents/skills` directory is excluded here because it loads as
+ * a user resource, even when cwd sits under $HOME.
+ */
+export function findProjectAgentsSkillsDirs(cwd: string): string[] {
+	const userAgentsSkillsDir = canonicalizePath(getUserAgentsSkillsDir());
+	const dirs: string[] = [];
+	let currentDir = resolvePath(cwd);
+
+	while (true) {
+		const candidate = join(currentDir, AGENTS_DIR_NAME, SKILLS_DIR_NAME);
+		if (existsSync(candidate) && canonicalizePath(candidate) !== userAgentsSkillsDir) {
+			dirs.push(candidate);
+		}
+
+		if (existsSync(join(currentDir, ".git"))) {
+			return dirs;
+		}
+
+		const parentDir = dirname(currentDir);
+		if (parentDir === currentDir) {
+			return dirs;
+		}
+		currentDir = parentDir;
+	}
+}
 
 function toPosixPath(p: string): string {
 	return p.split(sep).join("/");
@@ -430,10 +473,15 @@ export function loadSkills(options: LoadSkillsOptions): LoadSkillsResult {
 	if (includeDefaults) {
 		addSkills(loadSkillsFromDirInternal(join(resolvedAgentDir, "skills"), "user", true));
 		addSkills(loadSkillsFromDirInternal(resolve(resolvedCwd, CONFIG_DIR_NAME, "skills"), "project", true));
+		for (const agentsSkillsDir of findProjectAgentsSkillsDirs(resolvedCwd)) {
+			addSkills(loadSkillsFromDirInternal(agentsSkillsDir, "project", false));
+		}
+		addSkills(loadSkillsFromDirInternal(getUserAgentsSkillsDir(), "user", false));
 	}
 
 	const userSkillsDir = join(resolvedAgentDir, "skills");
 	const projectSkillsDir = resolve(resolvedCwd, CONFIG_DIR_NAME, "skills");
+	const userAgentsSkillsDir = getUserAgentsSkillsDir();
 
 	const isUnderPath = (target: string, root: string): boolean => {
 		const normalizedRoot = resolve(root);
@@ -448,6 +496,8 @@ export function loadSkills(options: LoadSkillsOptions): LoadSkillsResult {
 		if (!includeDefaults) {
 			if (isUnderPath(resolvedPath, userSkillsDir)) return "user";
 			if (isUnderPath(resolvedPath, projectSkillsDir)) return "project";
+			if (isUnderPath(resolvedPath, userAgentsSkillsDir)) return "user";
+			if (isAgentsSkillsDir(resolvedPath)) return "project";
 		}
 		return "path";
 	};
@@ -463,7 +513,7 @@ export function loadSkills(options: LoadSkillsOptions): LoadSkillsResult {
 			const stats = statSync(resolvedPath);
 			const source = getSource(resolvedPath);
 			if (stats.isDirectory()) {
-				addSkills(loadSkillsFromDirInternal(resolvedPath, source, true));
+				addSkills(loadSkillsFromDirInternal(resolvedPath, source, !isAgentsSkillsDir(resolvedPath)));
 			} else if (stats.isFile() && resolvedPath.endsWith(".md")) {
 				const result = loadSkillFromFile(resolvedPath, source);
 				if (result.skill) {

@@ -1,8 +1,16 @@
-import { homedir } from "os";
+import { mkdirSync, rmSync, writeFileSync } from "fs";
+import { homedir, tmpdir } from "os";
 import { join, resolve } from "path";
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { ResourceDiagnostic } from "../src/core/diagnostics.ts";
-import { formatSkillsForPrompt, loadSkills, loadSkillsFromDir, type Skill } from "../src/core/skills.ts";
+import {
+	findProjectAgentsSkillsDirs,
+	formatSkillsForPrompt,
+	getUserAgentsSkillsDir,
+	loadSkills,
+	loadSkillsFromDir,
+	type Skill,
+} from "../src/core/skills.ts";
 import { createSyntheticSourceInfo } from "../src/core/source-info.ts";
 
 const fixturesDir = resolve(__dirname, "fixtures/skills");
@@ -348,6 +356,20 @@ describe("skills", () => {
 	describe("loadSkills with options", () => {
 		const emptyAgentDir = resolve(__dirname, "fixtures/empty-agent");
 		const emptyCwd = resolve(__dirname, "fixtures/empty-cwd");
+		let originalHome: string | undefined;
+
+		beforeEach(() => {
+			originalHome = process.env.HOME;
+			process.env.HOME = emptyCwd;
+		});
+
+		afterEach(() => {
+			if (originalHome === undefined) {
+				delete process.env.HOME;
+			} else {
+				process.env.HOME = originalHome;
+			}
+		});
 
 		it("should load from explicit skillPaths", () => {
 			const { skills, diagnostics } = loadSkills({
@@ -387,6 +409,83 @@ describe("skills", () => {
 				includeDefaults: true,
 			});
 			expect(withTilde.length).toBe(withoutTilde.length);
+		});
+	});
+
+	describe("agents skills discovery", () => {
+		let tempDir: string;
+		let repoDir: string;
+		let nestedDir: string;
+		let agentDir: string;
+		let originalHome: string | undefined;
+
+		function writeSkill(dir: string, name: string): void {
+			mkdirSync(join(dir, name), { recursive: true });
+			writeFileSync(join(dir, name, "SKILL.md"), `---\nname: ${name}\ndescription: ${name} description\n---\nBody`);
+		}
+
+		beforeEach(() => {
+			tempDir = join(tmpdir(), `agents-skills-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+			repoDir = join(tempDir, "repo");
+			nestedDir = join(repoDir, "packages", "app");
+			agentDir = join(tempDir, "home", ".codeify", "agent");
+			mkdirSync(join(repoDir, ".git"), { recursive: true });
+			mkdirSync(nestedDir, { recursive: true });
+			mkdirSync(agentDir, { recursive: true });
+			originalHome = process.env.HOME;
+			process.env.HOME = join(tempDir, "home");
+		});
+
+		afterEach(() => {
+			if (originalHome === undefined) {
+				delete process.env.HOME;
+			} else {
+				process.env.HOME = originalHome;
+			}
+			rmSync(tempDir, { recursive: true, force: true });
+		});
+
+		it("resolves the user agents skills dir from HOME", () => {
+			expect(getUserAgentsSkillsDir()).toBe(join(tempDir, "home", ".agents", "skills"));
+		});
+
+		it("finds ancestor dirs up to the git root and ignores the global dir", () => {
+			const repoSkills = join(repoDir, ".agents", "skills");
+			const nestedSkills = join(nestedDir, ".agents", "skills");
+			const aboveRepoSkills = join(tempDir, ".agents", "skills");
+			mkdirSync(nestedSkills, { recursive: true });
+			mkdirSync(repoSkills, { recursive: true });
+			mkdirSync(aboveRepoSkills, { recursive: true });
+			mkdirSync(getUserAgentsSkillsDir(), { recursive: true });
+
+			expect(findProjectAgentsSkillsDirs(nestedDir)).toEqual([nestedSkills, repoSkills]);
+			expect(findProjectAgentsSkillsDirs(join(tempDir, "home"))).toEqual([aboveRepoSkills]);
+		});
+
+		it("loads global and project agents skills by default", () => {
+			const userSkills = getUserAgentsSkillsDir();
+			mkdirSync(userSkills, { recursive: true });
+			writeSkill(userSkills, "user-agents-skill");
+			const repoSkills = join(repoDir, ".agents", "skills");
+			mkdirSync(repoSkills, { recursive: true });
+			writeSkill(repoSkills, "repo-agents-skill");
+
+			const { skills } = loadSkills({ agentDir, cwd: nestedDir, skillPaths: [], includeDefaults: true });
+			const byName = new Map(skills.map((skill) => [skill.name, skill]));
+
+			expect(byName.get("user-agents-skill")?.sourceInfo.scope).toBe("user");
+			expect(byName.get("repo-agents-skill")?.sourceInfo.scope).toBe("project");
+		});
+
+		it("ignores root markdown files in agents skills dirs", () => {
+			const repoSkills = join(repoDir, ".agents", "skills");
+			mkdirSync(repoSkills, { recursive: true });
+			writeFileSync(join(repoSkills, "loose.md"), "---\nname: loose\ndescription: loose root file\n---\nBody");
+			writeSkill(repoSkills, "nested-agents-skill");
+
+			const { skills } = loadSkills({ agentDir, cwd: nestedDir, skillPaths: [], includeDefaults: true });
+
+			expect(skills.map((skill) => skill.name)).toEqual(["nested-agents-skill"]);
 		});
 	});
 

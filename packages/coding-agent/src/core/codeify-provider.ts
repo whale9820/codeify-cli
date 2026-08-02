@@ -20,6 +20,8 @@ type CodeifyModel = {
 	max_tokens?: number;
 	max_output_tokens?: number;
 	input?: string[];
+	input_modalities?: string[];
+	modalities?: { input?: string[]; output?: string[] };
 	capabilities?: { reasoning?: boolean; vision?: boolean };
 	cost?: ModelCost;
 	pricing?: {
@@ -34,6 +36,7 @@ type CodeifyModel = {
 type RemoteCatalogModel = {
 	id: string;
 	name?: string;
+	inputModalities?: string[];
 	reasoning?: boolean;
 	thinkingLevelMap?: Model<"openai-responses">["thinkingLevelMap"];
 	input?: ("text" | "image")[];
@@ -44,6 +47,9 @@ type RemoteCatalogModel = {
 };
 
 type CodeifyModelDefinition = NonNullable<RuntimeProviderConfig["models"]>[number];
+
+/** Cached model plus the input modalities `/v1/models` declared for it. */
+type StoredCodeifyModel = Model<"openai-responses"> & { inputModalities?: string[] };
 
 const bundledModels = getBuiltinModels("opencode") as Model<"openai-responses">[];
 
@@ -78,6 +84,18 @@ function toInput(input: readonly string[] | undefined): ("text" | "image")[] | u
 }
 
 /**
+ * `/v1/models` publishes the authoritative supported input modalities per model
+ * (`input_modalities`, mirrored by `modalities.input`). Anything else (bundled catalog,
+ * pi.dev overlay, id heuristics) is a stale guess, so this wins whenever it is present.
+ */
+function declaredModalities(model: CodeifyModel): string[] | undefined {
+	const declared = [model.input_modalities, model.modalities?.input].find(
+		(value): value is string[] => Array.isArray(value) && value.some((entry) => typeof entry === "string"),
+	);
+	return declared?.filter((entry): entry is string => typeof entry === "string");
+}
+
+/**
  * Codeify ids often carry a date or variant suffix (claude-haiku-4-5-20251001,
  * gpt-5.6-sol-uncensored) that no catalog lists. Fall back to the longest bundled
  * id the requested model is derived from before guessing by family.
@@ -101,6 +119,8 @@ function resolveInput(
 	remote: RemoteCatalogModel | undefined,
 	bundled: Model<"openai-responses"> | undefined,
 ): ("text" | "image")[] {
+	const declared = toInput(declaredModalities(model)) ?? toInput(remote?.inputModalities);
+	if (declared) return declared;
 	if (model.capabilities?.vision !== undefined) return model.capabilities.vision ? ["text", "image"] : ["text"];
 	return (
 		toInput(model.input) ??
@@ -183,11 +203,13 @@ async function fetchRemoteCatalog(signal?: AbortSignal): Promise<{
 }
 
 /**
- * Caches written by earlier versions can hold a wrongly downgraded text-only entry.
- * Keep cached metadata but let vision support be re-derived unless the cache proves it.
+ * Caches written by earlier versions hold heuristic input arrays and can have wrongly
+ * downgraded an entry to text-only. Trust `inputModalities` when a cache recorded what
+ * `/v1/models` declared; otherwise keep the metadata and let vision be re-derived.
  */
-function cachedCatalogEntry(model: Model<"openai-responses">): RemoteCatalogModel {
-	const { input, ...rest } = model;
+function cachedCatalogEntry(model: StoredCodeifyModel): RemoteCatalogModel {
+	const { input, inputModalities, ...rest } = model;
+	if (inputModalities?.length) return { ...rest, inputModalities };
 	return input?.includes("image") ? { ...rest, input: ["text", "image"] } : rest;
 }
 
@@ -200,7 +222,7 @@ async function fetchModels(
 ): Promise<NonNullable<RuntimeProviderConfig["models"]>> {
 	const stored = await store.read();
 	const cached = stored?.models
-		.filter((model): model is Model<"openai-responses"> => model.provider === CODEIFY_PROVIDER_ID)
+		.filter((model): model is StoredCodeifyModel => model.provider === CODEIFY_PROVIDER_ID)
 		.map((model) => toModelDefinition({ id: model.id, name: model.name }, cachedCatalogEntry(model)));
 	if (!allowNetwork || signal?.aborted)
 		return cached?.length ? cached : [toModelDefinition({ id: CODEIFY_DEFAULT_MODEL })];
@@ -223,15 +245,21 @@ async function fetchModels(
 	if (!codeifyResponse.ok) throw new Error(`Codeify CLI model discovery failed (${codeifyResponse.status})`);
 	const payload = (await codeifyResponse.json()) as { data?: CodeifyModel[] };
 	const models = (payload.data ?? []).filter((model) => typeof model.id === "string" && model.id.length > 0);
-	const definitions = (models.length > 0 ? models : [{ id: CODEIFY_DEFAULT_MODEL }]).map((model) =>
-		toModelDefinition(model, remoteCatalog?.models.get(model.id)),
-	);
-	const storedModels: Model<"openai-responses">[] = definitions.map((model) => ({
-		...model,
-		api: "openai-responses",
-		provider: CODEIFY_PROVIDER_ID,
-		baseUrl: CODEIFY_BASE_URL,
-	}));
+	const discovered: CodeifyModel[] = models.length > 0 ? models : [{ id: CODEIFY_DEFAULT_MODEL }];
+	const definitions: CodeifyModelDefinition[] = [];
+	const storedModels: StoredCodeifyModel[] = [];
+	for (const model of discovered) {
+		const definition = toModelDefinition(model, remoteCatalog?.models.get(model.id));
+		const inputModalities = declaredModalities(model);
+		definitions.push(definition);
+		storedModels.push({
+			...definition,
+			...(inputModalities?.length ? { inputModalities } : {}),
+			api: "openai-responses",
+			provider: CODEIFY_PROVIDER_ID,
+			baseUrl: CODEIFY_BASE_URL,
+		});
+	}
 	await store.write({
 		models: storedModels,
 		checkedAt: Date.now(),

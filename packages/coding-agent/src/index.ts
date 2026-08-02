@@ -127,7 +127,9 @@ export {
 } from "./core/settings-manager.ts";
 // Skills
 export {
+	findProjectAgentsSkillsDirs,
 	formatSkillsForPrompt,
+	getUserAgentsSkillsDir,
 	type LoadSkillsFromDirOptions,
 	type LoadSkillsResult,
 	loadSkills,

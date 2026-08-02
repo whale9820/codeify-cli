@@ -212,6 +212,8 @@ These settings define where to load skills, prompts, and themes from.
 
 Paths in `~/.codeify/agent/settings.json` resolve relative to `~/.codeify/agent`. Paths in `.codeify/settings.json` resolve relative to `.codeify`. Absolute paths and `~` are supported.
 
+Skills are discovered from `~/.codeify/agent/skills`, `~/.agents/skills`, `.codeify/skills`, and `.agents/skills` (in `cwd` and ancestors up to the git repo root) without configuration. The `skills` setting adds locations on top of those.
+
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
 | `skills` | string[] | `[]` | Local skill file paths or directories |

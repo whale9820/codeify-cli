@@ -13,7 +13,7 @@ import type { PromptTemplate } from "./prompt-templates.ts";
 import { loadPromptTemplates } from "./prompt-templates.ts";
 import { SettingsManager } from "./settings-manager.ts";
 import type { Skill } from "./skills.ts";
-import { loadSkills } from "./skills.ts";
+import { findProjectAgentsSkillsDirs, getUserAgentsSkillsDir, loadSkills } from "./skills.ts";
 import type { SourceInfo } from "./source-info.ts";
 
 export interface ResourceLoaderReloadOptions {
@@ -261,7 +261,8 @@ export class DefaultResourceLoader implements ResourceLoader {
 		};
 		const defaultSkillPaths = [
 			...(projectTrusted && !this.noSkills ? [join(projectBaseDir, "skills")] : []),
-			...(!this.noSkills ? [join(userBaseDir, "skills")] : []),
+			...(projectTrusted && !this.noSkills ? findProjectAgentsSkillsDirs(this.cwd) : []),
+			...(!this.noSkills ? [join(userBaseDir, "skills"), getUserAgentsSkillsDir()] : []),
 		].filter((path) => existsSync(path));
 		const skillPaths = this.mergePaths([...defaultSkillPaths, ...skillEntries.plain], this.additionalSkillPaths);
 
@@ -444,11 +445,17 @@ export class DefaultResourceLoader implements ResourceLoader {
 		}
 
 		const normalizedPath = resolve(filePath);
-		const agentRoots = [join(this.agentDir, "skills"), join(this.agentDir, "prompts"), join(this.agentDir, "themes")];
+		const agentRoots = [
+			join(this.agentDir, "skills"),
+			join(this.agentDir, "prompts"),
+			join(this.agentDir, "themes"),
+			getUserAgentsSkillsDir(),
+		];
 		const projectRoots = [
 			join(this.cwd, CONFIG_DIR_NAME, "skills"),
 			join(this.cwd, CONFIG_DIR_NAME, "prompts"),
 			join(this.cwd, CONFIG_DIR_NAME, "themes"),
+			...findProjectAgentsSkillsDirs(this.cwd),
 		];
 
 		for (const root of agentRoots) {

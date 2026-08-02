@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { OAuthLoginCallbacks } from "codeify-ai";
+import type { ModelsStoreEntry, OAuthLoginCallbacks } from "codeify-ai";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
 	CODEIFY_BASE_URL,
@@ -236,6 +236,96 @@ describe("Codeify provider", () => {
 
 		const codeifyFetches = fetchSpy.mock.calls.filter(([input]) => String(input) === `${CODEIFY_BASE_URL}/models`);
 		expect(codeifyFetches).toHaveLength(2);
+	});
+
+	it("takes input modalities from the Codeify v1 catalog over every other source", async () => {
+		vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+			const url = String(input);
+			if (url === `${CODEIFY_BASE_URL}/models`) {
+				return new Response(
+					JSON.stringify({
+						data: [
+							{
+								id: "doubao-seed-2.0-lite",
+								modalities: { input: ["text", "image", "video"], output: ["text"] },
+								input_modalities: ["text", "image", "video"],
+							},
+							{ id: "mimo-v2.5", input_modalities: ["text", "image", "audio", "video"] },
+							{ id: "grok-4.5", input_modalities: ["text", "image", "pdf"] },
+							{ id: "glm-5.2-uncensored", modalities: { input: ["text"], output: ["text"] } },
+							{ id: "claude-opus-5", input_modalities: ["text"] },
+							{ id: "gpt-5.6-sol", input_modalities: ["text"], capabilities: { vision: true } },
+						],
+					}),
+					{ status: 200 },
+				);
+			}
+			return new Response(
+				JSON.stringify({
+					"claude-opus-5": { id: "claude-opus-5", input: ["text", "image"] },
+					"glm-5.2-uncensored": { id: "glm-5.2-uncensored", input: ["text", "image"] },
+				}),
+				{ status: 200 },
+			);
+		});
+		const models = await codeifyProvider().refreshModels?.({
+			credential: { type: "api_key", key: "test-key" },
+			store: { read: async () => undefined, write: async () => {}, delete: async () => {} },
+			allowNetwork: true,
+			force: true,
+		});
+		const input = (id: string) => models?.find((model) => model.id === id)?.input;
+
+		expect(input("doubao-seed-2.0-lite")).toEqual(["text", "image"]);
+		expect(input("mimo-v2.5")).toEqual(["text", "image"]);
+		expect(input("grok-4.5")).toEqual(["text", "image"]);
+		expect(input("glm-5.2-uncensored")).toEqual(["text"]);
+		expect(input("claude-opus-5")).toEqual(["text"]);
+		expect(input("gpt-5.6-sol")).toEqual(["text"]);
+	});
+
+	it("caches declared modalities so offline reads keep text-only models text-only", async () => {
+		let stored: ModelsStoreEntry | undefined;
+		vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+			const url = String(input);
+			if (url === `${CODEIFY_BASE_URL}/models`) {
+				return new Response(
+					JSON.stringify({
+						data: [
+							{ id: "claude-opus-5", input_modalities: ["text"] },
+							{ id: "minimax-m3", input_modalities: ["text", "image", "video"] },
+						],
+					}),
+					{ status: 200 },
+				);
+			}
+			throw new Error("remote catalog unavailable");
+		});
+		const store = {
+			read: async () => stored,
+			write: async (entry: ModelsStoreEntry) => {
+				stored = entry;
+			},
+			delete: async () => {},
+		};
+		await codeifyProvider().refreshModels?.({
+			credential: { type: "api_key", key: "test-key" },
+			store,
+			allowNetwork: true,
+			force: true,
+		});
+		expect(stored?.models.map((model) => (model as { inputModalities?: string[] }).inputModalities)).toEqual([
+			["text"],
+			["text", "image", "video"],
+		]);
+
+		const offline = await codeifyProvider().refreshModels?.({
+			credential: undefined,
+			store,
+			allowNetwork: false,
+		});
+		expect(offline?.find((model) => model.id === "claude-opus-5")?.input).toEqual(["text"]);
+		expect(offline?.find((model) => model.id === "minimax-m3")?.input).toEqual(["text", "image"]);
 	});
 
 	it("keeps vision enabled for models missing from both catalogs", async () => {

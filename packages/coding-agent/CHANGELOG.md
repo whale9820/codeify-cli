@@ -51,6 +51,7 @@
 - Fixed images read through tools not reaching Codeify models by sending them as a following user message, since the gateway drops images nested inside tool output.
 - Fixed missing default skill and theme directories being reported as startup conflicts.
 - Fixed the startup `Smart model usage` announcement not updating when toggled with `/smart` or `/settings`.
+- Fixed Codeify model input modalities being guessed instead of read from the source of truth. The `/v1/models` response now supplies each model's supported input modalities (`input_modalities`, mirrored by `modalities.input`), taking precedence over the bundled catalog, the remote catalog overlay, and id-family heuristics, and the declared modalities are cached so offline startups keep them. This corrects models that were treated as text-only despite accepting images.
 - Fixed MCP tool calls rendering without their action, server, tool name, or argument context.
 
 ### Removed
