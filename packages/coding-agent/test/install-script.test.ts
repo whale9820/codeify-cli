@@ -71,6 +71,73 @@ describe("Codeify install script", () => {
 		expect(calls.some((call) => call.command === "npm.cmd")).toBe(false);
 	});
 
+	it("downloads a source archive on Windows when Git is unavailable", () => {
+		const calls: CommandCall[] = [];
+		const cpSync = vi.fn();
+		const writeFileSync = vi.fn();
+		const execFileSync = vi.fn((command: string, args: string[]) => {
+			calls.push({ command, args });
+			if (command === "git") throw new Error("not found");
+			return command === "C:\\Program Files\\nodejs\\node.exe" ? "0.82.6\n" : "";
+		});
+		const processMock = {
+			env: {
+				ComSpec: "C:\\Windows\\System32\\cmd.exe",
+				LOCALAPPDATA: "C:\\Users\\test\\AppData\\Local",
+				PATH: "",
+			},
+			execPath: "C:\\Program Files\\nodejs\\node.exe",
+			platform: "win32",
+			stderr: { write: vi.fn() },
+			versions: { node: "24.15.0" },
+		};
+		const source = readFileSync(new URL("../../../scripts/install.cjs", import.meta.url), "utf8");
+
+		vm.runInNewContext(source, {
+			console: { log: vi.fn() },
+			process: processMock,
+			require: (specifier: string) => {
+				switch (specifier) {
+					case "node:child_process":
+						return { execFileSync };
+					case "node:fs":
+						return {
+							chmodSync: vi.fn(),
+							cpSync,
+							existsSync: vi.fn(() => false),
+							lstatSync: vi.fn(),
+							mkdirSync: vi.fn(),
+							mkdtempSync: vi.fn(() => "C:\\Users\\test\\AppData\\Local\\codeify-download-test"),
+							readdirSync: vi.fn(() => ["codeify-cli-main"]),
+							rmSync: vi.fn(),
+							statSync: vi.fn(() => ({ isDirectory: () => true })),
+							symlinkSync: vi.fn(),
+							writeFileSync,
+						};
+					case "node:os":
+						return { homedir: () => "C:\\Users\\test" };
+					case "node:path":
+						return path;
+					default:
+						throw new Error(`Unexpected import: ${specifier}`);
+				}
+			},
+		});
+
+		expect(cpSync).toHaveBeenCalledOnce();
+		expect(writeFileSync).toHaveBeenCalledWith(expect.stringContaining(".codeify-archive-install"), "", "ascii");
+		expect(calls).toContainEqual({
+			command: "C:\\Windows\\System32\\cmd.exe",
+			args: ["/d", "/s", "/c", "npm.cmd ci --ignore-scripts"],
+		});
+		expect(calls.some((call) => call.command === "git" && call.args.includes("clone"))).toBe(false);
+		expect(
+			calls.some(
+				(call) => call.command === "powershell.exe" && call.args.some((arg) => arg.includes("Expand-Archive")),
+			),
+		).toBe(true);
+	});
+
 	it("updates existing Windows installs without deleting the live dependency tree", () => {
 		const calls: CommandCall[] = [];
 		const execFileSync = vi.fn((command: string, args: string[]) => {

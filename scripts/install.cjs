@@ -3,10 +3,14 @@ const {
 	accessSync,
 	chmodSync,
 	constants,
+	cpSync,
 	existsSync,
 	lstatSync,
 	mkdirSync,
+	mkdtempSync,
+	readdirSync,
 	rmSync,
+	statSync,
 	symlinkSync,
 	writeFileSync,
 } = require("node:fs");
@@ -21,6 +25,8 @@ if (major < 22 || (major === 22 && minor < 19)) {
 }
 
 const repository = process.env.CODEIFY_INSTALL_REPOSITORY || "https://github.com/whale9820/codeify-cli.git";
+const sourceArchive =
+	process.env.CODEIFY_INSTALL_ARCHIVE || `${repository.replace(/\.git$/u, "")}/archive/refs/heads/main.zip`;
 const installHome =
 	process.env.CODEIFY_INSTALL_HOME ||
 	(isWindows
@@ -74,10 +80,17 @@ function execute(command, args, options) {
 	return execFileSync(command, args, options);
 }
 
-function verifyCommand(command, args, message) {
+function commandAvailable(command, args) {
 	try {
 		execute(command, args, { stdio: "ignore" });
+		return true;
 	} catch {
+		return false;
+	}
+}
+
+function verifyCommand(command, args, message) {
+	if (!commandAvailable(command, args)) {
 		throw new Error(message);
 	}
 }
@@ -114,28 +127,81 @@ function step(number, message) {
 	console.log(`[${number}/4] ${message}`);
 }
 
-verifyCommand("git", ["--version"], "Git is required.");
+function installWindowsArchive() {
+	mkdirSync(dirname(installHome), { recursive: true });
+	const temporaryDirectory = mkdtempSync(join(dirname(installHome), "codeify-download-"));
+	const archivePath = join(temporaryDirectory, "source.zip");
+	const extractDirectory = join(temporaryDirectory, "source");
+	mkdirSync(extractDirectory, { recursive: true });
+	try {
+		const downloadScript =
+			'const{writeFile}=require("node:fs/promises");fetch(process.env.CODEIFY_SOURCE_ARCHIVE).then(r=>r.ok?r.arrayBuffer():Promise.reject(Error("Source download failed: "+r.status))).then(b=>writeFile(process.env.CODEIFY_SOURCE_PATH,Buffer.from(b)))';
+		execute(process.execPath, ["-e", downloadScript], {
+			env: { ...childEnv, CODEIFY_SOURCE_ARCHIVE: sourceArchive, CODEIFY_SOURCE_PATH: archivePath },
+			stdio: "inherit",
+		});
+		const powershell = [
+			"$ErrorActionPreference='Stop'",
+			"Expand-Archive -LiteralPath $env:CODEIFY_SOURCE_PATH -DestinationPath $env:CODEIFY_SOURCE_DESTINATION -Force",
+		].join("; ");
+		execFileSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", powershell], {
+			env: {
+				...process.env,
+				CODEIFY_SOURCE_DESTINATION: extractDirectory,
+				CODEIFY_SOURCE_PATH: archivePath,
+			},
+			stdio: "inherit",
+		});
+		const sourceDirectories = readdirSync(extractDirectory)
+			.map((entry) => join(extractDirectory, entry))
+			.filter((entry) => statSync(entry).isDirectory());
+		if (sourceDirectories.length !== 1) {
+			throw new Error("Downloaded source archive has an unexpected structure.");
+		}
+		mkdirSync(installHome, { recursive: true });
+		cpSync(sourceDirectories[0], installHome, { force: true, recursive: true });
+		writeFileSync(join(installHome, ".codeify-archive-install"), "", "ascii");
+	} finally {
+		rmSync(temporaryDirectory, { force: true, recursive: true });
+	}
+}
+
+const gitAvailable = commandAvailable("git", ["--version"]);
 verifyCommand(npmCommand, ["--version"], "npm is required.");
 
 const existingCheckout = existsSync(join(installHome, ".git"));
+const existingArchiveInstall = existsSync(join(installHome, ".codeify-archive-install"));
+const updatingExisting = existingCheckout || existingArchiveInstall;
 
 console.log("Codeify CLI");
 console.log("");
-step(1, existingCheckout ? "Updating source" : "Downloading source");
+step(1, updatingExisting ? "Updating source" : "Downloading source");
 
 if (existingCheckout) {
+	if (!gitAvailable) {
+		throw new Error("Git is required to update this existing Git-based installation.");
+	}
 	run("git", ["-C", installHome, "pull", "--ff-only"]);
+} else if (existingArchiveInstall) {
+	if (!isWindows) {
+		throw new Error("Git is required to update this installation.");
+	}
+	installWindowsArchive();
 } else if (existsSync(installHome)) {
-	throw new Error(`${installHome} already exists and is not a Git checkout.`);
-} else {
+	throw new Error(`${installHome} already exists and is not a Codeify CLI installation.`);
+} else if (gitAvailable) {
 	mkdirSync(dirname(installHome), { recursive: true });
 	run("git", ["clone", "--depth", "1", repository, installHome]);
+} else if (isWindows) {
+	installWindowsArchive();
+} else {
+	throw new Error("Git is required.");
 }
 
 step(2, "Installing dependencies");
 run(
 	npmCommand,
-	[existingCheckout && isWindows ? "install" : "ci", "--ignore-scripts"],
+	[updatingExisting && isWindows ? "install" : "ci", "--ignore-scripts"],
 	installHome,
 	false,
 	lowMemory ? { NODE_OPTIONS: "--max-old-space-size=256", npm_config_maxsockets: "3" } : undefined,

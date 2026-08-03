@@ -53,6 +53,7 @@
 - Fixed the startup `Smart model usage` announcement not updating when toggled with `/smart` or `/settings`.
 - Fixed Codeify model input modalities being guessed instead of read from the source of truth. The `/v1/models` response now supplies each model's supported input modalities (`input_modalities`, mirrored by `modalities.input`), taking precedence over the bundled catalog, the remote catalog overlay, and id-family heuristics, and the declared modalities are cached so offline startups keep them. This corrects models that were treated as text-only despite accepting images.
 - Fixed MCP tool calls rendering without their action, server, tool name, or argument context.
+- Fixed fresh Windows installations failing when Git is unavailable by downloading the source archive directly.
 
 ### Removed
 
