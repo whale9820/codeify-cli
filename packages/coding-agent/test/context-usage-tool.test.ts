@@ -37,10 +37,10 @@ describe("context_usage tool", () => {
 		expect(text).toContain("$61.50");
 	});
 
-	it("states the per-turn resend cost so the model can reason about spend", async () => {
+	it("omits the redundant per-turn resend sentence", async () => {
 		const { text } = await run({}, snapshot());
 
-		expect(text).toContain("re-sends about 420k tokens");
+		expect(text).not.toContain("Every additional turn re-sends");
 	});
 
 	it("escalates its advice past half the window", async () => {

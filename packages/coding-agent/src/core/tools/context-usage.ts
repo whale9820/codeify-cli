@@ -60,10 +60,6 @@ function costGuidance(snapshot: ContextUsageSnapshot): string[] {
 		return lines;
 	}
 
-	const perTurn = snapshot.tokens;
-	lines.push(
-		`Every additional turn re-sends about ${formatTokens(perTurn)} tokens, because the whole transcript is resent each time.`,
-	);
 	if (snapshot.percent !== null && snapshot.percent >= 50) {
 		lines.push(
 			"Usage is past half the window. Prefer narrow, targeted tool calls over broad reads, and consider asking the user whether to compact.",

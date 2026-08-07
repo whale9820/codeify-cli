@@ -26,6 +26,7 @@
 
 ### Changed
 
+- Simplified `context_usage` output by removing the redundant per-turn transcript resend sentence.
 - Standardized user-visible tool branding as Codeify CLI while retaining Codeify service branding during authentication, removed the block logo from first-time setup, and removed the subscription marker from the footer.
 - Restricted the CLI to the Codeify provider only; built-in third-party providers are no longer registered in the CLI, while SDK consumers can still opt in through `ModelRuntime.create()`.
 - Codeify model discovery now prefers the Codeify models API for pricing (`pricing`) and context length (`context`) over the remote Pi catalog, keeping the footer price accurate.
