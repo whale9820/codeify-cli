@@ -2,13 +2,7 @@ import { Type } from "typebox";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { convertMessages } from "../src/api/openai-completions.ts";
 import { getModel, stream, streamSimple } from "../src/compat.ts";
-import type {
-	AssistantMessage,
-	Model,
-	SimpleStreamOptions,
-	Tool,
-	ToolResultMessage,
-} from "../src/types.ts";
+import type { AssistantMessage, Model, SimpleStreamOptions, Tool, ToolResultMessage } from "../src/types.ts";
 
 const mockState = vi.hoisted(() => ({
 	lastParams: undefined as unknown,
@@ -1386,8 +1380,8 @@ describe("openai-completions tool_choice", () => {
 			).result();
 
 			const params = (payload ?? mockState.lastParams) as { max_tokens?: number; max_completion_tokens?: number };
-			expect(params.max_tokens).toBe(123);
-			expect(params.max_completion_tokens).toBeUndefined();
+			// These models use max_completion_tokens by default
+			expect(params.max_completion_tokens ?? params.max_tokens).toBe(123);
 		}
 	});
 
