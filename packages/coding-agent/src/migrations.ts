@@ -3,9 +3,19 @@
  */
 
 import chalk from "chalk";
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "fs";
+import {
+	chmodSync,
+	copyFileSync,
+	existsSync,
+	mkdirSync,
+	readdirSync,
+	readFileSync,
+	renameSync,
+	rmSync,
+	writeFileSync,
+} from "fs";
 import { dirname, join } from "path";
-import { getAgentDir, getBinDir } from "./config.ts";
+import { getAgentDir, getBinDir, getPackageDir } from "./config.ts";
 import { migrateKeybindingsConfig } from "./core/keybindings.ts";
 
 /**
@@ -143,6 +153,67 @@ function migrateKeybindingsConfigFile(): void {
 }
 
 /**
+ * Install apply_patch command to bin/ directory.
+ */
+function installApplyPatchCommand(): void {
+	const binDir = getBinDir();
+	const packageDir = getPackageDir();
+
+	if (!existsSync(binDir)) {
+		mkdirSync(binDir, { recursive: true });
+	}
+
+	const scriptName = process.platform === "win32" ? "apply_patch.py" : "apply_patch";
+	const targetPath = join(binDir, scriptName);
+	const pythonScriptTarget = join(binDir, "apply_patch.py");
+
+	const srcBinDir = join(packageDir, "src", "bin");
+	const distBinDir = join(packageDir, "dist", "bin");
+	const bunBinDir = join(packageDir, "bin");
+
+	let sourceBinDir: string | null = null;
+	if (existsSync(srcBinDir)) {
+		sourceBinDir = srcBinDir;
+	} else if (existsSync(distBinDir)) {
+		sourceBinDir = distBinDir;
+	} else if (existsSync(bunBinDir)) {
+		sourceBinDir = bunBinDir;
+	}
+
+	if (!sourceBinDir) return;
+
+	const scriptSource = join(sourceBinDir, scriptName);
+	const pythonScriptSource = join(sourceBinDir, "apply_patch.py");
+
+	let installed = false;
+
+	if (existsSync(pythonScriptSource) && !existsSync(pythonScriptTarget)) {
+		try {
+			copyFileSync(pythonScriptSource, pythonScriptTarget);
+			installed = true;
+		} catch {
+			// Ignore errors
+		}
+	}
+
+	if (existsSync(scriptSource) && !existsSync(targetPath)) {
+		try {
+			copyFileSync(scriptSource, targetPath);
+			if (process.platform !== "win32") {
+				chmodSync(targetPath, 0o755);
+			}
+			installed = true;
+		} catch {
+			// Ignore errors
+		}
+	}
+
+	if (installed) {
+		console.log(chalk.green("Installed apply_patch command"));
+	}
+}
+
+/**
  * Move fd/rg binaries from tools/ to bin/ if they exist.
  */
 function migrateToolsToBin(): void {
@@ -197,6 +268,7 @@ export function runMigrations(): {
 	const migratedAuthProviders = migrateAuthToAuthJson();
 	migrateSessionsFromAgentRoot();
 	migrateToolsToBin();
+	installApplyPatchCommand();
 	migrateKeybindingsConfigFile();
 	return { migratedAuthProviders };
 }
