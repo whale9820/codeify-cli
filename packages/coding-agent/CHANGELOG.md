@@ -16,6 +16,7 @@
 
 ### Added
 
+- Added `apply_patch` command for GPT-style patch format support. The command is automatically installed to `~/.codeify/agent/bin/` and supports Add File, Update File, and Delete File operations with proper context line handling.
 - Added `/thinking` and `/effort` commands for selecting or directly setting model reasoning effort.
 - Added a PKCE-protected Codeify OAuth login with loopback callbacks and rotating refresh-token requirements.
 - Added opt-in smart model usage with protected delegation to other Codeify models, capability and price discovery, bounded vision inputs, reasoning controls, usage accounting, a `/smart` control, a startup announcement, and authenticated Codeify model refresh on every startup.

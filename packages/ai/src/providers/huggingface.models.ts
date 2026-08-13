@@ -29,6 +29,10 @@ export const HUGGINGFACE_MODELS = values as {
 		id: "Qwen/Qwen3-235B-A22B";
 		provider: "huggingface";
 	};
+	"Qwen/Qwen3-235B-A22B-Instruct-2507": Model<"openai-completions"> & {
+		id: "Qwen/Qwen3-235B-A22B-Instruct-2507";
+		provider: "huggingface";
+	};
 	"Qwen/Qwen3-235B-A22B-Thinking-2507": Model<"openai-completions"> & {
 		id: "Qwen/Qwen3-235B-A22B-Thinking-2507";
 		provider: "huggingface";
@@ -105,12 +109,24 @@ export const HUGGINGFACE_MODELS = values as {
 		id: "deepseek-ai/DeepSeek-R1-0528";
 		provider: "huggingface";
 	};
+	"deepseek-ai/DeepSeek-V3": Model<"openai-completions"> & {
+		id: "deepseek-ai/DeepSeek-V3";
+		provider: "huggingface";
+	};
+	"deepseek-ai/DeepSeek-V3.1": Model<"openai-completions"> & {
+		id: "deepseek-ai/DeepSeek-V3.1";
+		provider: "huggingface";
+	};
 	"deepseek-ai/DeepSeek-V3.2": Model<"openai-completions"> & {
 		id: "deepseek-ai/DeepSeek-V3.2";
 		provider: "huggingface";
 	};
 	"deepseek-ai/DeepSeek-V4-Flash": Model<"openai-completions"> & {
 		id: "deepseek-ai/DeepSeek-V4-Flash";
+		provider: "huggingface";
+	};
+	"deepseek-ai/DeepSeek-V4-Flash-0731": Model<"openai-completions"> & {
+		id: "deepseek-ai/DeepSeek-V4-Flash-0731";
 		provider: "huggingface";
 	};
 	"deepseek-ai/DeepSeek-V4-Pro": Model<"openai-completions"> & {
@@ -153,6 +169,10 @@ export const HUGGINGFACE_MODELS = values as {
 		id: "moonshotai/Kimi-K2.7-Code";
 		provider: "huggingface";
 	};
+	"moonshotai/Kimi-K3": Model<"openai-completions"> & {
+		id: "moonshotai/Kimi-K3";
+		provider: "huggingface";
+	};
 	"openai/gpt-oss-120b": Model<"openai-completions"> & {
 		id: "openai/gpt-oss-120b";
 		provider: "huggingface";
@@ -167,6 +187,18 @@ export const HUGGINGFACE_MODELS = values as {
 	};
 	"stepfun-ai/Step-3.7-Flash": Model<"openai-completions"> & {
 		id: "stepfun-ai/Step-3.7-Flash";
+		provider: "huggingface";
+	};
+	"tencent/Hy3": Model<"openai-completions"> & {
+		id: "tencent/Hy3";
+		provider: "huggingface";
+	};
+	"thinkingmachines/Inkling": Model<"openai-completions"> & {
+		id: "thinkingmachines/Inkling";
+		provider: "huggingface";
+	};
+	"thinkingmachines/Inkling-Small": Model<"openai-completions"> & {
+		id: "thinkingmachines/Inkling-Small";
 		provider: "huggingface";
 	};
 	"zai-org/GLM-4.5": Model<"openai-completions"> & {

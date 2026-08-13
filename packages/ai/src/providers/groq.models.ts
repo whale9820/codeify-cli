@@ -13,10 +13,6 @@ export const GROQ_MODELS = values as {
 		id: "llama-3.3-70b-versatile";
 		provider: "groq";
 	};
-	"meta-llama/llama-4-scout-17b-16e-instruct": Model<"openai-completions"> & {
-		id: "meta-llama/llama-4-scout-17b-16e-instruct";
-		provider: "groq";
-	};
 	"openai/gpt-oss-120b": Model<"openai-completions"> & {
 		id: "openai/gpt-oss-120b";
 		provider: "groq";
@@ -29,8 +25,8 @@ export const GROQ_MODELS = values as {
 		id: "openai/gpt-oss-safeguard-20b";
 		provider: "groq";
 	};
-	"qwen/qwen3-32b": Model<"openai-completions"> & {
-		id: "qwen/qwen3-32b";
+	"qwen/qwen3.6-27b": Model<"openai-completions"> & {
+		id: "qwen/qwen3.6-27b";
 		provider: "groq";
 	};
 };

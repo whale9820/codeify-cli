@@ -17,10 +17,6 @@ export const OPENCODE_MODELS = values as {
 		id: "claude-haiku-4-5";
 		provider: "opencode";
 	};
-	"claude-opus-4-1": Model<"anthropic-messages"> & {
-		id: "claude-opus-4-1";
-		provider: "opencode";
-	};
 	"claude-opus-4-5": Model<"anthropic-messages"> & {
 		id: "claude-opus-4-5";
 		provider: "opencode";
@@ -181,8 +177,16 @@ export const OPENCODE_MODELS = values as {
 		id: "grok-4.5";
 		provider: "opencode";
 	};
-	"grok-build-0.1": Model<"openai-completions"> & {
+	"grok-4.6": Model<"openai-responses"> & {
+		id: "grok-4.6";
+		provider: "opencode";
+	};
+	"grok-build-0.1": Model<"openai-responses"> & {
 		id: "grok-build-0.1";
+		provider: "opencode";
+	};
+	"hy3-free": Model<"openai-completions"> & {
+		id: "hy3-free";
 		provider: "opencode";
 	};
 	"kimi-k2.5": Model<"openai-completions"> & {
@@ -197,12 +201,12 @@ export const OPENCODE_MODELS = values as {
 		id: "kimi-k2.7-code";
 		provider: "opencode";
 	};
-	"laguna-s-2.1-free": Model<"openai-completions"> & {
-		id: "laguna-s-2.1-free";
+	"kimi-k3": Model<"openai-completions"> & {
+		id: "kimi-k3";
 		provider: "opencode";
 	};
-	"ling-3.0-flash-free": Model<"openai-completions"> & {
-		id: "ling-3.0-flash-free";
+	"laguna-s-2.1-free": Model<"openai-completions"> & {
+		id: "laguna-s-2.1-free";
 		provider: "opencode";
 	};
 	"mimo-v2.5-free": Model<"openai-completions"> & {
@@ -225,8 +229,8 @@ export const OPENCODE_MODELS = values as {
 		id: "nemotron-3-ultra-free";
 		provider: "opencode";
 	};
-	"north-mini-code-free": Model<"openai-completions"> & {
-		id: "north-mini-code-free";
+	"nemotron-3.5-lightning-free": Model<"openai-completions"> & {
+		id: "nemotron-3.5-lightning-free";
 		provider: "opencode";
 	};
 	"qwen3.5-plus": Model<"anthropic-messages"> & {

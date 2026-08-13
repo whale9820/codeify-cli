@@ -29,6 +29,10 @@ export const TOGETHER_MODELS = values as {
 		id: "Qwen/Qwen3.7-Max";
 		provider: "together";
 	};
+	"deepseek-ai/DeepSeek-V4-Flash-0731": Model<"openai-completions"> & {
+		id: "deepseek-ai/DeepSeek-V4-Flash-0731";
+		provider: "together";
+	};
 	"deepseek-ai/DeepSeek-V4-Pro": Model<"openai-completions"> & {
 		id: "deepseek-ai/DeepSeek-V4-Pro";
 		provider: "together";
@@ -47,6 +51,10 @@ export const TOGETHER_MODELS = values as {
 	};
 	"moonshotai/Kimi-K2.7-Code": Model<"openai-completions"> & {
 		id: "moonshotai/Kimi-K2.7-Code";
+		provider: "together";
+	};
+	"moonshotai/Kimi-K3": Model<"openai-completions"> & {
+		id: "moonshotai/Kimi-K3";
 		provider: "together";
 	};
 	"nvidia/nemotron-3-ultra-550b-a55b": Model<"openai-completions"> & {

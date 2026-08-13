@@ -13,14 +13,6 @@ export const GOOGLE_MODELS = values as {
 		id: "deep-research-preview-04-2026";
 		provider: "google";
 	};
-	"gemini-2.0-flash": Model<"google-generative-ai"> & {
-		id: "gemini-2.0-flash";
-		provider: "google";
-	};
-	"gemini-2.0-flash-lite": Model<"google-generative-ai"> & {
-		id: "gemini-2.0-flash-lite";
-		provider: "google";
-	};
 	"gemini-2.5-computer-use-preview-10-2025": Model<"google-generative-ai"> & {
 		id: "gemini-2.5-computer-use-preview-10-2025";
 		provider: "google";
@@ -39,10 +31,6 @@ export const GOOGLE_MODELS = values as {
 	};
 	"gemini-3-flash-preview": Model<"google-generative-ai"> & {
 		id: "gemini-3-flash-preview";
-		provider: "google";
-	};
-	"gemini-3-pro-preview": Model<"google-generative-ai"> & {
-		id: "gemini-3-pro-preview";
 		provider: "google";
 	};
 	"gemini-3.1-flash-lite": Model<"google-generative-ai"> & {

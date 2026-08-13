@@ -21,6 +21,10 @@ export const OPENCODE_GO_MODELS = values as {
 		id: "glm-5.2";
 		provider: "opencode-go";
 	};
+	"gpt-5.6-luna": Model<"openai-responses"> & {
+		id: "gpt-5.6-luna";
+		provider: "opencode-go";
+	};
 	"grok-4.5": Model<"openai-responses"> & {
 		id: "grok-4.5";
 		provider: "opencode-go";
@@ -67,6 +71,10 @@ export const OPENCODE_GO_MODELS = values as {
 	};
 	"qwen3.7-plus": Model<"anthropic-messages"> & {
 		id: "qwen3.7-plus";
+		provider: "opencode-go";
+	};
+	"qwen3.8-max": Model<"anthropic-messages"> & {
+		id: "qwen3.8-max";
 		provider: "opencode-go";
 	};
 };
