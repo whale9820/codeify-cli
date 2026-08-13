@@ -5,7 +5,6 @@ import { getModel, stream, streamSimple } from "../src/compat.ts";
 import type {
 	AssistantMessage,
 	Model,
-	OpenAICompletionsCompat,
 	SimpleStreamOptions,
 	Tool,
 	ToolResultMessage,
