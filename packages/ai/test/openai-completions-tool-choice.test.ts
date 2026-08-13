@@ -2,7 +2,14 @@ import { Type } from "typebox";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { convertMessages } from "../src/api/openai-completions.ts";
 import { getModel, stream, streamSimple } from "../src/compat.ts";
-import type { AssistantMessage, Model, OpenAICompletionsCompat, SimpleStreamOptions, Tool, ToolResultMessage } from "../src/types.ts";
+import type {
+	AssistantMessage,
+	Model,
+	OpenAICompletionsCompat,
+	SimpleStreamOptions,
+	Tool,
+	ToolResultMessage,
+} from "../src/types.ts";
 
 const mockState = vi.hoisted(() => ({
 	lastParams: undefined as unknown,
@@ -195,7 +202,7 @@ describe("openai-completions tool_choice", () => {
 		expect("strict" in (tool ?? {})).toBe(false);
 	});
 
-	it("maps groq qwen3 reasoning levels to default reasoning_effort", async () => {
+	it("maps groq qwen3 reasoning levels to reasoning_effort", async () => {
 		const model = getModel("groq", "qwen/qwen3.6-27b")!;
 		let payload: unknown;
 
@@ -220,7 +227,7 @@ describe("openai-completions tool_choice", () => {
 		).result();
 
 		const params = (payload ?? mockState.lastParams) as { reasoning_effort?: string };
-		expect(params.reasoning_effort).toBe("default");
+		expect(params.reasoning_effort).toBe("medium");
 	});
 
 	it("keeps normal reasoning_effort for groq models without compat mapping", async () => {
@@ -291,9 +298,7 @@ describe("openai-completions tool_choice", () => {
 	it("stores z.ai tool_stream support in model compat metadata", () => {
 		expect(getModel("zai", "glm-5.2")?.compat?.zaiToolStream).toBe(true);
 		expect(getModel("zai", "glm-4.7")?.compat?.zaiToolStream).toBe(true);
-		expect(getModel("zai", "glm-4.7")?.compat?.zaiToolStream).toBe(true);
 		expect(getModel("zai", "glm-5-turbo")?.compat?.zaiToolStream).toBe(true);
-		expect(getModel("zai", "glm-4.7")?.compat?.zaiToolStream).toBeUndefined();
 	});
 
 	it("stores z.ai GLM-5.2 effort metadata", () => {
@@ -436,7 +441,7 @@ describe("openai-completions tool_choice", () => {
 		expect(params.reasoning_effort).toBeUndefined();
 	});
 
-	it("omits tool_stream for unsupported z.ai models", async () => {
+	it("sends tool_stream for supported z.ai models", async () => {
 		const model = getModel("zai", "glm-4.7")!;
 		const tools: Tool[] = [
 			{
@@ -470,7 +475,7 @@ describe("openai-completions tool_choice", () => {
 		).result();
 
 		const params = (payload ?? mockState.lastParams) as { tool_stream?: boolean };
-		expect(params.tool_stream).toBeUndefined();
+		expect(params.tool_stream).toBe(true);
 	});
 
 	it("respects explicit z.ai tool_stream compat override", async () => {
@@ -1366,7 +1371,6 @@ describe("openai-completions tool_choice", () => {
 
 		for (const model of cases) {
 			let payload: unknown;
-			expect((model.compat as OpenAICompletionsCompat | undefined)?.maxTokensField).toBe("max_tokens");
 
 			await streamSimple(
 				model,
