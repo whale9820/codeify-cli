@@ -60,7 +60,7 @@ codeify [options] [@files...] [messages...]
 
 | Option | Description |
 | --- | --- |
-| `--provider <name>` | Provider name; defaults to `codeify` |
+| `--provider <name>` | Provider selector; only `codeify` is accepted |
 | `--model <pattern>` | Model ID or pattern, optionally with `:<thinking>` |
 | `--api-key <key>` | Runtime API-key override |
 | `--thinking <level>` | `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, or `max` |

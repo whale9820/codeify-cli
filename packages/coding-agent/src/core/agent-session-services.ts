@@ -93,7 +93,8 @@ export async function createAgentSessionServices(
 		options.modelRuntime ??
 		(await ModelRuntime.create({
 			authPath: join(agentDir, "auth.json"),
-			modelsPath: join(agentDir, "models.json"),
+			modelsPath: options.includeBuiltinProviders === false ? null : join(agentDir, "models.json"),
+			modelsStorePath: join(agentDir, "models-store.json"),
 			includeBuiltinProviders: options.includeBuiltinProviders,
 		}));
 	const settingsManager = options.settingsManager ?? SettingsManager.create(cwd, agentDir);

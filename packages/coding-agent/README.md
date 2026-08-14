@@ -4,7 +4,7 @@ This package contains the interactive terminal application used by the `codeify`
 
 ## Runtime
 
-Codeify runs in the current repository and provides read, write, edit, search, and shell tools. It stores sessions and credentials in `~/.codeify/agent/` and sends model requests through the Codeify OpenAI Responses API provider.
+Codeify runs in the current repository and provides read, write, edit, search, and shell tools. It stores sessions and credentials in `~/.codeify/agent/` and sends model requests exclusively through the Codeify OpenAI Responses API provider. The CLI does not load built-in third-party providers or custom providers from `models.json`.
 
 The first interactive launch presents:
 

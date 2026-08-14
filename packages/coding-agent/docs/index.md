@@ -6,7 +6,7 @@ Codeify is the terminal coding agent for [codeify.cc](https://codeify.cc). It ru
 
 - [Quickstart](quickstart.md)
 - [Using Codeify](usage.md)
-- [Providers](providers.md)
+- [Codeify provider](providers.md)
 - [Security](security.md)
 - [Containerization](containerization.md)
 - [Settings](settings.md)
@@ -19,7 +19,7 @@ Codeify is the terminal coding agent for [codeify.cc](https://codeify.cc). It ru
 - [Skills](skills.md)
 - [Prompt templates](prompt-templates.md)
 - [Themes](themes.md)
-- [Custom models](models.md)
+- [Models](models.md)
 
 ## Programmatic usage
 

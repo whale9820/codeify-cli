@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Restricted the shipped CLI to the Codeify provider. Custom providers in `models.json` are ignored, non-Codeify `--provider` values are rejected, and legacy provider-specific authentication UI and documentation have been removed.
+
 ## [0.82.2] - 2025-01-29
 
 ### Added

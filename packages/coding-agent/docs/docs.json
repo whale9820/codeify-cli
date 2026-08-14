@@ -16,7 +16,7 @@
           "path": "usage.md"
         },
         {
-          "title": "Providers",
+          "title": "Codeify Provider",
           "path": "providers.md"
         },
         {
@@ -61,7 +61,7 @@
           "path": "themes.md"
         },
         {
-          "title": "Custom Models",
+          "title": "Models",
           "path": "models.md"
         }
       ]

@@ -40,6 +40,7 @@ export function migrateAuthToAuthJson(): string[] {
 		try {
 			const oauth = JSON.parse(readFileSync(oauthPath, "utf-8"));
 			for (const [provider, cred] of Object.entries(oauth)) {
+				if (provider !== "codeify") continue;
 				migrated[provider] = { type: "oauth", ...(cred as object) };
 				providers.push(provider);
 			}
@@ -56,7 +57,7 @@ export function migrateAuthToAuthJson(): string[] {
 			const settings = JSON.parse(content);
 			if (settings.apiKeys && typeof settings.apiKeys === "object") {
 				for (const [provider, key] of Object.entries(settings.apiKeys)) {
-					if (!migrated[provider] && typeof key === "string") {
+					if (provider === "codeify" && !migrated[provider] && typeof key === "string") {
 						migrated[provider] = { type: "api_key", key };
 						providers.push(provider);
 					}

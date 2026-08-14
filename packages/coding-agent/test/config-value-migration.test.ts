@@ -38,6 +38,37 @@ describe("config value env var syntax migration", () => {
 		}
 	}
 
+	it("migrates only legacy Codeify credentials", () => {
+		const agentDir = createAgentDir();
+		fs.writeFileSync(
+			path.join(agentDir, "oauth.json"),
+			JSON.stringify({
+				codeify: { access: "codeify-access", refresh: "codeify-refresh", expires: Date.now() + 60_000 },
+				anthropic: { access: "anthropic-access", refresh: "anthropic-refresh", expires: Date.now() + 60_000 },
+			}),
+			"utf-8",
+		);
+		fs.writeFileSync(
+			path.join(agentDir, "settings.json"),
+			JSON.stringify({ apiKeys: { codeify: "legacy-codeify-key", openai: "legacy-openai-key" } }),
+			"utf-8",
+		);
+
+		let migratedProviders: string[] = [];
+		withAgentDir(agentDir, () => {
+			migratedProviders = runMigrations().migratedAuthProviders;
+		});
+
+		const auth = JSON.parse(fs.readFileSync(path.join(agentDir, "auth.json"), "utf-8")) as Record<string, unknown>;
+		const settings = JSON.parse(fs.readFileSync(path.join(agentDir, "settings.json"), "utf-8")) as Record<
+			string,
+			unknown
+		>;
+		expect(Object.keys(auth)).toEqual(["codeify"]);
+		expect(migratedProviders).toEqual(["codeify"]);
+		expect(settings.apiKeys).toBeUndefined();
+	});
+
 	it("leaves uppercase auth.json API key values unchanged", () => {
 		const agentDir = createAgentDir();
 		fs.writeFileSync(

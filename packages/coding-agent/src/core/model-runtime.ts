@@ -139,9 +139,11 @@ export class ModelRuntime implements Models {
 		const config = await ModelConfig.load(modelsPath);
 		const modelsStore =
 			options.modelsStore ??
-			(modelsPath
-				? new FileModelsStore(options.modelsStorePath ?? join(dirname(modelsPath), "models-store.json"))
-				: new InMemoryCodingAgentModelsStore());
+			(options.modelsStorePath
+				? new FileModelsStore(options.modelsStorePath)
+				: modelsPath
+					? new FileModelsStore(join(dirname(modelsPath), "models-store.json"))
+					: new InMemoryCodingAgentModelsStore());
 		const providers =
 			options.includeBuiltinProviders === false
 				? []

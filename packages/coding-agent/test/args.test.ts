@@ -39,6 +39,9 @@ describe("parseArgs", () => {
 				const output = log.mock.calls.flat().join("\n");
 				expect(output).toContain("codeify cli - AI coding assistant");
 				expect(output).toContain("codeify [options]");
+				expect(output).toContain('only "codeify" is supported');
+				expect(output).not.toContain("OPENAI_API_KEY");
+				expect(output).not.toContain("ANTHROPIC_API_KEY");
 			} finally {
 				log.mockRestore();
 			}
@@ -64,9 +67,9 @@ describe("parseArgs", () => {
 		});
 
 		test("does not consume options after -p as prompts", () => {
-			const result = parseArgs(["-p", "--provider", "openai", "Say hi."]);
+			const result = parseArgs(["-p", "--provider", "codeify", "Say hi."]);
 			expect(result.print).toBe(true);
-			expect(result.provider).toBe("openai");
+			expect(result.provider).toBe("codeify");
 			expect(result.messages).toEqual(["Say hi."]);
 		});
 	});
@@ -96,9 +99,17 @@ describe("parseArgs", () => {
 	});
 
 	describe("flags with values", () => {
-		test("parses --provider", () => {
+		test("parses the Codeify provider", () => {
+			const result = parseArgs(["--provider", "codeify"]);
+			expect(result.provider).toBe("codeify");
+		});
+
+		test("rejects providers other than Codeify", () => {
 			const result = parseArgs(["--provider", "openai"]);
-			expect(result.provider).toBe("openai");
+			expect(result.provider).toBeUndefined();
+			expect(result.diagnostics).toEqual([
+				{ type: "error", message: 'Unsupported provider "openai". Codeify CLI only supports "codeify".' },
+			]);
 		});
 
 		test("parses --model", () => {
@@ -163,8 +174,8 @@ describe("parseArgs", () => {
 		});
 
 		test("parses --models as comma-separated list", () => {
-			const result = parseArgs(["--models", "gpt-4o,claude-sonnet,gemini-pro"]);
-			expect(result.models).toEqual(["gpt-4o", "claude-sonnet", "gemini-pro"]);
+			const result = parseArgs(["--models", "gpt-5.6-sol,claude-opus-5,gemini-3.6-flash"]);
+			expect(result.models).toEqual(["gpt-5.6-sol", "claude-opus-5", "gemini-3.6-flash"]);
 		});
 	});
 
@@ -391,17 +402,17 @@ describe("parseArgs", () => {
 		test("parses multiple flags together", () => {
 			const result = parseArgs([
 				"--provider",
-				"anthropic",
+				"codeify",
 				"--model",
-				"claude-sonnet",
+				"gpt-5.6-sol",
 				"--print",
 				"--thinking",
 				"high",
 				"@prompt.md",
 				"Do the task",
 			]);
-			expect(result.provider).toBe("anthropic");
-			expect(result.model).toBe("claude-sonnet");
+			expect(result.provider).toBe("codeify");
+			expect(result.model).toBe("gpt-5.6-sol");
 			expect(result.print).toBe(true);
 			expect(result.thinking).toBe("high");
 			expect(result.fileArgs).toEqual(["prompt.md"]);
