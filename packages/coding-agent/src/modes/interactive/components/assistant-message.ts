@@ -11,25 +11,21 @@ const OSC133_ZONE_FINAL = "\x1b]133;C\x07";
  */
 export class AssistantMessageComponent extends Container {
 	private contentContainer: Container;
-	private hideThinkingBlock: boolean;
 	private markdownTheme: MarkdownTheme;
-	private hiddenThinkingLabel: string;
 	private outputPad: number;
 	private lastMessage?: AssistantMessage;
 	private hasToolCalls = false;
 
 	constructor(
 		message?: AssistantMessage,
-		hideThinkingBlock = false,
+		_hideThinkingBlock = false,
 		markdownTheme: MarkdownTheme = getMarkdownTheme(),
-		hiddenThinkingLabel = "Thinking...",
+		_hiddenThinkingLabel = "Thinking...",
 		outputPad = 1,
 	) {
 		super();
 
-		this.hideThinkingBlock = hideThinkingBlock;
 		this.markdownTheme = markdownTheme;
-		this.hiddenThinkingLabel = hiddenThinkingLabel;
 		this.outputPad = outputPad;
 
 		// Container for text/thinking content
@@ -48,18 +44,12 @@ export class AssistantMessageComponent extends Container {
 		}
 	}
 
-	setHideThinkingBlock(hide: boolean): void {
-		this.hideThinkingBlock = hide;
-		if (this.lastMessage) {
-			this.updateContent(this.lastMessage);
-		}
+	setHideThinkingBlock(_hide: boolean): void {
+		// No-op: thinking blocks are always shown
 	}
 
-	setHiddenThinkingLabel(label: string): void {
-		this.hiddenThinkingLabel = label;
-		if (this.lastMessage) {
-			this.updateContent(this.lastMessage);
-		}
+	setHiddenThinkingLabel(_label: string): void {
+		// No-op: thinking blocks are always shown
 	}
 
 	setOutputPad(padding: number): void {
@@ -108,10 +98,7 @@ export class AssistantMessageComponent extends Container {
 					if (thinkingContent.type !== "thinking") {
 						break;
 					}
-					const thinking = thinkingContent.thinking.trim();
-					if (thinking) {
-						thinkingBlocks.push(thinking);
-					}
+					thinkingBlocks.push(thinkingContent.thinking);
 				}
 				i--;
 
@@ -125,20 +112,13 @@ export class AssistantMessageComponent extends Container {
 					.slice(i + 1)
 					.some((c) => (c.type === "text" && c.text.trim()) || (c.type === "thinking" && c.thinking.trim()));
 
-				if (this.hideThinkingBlock) {
-					// Show one static label for each run of thinking blocks when hidden.
-					this.contentContainer.addChild(
-						new Text(theme.italic(theme.fg("thinkingText", this.hiddenThinkingLabel)), this.outputPad, 0),
-					);
-				} else {
-					// Render each run of thinking blocks as one Markdown section.
-					this.contentContainer.addChild(
-						new Markdown(thinkingBlocks.join("\n\n"), this.outputPad, 0, this.markdownTheme, {
-							color: (text: string) => theme.fg("thinkingText", text),
-							italic: true,
-						}),
-					);
-				}
+				// Always render thinking blocks as Markdown.
+				this.contentContainer.addChild(
+					new Markdown(thinkingBlocks.join("\n\n"), this.outputPad, 0, this.markdownTheme, {
+						color: (text: string) => theme.fg("thinkingText", text),
+						italic: true,
+					}),
+				);
 				if (hasVisibleContentAfter) {
 					this.contentContainer.addChild(new Spacer(1));
 				}
