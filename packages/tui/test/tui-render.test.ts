@@ -657,6 +657,40 @@ describe("TUI differential rendering", () => {
 		tui.stop();
 	});
 
+	it("keeps the latest content visible when a tool block shrinks at the bottom", async () => {
+		const terminal = new VirtualTerminal(40, 8);
+		const tui = new TUI(terminal);
+		const chat = new TestComponent();
+		const tool = new TestComponent();
+		const editor = new TestComponent();
+		tui.addChild(chat);
+		tui.addChild(tool);
+		tui.addChild(editor);
+
+		chat.lines = Array.from({ length: 20 }, (_, i) => `Chat ${i}`);
+		tool.lines = ["Tool call", "Tool output"];
+		editor.lines = ["Editor"];
+		tui.start();
+		await terminal.waitForRender();
+
+		tool.lines = [];
+		tui.requestRender();
+		await terminal.waitForRender();
+
+		assert.deepStrictEqual(terminal.getViewport(), [
+			"Chat 13",
+			"Chat 14",
+			"Chat 15",
+			"Chat 16",
+			"Chat 17",
+			"Chat 18",
+			"Chat 19",
+			"Editor",
+		]);
+
+		tui.stop();
+	});
+
 	it("full re-renders when deleted lines move the viewport upward", async () => {
 		const terminal = new VirtualTerminal(20, 5);
 		const tui = new TUI(terminal);

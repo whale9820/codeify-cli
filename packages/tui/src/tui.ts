@@ -1357,6 +1357,17 @@ export class TUI extends Container {
 			return;
 		}
 
+		const contentViewportTop = Math.max(0, newLines.length - height);
+		if (
+			newLines.length < this.previousLines.length &&
+			contentViewportTop < prevViewportTop &&
+			this.overlayStack.length === 0
+		) {
+			logRedraw(`content shrink moved viewport up (${contentViewportTop} < ${prevViewportTop})`);
+			fullRender(true);
+			return;
+		}
+
 		// Content shrunk below the working area and no overlays - re-render to clear empty rows
 		// (overlays need the padding, so only do this when no overlays are active)
 		// Configurable via setClearOnShrink() or CODEIFY_CLEAR_ON_SHRINK=0 env var

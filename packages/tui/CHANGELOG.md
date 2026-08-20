@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed the interactive viewport losing its bottom anchor when tool output shrinks, keeping the latest work visible.
+
 ## [0.81.1] - 2026-07-21
 
 ## [0.81.0] - 2026-07-21
