@@ -20,7 +20,7 @@ import {
 } from "./edit-diff.ts";
 import { withFileMutationQueue } from "./file-mutation-queue.ts";
 import { resolveToCwd } from "./path-utils.ts";
-import { renderToolPath, str } from "./render-utils.ts";
+import { normalizeDisplayText, renderToolPath, replaceTabs, str } from "./render-utils.ts";
 import { wrapToolDefinition } from "./tool-definition-wrapper.ts";
 import type { ToolDefinition } from "./types.ts";
 
@@ -132,6 +132,11 @@ type RenderableEditArgs = {
 	newText?: string;
 };
 
+type RenderableEdit = {
+	oldText?: string;
+	newText?: string;
+};
+
 type EditToolResultLike = {
 	content: Array<{ type: string; text?: string; data?: string; mimeType?: string }>;
 	details?: EditToolDetails;
@@ -192,9 +197,49 @@ function getRenderablePreviewInput(args: RenderableEditArgs | undefined): { path
 	return null;
 }
 
-function formatEditCall(args: RenderableEditArgs | undefined, theme: Theme, cwd: string): string {
+function getRenderableEdits(args: RenderableEditArgs | undefined): RenderableEdit[] {
+	if (!args) return [];
+	if (Array.isArray(args.edits)) {
+		return args.edits
+			.filter((edit) => edit && typeof edit === "object")
+			.map((edit) => ({
+				oldText: typeof edit.oldText === "string" ? edit.oldText : undefined,
+				newText: typeof edit.newText === "string" ? edit.newText : undefined,
+			}))
+			.filter((edit) => edit.oldText !== undefined || edit.newText !== undefined);
+	}
+	if (typeof args.oldText === "string" || typeof args.newText === "string") {
+		return [{ oldText: args.oldText, newText: args.newText }];
+	}
+	return [];
+}
+
+function formatLiveEditText(text: string, prefix: string): string {
+	return normalizeDisplayText(text)
+		.split("\n")
+		.map((line) => `${prefix} ${replaceTabs(line)}`)
+		.join("\n");
+}
+
+function formatLiveEditPreview(args: RenderableEditArgs | undefined, theme: Theme): string | undefined {
+	const blocks = getRenderableEdits(args).map((edit) => {
+		const lines: string[] = [];
+		if (edit.oldText !== undefined) {
+			lines.push(theme.fg("toolDiffRemoved", formatLiveEditText(edit.oldText, "-")));
+		}
+		if (edit.newText !== undefined) {
+			lines.push(theme.fg("toolDiffAdded", formatLiveEditText(edit.newText, "+")));
+		}
+		return lines.join("\n");
+	});
+	const visibleBlocks = blocks.filter((block) => block.length > 0);
+	return visibleBlocks.length > 0 ? visibleBlocks.join("\n\n") : undefined;
+}
+
+function formatEditCall(args: RenderableEditArgs | undefined, theme: Theme, cwd: string, progress?: string): string {
 	const pathDisplay = renderToolPath(str(args?.file_path ?? args?.path), theme, cwd);
-	return `${theme.fg("toolTitle", theme.bold("edit"))} ${pathDisplay}`;
+	const header = `${theme.fg("toolTitle", theme.bold("edit"))} ${pathDisplay}`;
+	return progress ? `${header}\n\n${theme.fg("muted", progress)}` : header;
 }
 
 function formatEditResult(
@@ -248,12 +293,18 @@ function buildEditCallComponent(
 	args: RenderableEditArgs | undefined,
 	theme: Theme,
 	cwd: string,
+	progress?: string,
+	livePreview?: string,
 ): EditCallRenderComponent {
 	component.setBgFn(getEditHeaderBg(component.preview, component.settledError, theme));
 	component.clear();
-	component.addChild(new Text(formatEditCall(args, theme, cwd), 0, 0));
+	component.addChild(new Text(formatEditCall(args, theme, cwd, progress), 0, 0));
 
 	if (!component.preview) {
+		if (livePreview) {
+			component.addChild(new Spacer(1));
+			component.addChild(new Text(livePreview, 0, 0));
+		}
 		return component;
 	}
 
@@ -262,6 +313,19 @@ function buildEditCallComponent(
 	component.addChild(new Spacer(1));
 	component.addChild(new Text(body, 0, 0));
 	return component;
+}
+
+function getEditProgress(
+	component: EditCallRenderComponent,
+	argsComplete: boolean,
+	executionStarted: boolean,
+	isPartial: boolean,
+	hasLivePreview: boolean,
+): string | undefined {
+	if (executionStarted && isPartial) return "Writing changes...";
+	if (!argsComplete && !hasLivePreview) return "Receiving edit...";
+	if (component.previewPending && !hasLivePreview) return "Checking changes...";
+	return undefined;
 }
 
 function setEditPreview(
@@ -385,7 +449,23 @@ export function createEditToolDefinition(
 				});
 			}
 
-			return buildEditCallComponent(component, args, theme, context.cwd);
+			const livePreview = component.preview
+				? undefined
+				: formatLiveEditPreview(args as RenderableEditArgs | undefined, theme);
+			return buildEditCallComponent(
+				component,
+				args,
+				theme,
+				context.cwd,
+				getEditProgress(
+					component,
+					context.argsComplete,
+					context.executionStarted,
+					context.isPartial,
+					livePreview !== undefined,
+				),
+				livePreview,
+			);
 		},
 		renderResult(result, _options, theme, context) {
 			const callComponent = context.state.callComponent;

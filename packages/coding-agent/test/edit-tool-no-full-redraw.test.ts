@@ -76,6 +76,55 @@ describe("edit tool TUI rendering", () => {
 		await Promise.all(tempDirs.splice(0).map((dir) => rm(dir, { recursive: true, force: true })));
 	});
 
+	it("shows progress while an edit is streamed and written", async () => {
+		const dir = await mkdtemp(join(tmpdir(), "pi-edit-progress-"));
+		tempDirs.push(dir);
+		const filePath = join(dir, "progress-edit.txt");
+		await writeFile(filePath, "before\n", "utf8");
+
+		const terminal = new FakeTerminal();
+		const tui = new TUI(terminal);
+		const component = new ToolExecutionComponent(
+			"edit",
+			"tool-call-progress",
+			{ path: filePath },
+			{},
+			createEditToolDefinition(process.cwd()),
+			tui,
+			process.cwd(),
+		);
+		tui.addChild(component);
+		tui.start();
+		await waitForRender();
+
+		expect(component.render(80).join("\n")).toContain("Receiving edit...");
+
+		component.updateArgs({ path: filePath, edits: [{ oldText: "be", newText: "af" }] });
+		expect(component.render(80).join("\n")).toContain("+ af");
+
+		component.updateArgs({
+			path: filePath,
+			edits: [{ oldText: "before", newText: "after\nnext line" }],
+		});
+		expect(component.render(80).join("\n")).toContain("+ next line");
+
+		component.setArgsComplete();
+		component.markExecutionStarted();
+		expect(component.render(80).join("\n")).toContain("Writing changes...");
+
+		component.updateResult(
+			{
+				content: [{ type: "text", text: "done" }],
+				details: undefined,
+				isError: false,
+			},
+			false,
+		);
+		await waitForRender();
+
+		expect(component.render(80).join("\n")).not.toContain("Writing changes...");
+	});
+
 	it("renders the large diff in the call preview and does not full-redraw when the result settles", async () => {
 		const dir = await mkdtemp(join(tmpdir(), "pi-edit-redraw-"));
 		tempDirs.push(dir);
