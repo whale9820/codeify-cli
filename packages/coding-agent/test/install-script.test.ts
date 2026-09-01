@@ -9,6 +9,8 @@ interface CommandCall {
 	env?: Record<string, string>;
 }
 
+const compilerPackageJson = '{"devDependencies":{"@typescript/native-preview":"7.0.0-dev.20260120.1"}}';
+
 describe("Codeify install script", () => {
 	it("runs npm command shims through cmd.exe on Windows", () => {
 		const calls: CommandCall[] = [];
@@ -42,12 +44,14 @@ describe("Codeify install script", () => {
 							existsSync: vi.fn(() => false),
 							lstatSync: vi.fn(),
 							mkdirSync: vi.fn(),
+							mkdtempSync: vi.fn(() => "C:\\Users\\test\\AppData\\Local\\Temp\\codeify-compiler"),
+							readFileSync: vi.fn(() => compilerPackageJson),
 							rmSync: vi.fn(),
 							symlinkSync: vi.fn(),
 							writeFileSync: vi.fn(),
 						};
 					case "node:os":
-						return { homedir: () => "C:\\Users\\test" };
+						return { homedir: () => "C:\\Users\\test", tmpdir: () => "C:\\Users\\test\\AppData\\Local\\Temp" };
 					case "node:path":
 						return path;
 					default:
@@ -62,12 +66,9 @@ describe("Codeify install script", () => {
 		});
 		expect(calls).toContainEqual({
 			command: "C:\\Windows\\System32\\cmd.exe",
-			args: ["/d", "/s", "/c", "npm.cmd ci --ignore-scripts"],
+			args: ["/d", "/s", "/c", "npm.cmd ci --omit=dev --ignore-scripts"],
 		});
-		expect(calls).toContainEqual({
-			command: "C:\\Windows\\System32\\cmd.exe",
-			args: ["/d", "/s", "/c", "npm.cmd run build:runtime"],
-		});
+		expect(calls.some((call) => call.args.some((arg) => arg.endsWith("build-lowmem.mjs")))).toBe(true);
 		expect(calls.some((call) => call.command === "npm.cmd")).toBe(false);
 	});
 
@@ -108,6 +109,7 @@ describe("Codeify install script", () => {
 							lstatSync: vi.fn(),
 							mkdirSync: vi.fn(),
 							mkdtempSync: vi.fn(() => "C:\\Users\\test\\AppData\\Local\\codeify-download-test"),
+							readFileSync: vi.fn(() => compilerPackageJson),
 							readdirSync: vi.fn(() => ["codeify-cli-main"]),
 							rmSync: vi.fn(),
 							statSync: vi.fn(() => ({ isDirectory: () => true })),
@@ -115,7 +117,7 @@ describe("Codeify install script", () => {
 							writeFileSync,
 						};
 					case "node:os":
-						return { homedir: () => "C:\\Users\\test" };
+						return { homedir: () => "C:\\Users\\test", tmpdir: () => "C:\\Users\\test\\AppData\\Local\\Temp" };
 					case "node:path":
 						return path;
 					default:
@@ -128,7 +130,7 @@ describe("Codeify install script", () => {
 		expect(writeFileSync).toHaveBeenCalledWith(expect.stringContaining(".codeify-archive-install"), "", "ascii");
 		expect(calls).toContainEqual({
 			command: "C:\\Windows\\System32\\cmd.exe",
-			args: ["/d", "/s", "/c", "npm.cmd ci --ignore-scripts"],
+			args: ["/d", "/s", "/c", "npm.cmd ci --omit=dev --ignore-scripts"],
 		});
 		expect(calls.some((call) => call.command === "git" && call.args.includes("clone"))).toBe(false);
 		expect(
@@ -170,12 +172,14 @@ describe("Codeify install script", () => {
 							existsSync: vi.fn((file: string) => file.endsWith(".git")),
 							lstatSync: vi.fn(),
 							mkdirSync: vi.fn(),
+							mkdtempSync: vi.fn(() => "C:\\Users\\test\\AppData\\Local\\Temp\\codeify-compiler"),
+							readFileSync: vi.fn(() => compilerPackageJson),
 							rmSync: vi.fn(),
 							symlinkSync: vi.fn(),
 							writeFileSync: vi.fn(),
 						};
 					case "node:os":
-						return { homedir: () => "C:\\Users\\test" };
+						return { homedir: () => "C:\\Users\\test", tmpdir: () => "C:\\Users\\test\\AppData\\Local\\Temp" };
 					case "node:path":
 						return path;
 					default:
@@ -186,9 +190,63 @@ describe("Codeify install script", () => {
 
 		expect(calls).toContainEqual({
 			command: "C:\\Windows\\System32\\cmd.exe",
-			args: ["/d", "/s", "/c", "npm.cmd install --ignore-scripts"],
+			args: ["/d", "/s", "/c", "npm.cmd install --omit=dev --ignore-scripts"],
+		});
+		expect(calls).toContainEqual({
+			command: "git",
+			args: ["-C", "C:\\Users\\test\\AppData\\Local/CodeifyCLI", "pull", "--ff-only", "origin", "main"],
 		});
 		expect(calls.some((call) => call.args.at(-1) === "npm.cmd ci --ignore-scripts")).toBe(false);
+	});
+
+	it("removes a fresh checkout when dependency installation fails", () => {
+		const installHome = "/tmp/codeify-install-test";
+		const rmSync = vi.fn();
+		const execFileSync = vi.fn((command: string, args: string[]) => {
+			if (command === "npm" && args.includes("ci")) throw new Error("ENOSPC");
+			return "";
+		});
+		const source = readFileSync(new URL("../../../scripts/install.cjs", import.meta.url), "utf8");
+
+		expect(() =>
+			vm.runInNewContext(source, {
+				console: { log: vi.fn() },
+				process: {
+					env: { CODEIFY_INSTALL_HOME: installHome, PATH: "/usr/local/bin" },
+					execPath: "/usr/bin/node",
+					platform: "linux",
+					stderr: { write: vi.fn() },
+					versions: { node: "24.15.0" },
+				},
+				require: (specifier: string) => {
+					switch (specifier) {
+						case "node:child_process":
+							return { execFileSync };
+						case "node:fs":
+							return {
+								accessSync: vi.fn(),
+								chmodSync: vi.fn(),
+								constants: { W_OK: 2 },
+								existsSync: vi.fn(() => false),
+								lstatSync: vi.fn(),
+								mkdirSync: vi.fn(),
+								mkdtempSync: vi.fn(() => "/tmp/codeify-compiler"),
+								readFileSync: vi.fn(() => compilerPackageJson),
+								rmSync,
+								symlinkSync: vi.fn(),
+								writeFileSync: vi.fn(),
+							};
+						case "node:os":
+							return { homedir: () => "/root", tmpdir: () => "/tmp", totalmem: () => gigabyte };
+						case "node:path":
+							return path;
+						default:
+							throw new Error(`Unexpected import: ${specifier}`);
+					}
+				},
+			}),
+		).toThrow(/disk space/);
+		expect(rmSync).toHaveBeenCalledWith(installHome, { force: true, recursive: true });
 	});
 
 	it("installs into an existing writable PATH directory on Unix", () => {
@@ -220,12 +278,14 @@ describe("Codeify install script", () => {
 							existsSync: vi.fn((file: string) => file === "/usr/local/bin"),
 							lstatSync: vi.fn(),
 							mkdirSync: vi.fn(),
+							mkdtempSync: vi.fn(() => "/tmp/codeify-compiler"),
+							readFileSync: vi.fn(() => compilerPackageJson),
 							rmSync: vi.fn(),
 							symlinkSync,
 							writeFileSync: vi.fn(),
 						};
 					case "node:os":
-						return { homedir: () => "/root" };
+						return { homedir: () => "/root", tmpdir: () => "/tmp" };
 					case "node:path":
 						return path;
 					default:
@@ -269,12 +329,16 @@ describe("Codeify install script", () => {
 							existsSync: vi.fn(() => false),
 							lstatSync: vi.fn(),
 							mkdirSync: vi.fn(),
+							mkdtempSync: vi.fn(() => "/tmp/codeify-compiler"),
+							readFileSync: vi.fn(() => compilerPackageJson),
 							rmSync: vi.fn(),
 							symlinkSync: vi.fn(),
 							writeFileSync: vi.fn(),
 						};
 					case "node:os":
-						return totalmem ? { homedir: () => "/root", totalmem } : { homedir: () => "/root" };
+						return totalmem
+							? { homedir: () => "/root", tmpdir: () => "/tmp", totalmem }
+							: { homedir: () => "/root", tmpdir: () => "/tmp" };
 					case "node:path":
 						return path;
 					default:
@@ -302,7 +366,7 @@ describe("Codeify install script", () => {
 	});
 
 	it("uses the standard build path on hosts with enough memory", () => {
-		const calls = runUnixInstaller(() => 16 * gigabyte);
+		const calls = runUnixInstaller(() => 16 * gigabyte, { CODEIFY_INSTALL_LOW_MEMORY: "0" });
 
 		expect(calls.some((call) => call.args.includes("build:runtime"))).toBe(true);
 		expect(calls.some((call) => call.args.some((arg) => arg.endsWith("build-lowmem.mjs")))).toBe(false);
@@ -317,9 +381,9 @@ describe("Codeify install script", () => {
 		expect(forcedOff.some((call) => call.args.includes("build:runtime"))).toBe(true);
 	});
 
-	it("falls back to the standard build when totalmem is unavailable", () => {
+	it("uses the minimal build when totalmem is unavailable", () => {
 		const calls = runUnixInstaller(undefined);
-		expect(calls.some((call) => call.args.includes("build:runtime"))).toBe(true);
+		expect(calls.some((call) => call.args.some((arg) => arg.endsWith("build-lowmem.mjs")))).toBe(true);
 	});
 
 	it("reports an out-of-memory hint when a build step is killed", () => {
@@ -355,12 +419,14 @@ describe("Codeify install script", () => {
 								existsSync: vi.fn(() => false),
 								lstatSync: vi.fn(),
 								mkdirSync: vi.fn(),
+								mkdtempSync: vi.fn(() => "/tmp/codeify-compiler"),
+								readFileSync: vi.fn(() => compilerPackageJson),
 								rmSync: vi.fn(),
 								symlinkSync: vi.fn(),
 								writeFileSync: vi.fn(),
 							};
 						case "node:os":
-							return { homedir: () => "/root", totalmem: () => gigabyte };
+							return { homedir: () => "/root", tmpdir: () => "/tmp", totalmem: () => gigabyte };
 						case "node:path":
 							return path;
 						default:

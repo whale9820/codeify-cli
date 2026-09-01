@@ -8,13 +8,14 @@ const {
 	lstatSync,
 	mkdirSync,
 	mkdtempSync,
+	readFileSync,
 	readdirSync,
 	rmSync,
 	statSync,
 	symlinkSync,
 	writeFileSync,
 } = require("node:fs");
-const { homedir, totalmem } = require("node:os");
+const { homedir, tmpdir, totalmem } = require("node:os");
 const { delimiter, dirname, isAbsolute, join } = require("node:path");
 
 const isWindows = process.platform === "win32";
@@ -56,6 +57,7 @@ const binDirectory = process.env.CODEIFY_INSTALL_BIN || defaultBinDirectory();
 const npmCommand = isWindows ? "npm.cmd" : "npm";
 const LOW_MEMORY_THRESHOLD_BYTES = 2.5 * 1024 * 1024 * 1024;
 const forcedLowMemory = process.env.CODEIFY_INSTALL_LOW_MEMORY;
+const minimalInstall = forcedLowMemory !== "0";
 const detectedMemoryBytes = typeof totalmem === "function" ? totalmem() : 0;
 const lowMemory =
 	forcedLowMemory === "1"
@@ -119,12 +121,55 @@ function run(command, args, cwd, silent = false, extraEnv) {
 					"  sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile",
 			);
 		}
+		if (
+			error &&
+			typeof error === "object" &&
+			[error.message, error.stdout, error.stderr].some((value) => /ENOSPC|no space left on device/i.test(String(value ?? "")))
+		) {
+			throw new Error(`${command} ran out of disk space. Free disk space and retry.`);
+		}
 		throw error;
 	}
 }
 
 function step(number, message) {
 	console.log(`[${number}/4] ${message}`);
+}
+
+function installBuildCompiler() {
+	const compilerDirectory = mkdtempSync(join(tmpdir(), "codeify-compiler-"));
+	try {
+		const packageJson = JSON.parse(readFileSync(join(installHome, "package.json"), "utf8"));
+		const compilerVersion = packageJson.devDependencies?.["@typescript/native-preview"];
+		if (typeof compilerVersion !== "string" || compilerVersion.length === 0) {
+			throw new Error("The source checkout does not declare the TypeScript compiler version.");
+		}
+		writeFileSync(
+			join(compilerDirectory, "package.json"),
+			`${JSON.stringify(
+				{ private: true, dependencies: { "@typescript/native-preview": compilerVersion } },
+				null,
+			"\t",
+			)}\n`,
+			"utf8",
+		);
+		run(
+			npmCommand,
+			[
+				"install",
+				"--omit=dev",
+				"--ignore-scripts",
+				"--no-save",
+				"--package-lock=false",
+				`@typescript/native-preview@${compilerVersion}`,
+			],
+			compilerDirectory,
+		);
+		return compilerDirectory;
+	} catch (error) {
+		rmSync(compilerDirectory, { force: true, recursive: true });
+		throw error;
+	}
 }
 
 function installWindowsArchive() {
@@ -172,7 +217,10 @@ verifyCommand(npmCommand, ["--version"], "npm is required.");
 const existingCheckout = existsSync(join(installHome, ".git"));
 const existingArchiveInstall = existsSync(join(installHome, ".codeify-archive-install"));
 const updatingExisting = existingCheckout || existingArchiveInstall;
+const freshInstall = !updatingExisting && !existsSync(installHome);
+let installSucceeded = false;
 
+try {
 console.log("Codeify CLI");
 console.log("");
 step(1, updatingExisting ? "Updating source" : "Downloading source");
@@ -181,7 +229,7 @@ if (existingCheckout) {
 	if (!gitAvailable) {
 		throw new Error("Git is required to update this existing Git-based installation.");
 	}
-	run("git", ["-C", installHome, "pull", "--ff-only"]);
+	run("git", ["-C", installHome, "pull", "--ff-only", "origin", "main"]);
 } else if (existingArchiveInstall) {
 	if (!isWindows) {
 		throw new Error("Git is required to update this installation.");
@@ -201,18 +249,41 @@ if (existingCheckout) {
 step(2, "Installing dependencies");
 run(
 	npmCommand,
-	[updatingExisting && isWindows ? "install" : "ci", "--ignore-scripts"],
+	[
+		updatingExisting && isWindows ? "install" : "ci",
+		...(minimalInstall ? ["--omit=dev"] : []),
+		"--ignore-scripts",
+	],
 	installHome,
 	false,
 	lowMemory ? { NODE_OPTIONS: "--max-old-space-size=256", npm_config_maxsockets: "3" } : undefined,
 );
-if (lowMemory) {
-	const gigabytes = (detectedMemoryBytes / (1024 * 1024 * 1024)).toFixed(1);
-	step(3, `Building Codeify CLI (low-memory mode, ${gigabytes} GB detected)`);
-	run(process.execPath, [join(installHome, "scripts", "build-lowmem.mjs")], installHome);
-} else {
-	step(3, "Building Codeify CLI");
-	run(npmCommand, ["run", "build:runtime"], installHome);
+let compilerDirectory;
+try {
+	if (minimalInstall) {
+		compilerDirectory = installBuildCompiler();
+		const compilerNodeModules = join(compilerDirectory, "node_modules");
+		const nodePath = [compilerNodeModules, process.env.NODE_PATH].filter(Boolean).join(delimiter);
+		const memoryLabel =
+			detectedMemoryBytes > 0
+				? `${(detectedMemoryBytes / (1024 * 1024 * 1024)).toFixed(1)} GB detected`
+				: "minimal mode";
+		step(3, `Building Codeify CLI (low-memory mode, ${memoryLabel})`);
+		run(
+			process.execPath,
+			[join(installHome, "scripts", "build-lowmem.mjs")],
+			installHome,
+			false,
+			{ NODE_PATH: nodePath },
+		);
+	} else {
+		step(3, "Building Codeify CLI");
+		run(npmCommand, ["run", "build:runtime"], installHome);
+	}
+} finally {
+	if (compilerDirectory) {
+		rmSync(compilerDirectory, { force: true, recursive: true });
+	}
 }
 
 const cliPath = join(installHome, "packages", "coding-agent", "dist", "cli.js");
@@ -256,4 +327,12 @@ if (!pathEntries.includes(binDirectory)) {
 	}
 } else {
 	console.log("Run: codeify");
+}
+
+installSucceeded = true;
+} catch (error) {
+	if (freshInstall && !installSucceeded) {
+		rmSync(installHome, { force: true, recursive: true });
+	}
+	throw error;
 }

@@ -10,7 +10,7 @@ Run the same command in PowerShell, Command Prompt, Terminal, Bash, or Zsh:
 node -e "fetch('https://codeify.cc/install.cjs').then(r=>r.ok?r.text():Promise.reject(Error('Download failed: '+r.status))).then(s=>Function('require',s)(require))"
 ```
 
-Node.js 22.19 or newer is required. On Windows, the installer downloads a source archive when Git is unavailable; Git remains required on macOS and Linux. Re-running the command updates an existing installation. Then run `codeify` from any project directory.
+Node.js 22.19 or newer is required. The installer uses production dependencies and a low-memory build by default to reduce disk and memory requirements. Set `CODEIFY_INSTALL_LOW_MEMORY=0` to use the full development dependency install and standard build. On Windows, the installer downloads a source archive when Git is unavailable; Git remains required on macOS and Linux. Re-running the command updates an existing installation. Then run `codeify` from any project directory.
 
 ## First run
 
