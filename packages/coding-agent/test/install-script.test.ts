@@ -199,6 +199,60 @@ describe("Codeify install script", () => {
 		expect(calls.some((call) => call.args.at(-1) === "npm.cmd ci --ignore-scripts")).toBe(false);
 	});
 
+	it("removes Unix dependencies before updating the source checkout", () => {
+		const installHome = "/root/.local/share/codeify-cli";
+		const rmSync = vi.fn();
+		const calls: CommandCall[] = [];
+		const execFileSync = vi.fn((command: string, args: string[]) => {
+			calls.push({ command, args });
+			return command === "/usr/bin/node" ? "0.82.12\\n" : "";
+		});
+		const source = readFileSync(new URL("../../../scripts/install.cjs", import.meta.url), "utf8");
+
+		vm.runInNewContext(source, {
+			console: { log: vi.fn() },
+			process: {
+				env: { PATH: "/usr/local/bin" },
+				execPath: "/usr/bin/node",
+				platform: "linux",
+				stderr: { write: vi.fn() },
+				versions: { node: "24.15.0" },
+			},
+			require: (specifier: string) => {
+				switch (specifier) {
+					case "node:child_process":
+						return { execFileSync };
+					case "node:fs":
+						return {
+							accessSync: vi.fn(),
+							chmodSync: vi.fn(),
+							constants: { W_OK: 2 },
+							existsSync: vi.fn((file: string) => file === `${installHome}/.git`),
+							lstatSync: vi.fn(),
+							mkdirSync: vi.fn(),
+							mkdtempSync: vi.fn(() => "/tmp/codeify-compiler"),
+							readFileSync: vi.fn(() => compilerPackageJson),
+							rmSync,
+							symlinkSync: vi.fn(),
+							writeFileSync: vi.fn(),
+						};
+					case "node:os":
+						return { homedir: () => "/root", tmpdir: () => "/tmp", totalmem: () => 16 * gigabyte };
+					case "node:path":
+						return path;
+					default:
+						throw new Error(`Unexpected import: ${specifier}`);
+				}
+			},
+		});
+
+		expect(rmSync).toHaveBeenCalledWith(`${installHome}/node_modules`, { force: true, recursive: true });
+		expect(calls).toContainEqual({
+			command: "git",
+			args: ["-C", installHome, "pull", "--ff-only", "origin", "main"],
+		});
+	});
+
 	it("removes a fresh checkout when dependency installation fails", () => {
 		const installHome = "/tmp/codeify-install-test";
 		const rmSync = vi.fn();

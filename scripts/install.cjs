@@ -229,6 +229,9 @@ if (existingCheckout) {
 	if (!gitAvailable) {
 		throw new Error("Git is required to update this existing Git-based installation.");
 	}
+	if (!isWindows) {
+		rmSync(join(installHome, "node_modules"), { force: true, recursive: true });
+	}
 	run("git", ["-C", installHome, "pull", "--ff-only", "origin", "main"]);
 } else if (existingArchiveInstall) {
 	if (!isWindows) {

@@ -8,7 +8,7 @@
 
 ### Fixed
 
-- Reduced installer disk usage by installing production dependencies for the low-memory build, cleaned up failed fresh checkouts, and made Git updates fetch the `main` branch explicitly.
+- Reduced installer disk usage by installing production dependencies for the low-memory build, cleaned up failed fresh checkouts, reclaimed Unix dependencies before Git updates, and made Git updates fetch the `main` branch explicitly.
 
 ## [0.82.2] - 2025-01-29
 
