@@ -148,6 +148,86 @@ describe("Codeify provider", () => {
 		});
 	});
 
+	it("recognizes GPT-6 models as reasoning models without catalog metadata", async () => {
+		vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+			if (String(input) === `${CODEIFY_BASE_URL}/models`) {
+				return new Response(JSON.stringify({ data: [{ id: "gpt-6-astra" }] }), { status: 200 });
+			}
+			throw new Error("remote catalog unavailable");
+		});
+		const models = await codeifyProvider().refreshModels?.({
+			credential: { type: "api_key", key: "test-key" },
+			store: { read: async () => undefined, write: async () => {}, delete: async () => {} },
+			allowNetwork: true,
+			force: true,
+		});
+
+		expect(models?.[0]).toMatchObject({
+			id: "gpt-6-astra",
+			reasoning: true,
+			thinkingLevelMap: { off: "none", xhigh: "xhigh", max: "max" },
+		});
+	});
+
+	it("re-derives GPT-6 reasoning support from a stale cache", async () => {
+		const models = await codeifyProvider().refreshModels?.({
+			credential: undefined,
+			store: {
+				read: async () => ({
+					models: [
+						{
+							id: "gpt-6-astra",
+							name: "gpt-6-astra",
+							provider: "codeify",
+							baseUrl: CODEIFY_BASE_URL,
+							api: "openai-responses",
+							reasoning: false,
+							thinkingLevelMap: { off: null },
+							input: ["text"],
+							cost: { input: 2.5, output: 15, cacheRead: 0.25, cacheWrite: 0 },
+							contextWindow: 1_050_000,
+							maxTokens: 32_768,
+						},
+					],
+					checkedAt: Date.now(),
+				}),
+				write: async () => {},
+				delete: async () => {},
+			},
+			allowNetwork: false,
+		});
+
+		expect(models?.[0]).toMatchObject({
+			id: "gpt-6-astra",
+			reasoning: true,
+			thinkingLevelMap: { off: "none", xhigh: "xhigh", max: "max" },
+		});
+	});
+
+	it("preserves explicitly declared non-reasoning GPT-6 models", async () => {
+		vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+			if (String(input) === `${CODEIFY_BASE_URL}/models`) {
+				return new Response(
+					JSON.stringify({ data: [{ id: "gpt-6-instant", capabilities: { reasoning: false } }] }),
+					{ status: 200 },
+				);
+			}
+			throw new Error("remote catalog unavailable");
+		});
+		const models = await codeifyProvider().refreshModels?.({
+			credential: { type: "api_key", key: "test-key" },
+			store: { read: async () => undefined, write: async () => {}, delete: async () => {} },
+			allowNetwork: true,
+			force: true,
+		});
+
+		expect(models?.[0]).toMatchObject({
+			id: "gpt-6-instant",
+			reasoning: false,
+			thinkingLevelMap: { off: null },
+		});
+	});
+
 	it("restores a cached remote catalog without network access", async () => {
 		const fetchSpy = vi.spyOn(globalThis, "fetch");
 		const provider = codeifyProvider();

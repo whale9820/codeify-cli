@@ -49,7 +49,10 @@ type RemoteCatalogModel = {
 type CodeifyModelDefinition = NonNullable<RuntimeProviderConfig["models"]>[number];
 
 /** Cached model plus the input modalities `/v1/models` declared for it. */
-type StoredCodeifyModel = Model<"openai-responses"> & { inputModalities?: string[] };
+type StoredCodeifyModel = Model<"openai-responses"> & {
+	inputModalities?: string[];
+	declaredReasoning?: boolean;
+};
 
 const bundledModels = getBuiltinModels("opencode") as Model<"openai-responses">[];
 
@@ -73,7 +76,9 @@ function pricingToCost(pricing: CodeifyModel["pricing"]): ModelCost | undefined 
 
 function supportsReasoning(id: string, model: CodeifyModel): boolean {
 	if (model.capabilities?.reasoning !== undefined) return model.capabilities.reasoning;
-	return /^(gpt-5|o[134]|claude|deepseek|gemini|glm|grok|kimi|mimo|minimax|qwen|nemotron|hy3|krenn|laguna)/i.test(id);
+	return /^(gpt-[56]|o[134]|claude|deepseek|gemini|glm|grok|kimi|mimo|minimax|qwen|nemotron|hy3|krenn|laguna)/i.test(
+		id,
+	);
 }
 
 const VISION_MODEL_FAMILIES = /^(claude|gpt-[5-9]|o[134]|gemini|grok-\d)/i;
@@ -208,9 +213,18 @@ async function fetchRemoteCatalog(signal?: AbortSignal): Promise<{
  * `/v1/models` declared; otherwise keep the metadata and let vision be re-derived.
  */
 function cachedCatalogEntry(model: StoredCodeifyModel): RemoteCatalogModel {
-	const { input, inputModalities, ...rest } = model;
-	if (inputModalities?.length) return { ...rest, inputModalities };
-	return input?.includes("image") ? { ...rest, input: ["text", "image"] } : rest;
+	const { input, inputModalities, declaredReasoning, reasoning, thinkingLevelMap, ...rest } = model;
+	const cached = inputModalities?.length
+		? { ...rest, inputModalities }
+		: input?.includes("image")
+			? { ...rest, input: ["text", "image"] as ("text" | "image")[] }
+			: rest;
+	if (declaredReasoning === undefined && /^gpt-6/i.test(model.id) && !reasoning) return cached;
+	return {
+		...cached,
+		...(reasoning !== undefined ? { reasoning } : {}),
+		...(thinkingLevelMap !== undefined ? { thinkingLevelMap } : {}),
+	};
 }
 
 async function fetchModels(
@@ -249,12 +263,18 @@ async function fetchModels(
 	const definitions: CodeifyModelDefinition[] = [];
 	const storedModels: StoredCodeifyModel[] = [];
 	for (const model of discovered) {
-		const definition = toModelDefinition(model, remoteCatalog?.models.get(model.id));
+		const remote = remoteCatalog?.models.get(model.id);
+		const definition = toModelDefinition(model, remote);
 		const inputModalities = declaredModalities(model);
+		const declaredReasoning =
+			model.capabilities?.reasoning ??
+			remote?.reasoning ??
+			bundledModels.find((candidate) => candidate.id === model.id)?.reasoning;
 		definitions.push(definition);
 		storedModels.push({
 			...definition,
 			...(inputModalities?.length ? { inputModalities } : {}),
+			...(declaredReasoning !== undefined ? { declaredReasoning } : {}),
 			api: "openai-responses",
 			provider: CODEIFY_PROVIDER_ID,
 			baseUrl: CODEIFY_BASE_URL,

@@ -9,6 +9,7 @@
 ### Fixed
 
 - Reduced installer disk usage by installing production dependencies for the low-memory build, cleaned up failed fresh checkouts, reclaimed Unix dependencies before Git updates, and made Git updates fetch the `main` branch explicitly.
+- Fixed newly discovered GPT-6 models being treated as non-reasoning when model catalogs have not published capability metadata yet.
 
 ## [0.82.2] - 2025-01-29
 
