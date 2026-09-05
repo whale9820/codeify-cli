@@ -12,6 +12,7 @@
 - Reduced installer disk usage by installing production dependencies for the low-memory build, cleaned up failed fresh checkouts, reclaimed Unix dependencies before Git updates, and made Git updates fetch the `main` branch explicitly.
 - Fixed newly discovered GPT-6 models being treated as non-reasoning when model catalogs have not published capability metadata yet.
 - Prevented interrupted low-memory builds from mixing old and new runtime files, and made `codeify update` repair incomplete source installations even when the version is unchanged.
+- Reduced low-memory installer compiler memory usage with single-threaded compilation and a default native memory budget to avoid out-of-memory kills on small hosts.
 
 ## [0.82.2] - 2025-01-29
 

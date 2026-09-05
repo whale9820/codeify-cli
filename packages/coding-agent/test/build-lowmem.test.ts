@@ -71,6 +71,7 @@ function expectNoStaging(root: string) {
 
 interface BuildOptions {
 	existing?: boolean;
+	env?: Record<string, string>;
 	compilerFailure?: { error?: Error; status?: number | null; signal?: string | null };
 	failPromotion?: boolean;
 	failAssetCopy?: boolean;
@@ -86,13 +87,23 @@ function runBuild(root: string, options: BuildOptions = {}) {
 	}).code;
 	vm.runInNewContext(output, {
 		console: { log: vi.fn() },
-		process: { platform: "linux", arch: "x64", env: {}, on: vi.fn(), off: vi.fn() },
+		process: { platform: "linux", arch: "x64", env: options.env ?? {}, on: vi.fn(), off: vi.fn() },
 		require: (specifier: string) => {
 			switch (specifier) {
 				case "node:child_process":
 					return {
-						spawnSync: (_command: string, args: string[], { cwd }: { cwd: string }) => {
+						spawnSync: (
+							_command: string,
+							args: string[],
+							{ cwd, env }: { cwd: string; env: Record<string, string> },
+						) => {
 							expectOldBuild(root, options.existing ?? true);
+							expect(args).toContain("--singleThreaded");
+							expect(env).toEqual({
+								...options.env,
+								GOGC: options.env?.GOGC || "30",
+								GOMEMLIMIT: options.env?.GOMEMLIMIT || "512MiB",
+							});
 							calls.push(path.relative(root, cwd).split(path.sep).join("/"));
 							const outDirIndex = args.indexOf("--outDir");
 							expect(outDirIndex).toBeGreaterThan(-1);
@@ -155,6 +166,16 @@ function runBuild(root: string, options: BuildOptions = {}) {
 }
 
 describe("low-memory build staging", () => {
+	it.each<Record<string, string>>([
+		{ PATH: "/usr/bin" },
+		{ GOGC: "20", GOMEMLIMIT: "256MiB" },
+		{ GOGC: "", GOMEMLIMIT: "" },
+	])("uses serial compilation with a native memory budget and preserves environment overrides: %j", (env) => {
+		const root = createFixture();
+		expect(runBuild(root, { env })).toEqual(packageDirectories);
+		expectNoStaging(root);
+	});
+
 	it.each([
 		{ signal: "SIGINT", status: null },
 		{ signal: "SIGKILL", status: null },

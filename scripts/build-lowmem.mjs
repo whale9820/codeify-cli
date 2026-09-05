@@ -35,6 +35,7 @@ const tsgo = resolveTsgo();
 const compilerEnv = {
 	...process.env,
 	GOGC: process.env.GOGC || "30",
+	GOMEMLIMIT: process.env.GOMEMLIMIT || "512MiB",
 };
 const stagedDists = new Map();
 let interruptedSignal;
@@ -68,7 +69,7 @@ function compile(packageDirectory, stagedDependencies = {}) {
 			writeFileSync(configPath, `${JSON.stringify(compilerConfig)}\n`, "utf8");
 			compilerConfigPath = configPath;
 		}
-		const result = spawnSync(tsgo, ["-p", compilerConfigPath, "--noCheck", "--outDir", outputDirectory], {
+		const result = spawnSync(tsgo, ["-p", compilerConfigPath, "--noCheck", "--singleThreaded", "--outDir", outputDirectory], {
 			cwd,
 			env: compilerEnv,
 			stdio: ["ignore", "inherit", "inherit"],
