@@ -218,12 +218,14 @@ const existingCheckout = existsSync(join(installHome, ".git"));
 const existingArchiveInstall = existsSync(join(installHome, ".codeify-archive-install"));
 const updatingExisting = existingCheckout || existingArchiveInstall;
 const freshInstall = !updatingExisting && !existsSync(installHome);
+const completionPath = join(installHome, ".codeify-install-complete");
 let installSucceeded = false;
 
 try {
 console.log("Codeify CLI");
 console.log("");
 step(1, updatingExisting ? "Updating source" : "Downloading source");
+if (updatingExisting) rmSync(completionPath, { force: true });
 
 if (existingCheckout) {
 	if (!gitAvailable) {
@@ -319,6 +321,7 @@ if (isWindows) {
 }
 
 const version = run(process.execPath, [cliPath, "--version"], installHome, true).trim();
+writeFileSync(completionPath, `${version}\n`, "utf8");
 
 console.log("");
 console.log(`Codeify CLI ${version} installed successfully.`);

@@ -43,7 +43,7 @@ export interface CreateAgentSessionOptions {
 
 	/** Model to use. Default: from settings, else first available */
 	model?: Model<any>;
-	/** Thinking level. Default: from settings, else 'medium' (clamped to model capabilities) */
+	/** Thinking level. Default: from settings, else 'xhigh' (clamped to model capabilities) */
 	thinkingLevel?: ThinkingLevel;
 	/** Models available for cycling (Ctrl+P in interactive mode) */
 	scopedModels?: Array<{ model: Model<any>; thinkingLevel?: ThinkingLevel }>;

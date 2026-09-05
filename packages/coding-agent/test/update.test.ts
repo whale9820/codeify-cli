@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -76,7 +76,13 @@ describe("Codeify updater", () => {
 		);
 	});
 
-	it("does not download the installer when the local and cloud versions match", async () => {
+	it("does not download the installer when the completed source build matches the cloud version", async () => {
+		const directory = await mkdtemp(join(tmpdir(), "codeify-update-test-"));
+		directories.push(directory);
+		await mkdir(join(directory, "scripts"));
+		await mkdir(join(directory, "packages", "coding-agent"), { recursive: true });
+		await writeFile(join(directory, "scripts", "install.cjs"), "installer");
+		await writeFile(join(directory, ".codeify-install-complete"), "0.81.1\n");
 		const hosted = await serve({
 			"/package.json": { body: JSON.stringify({ version: "0.81.1" }), contentType: "application/json", status: 200 },
 			"/install.cjs": {
@@ -88,6 +94,63 @@ describe("Codeify updater", () => {
 		try {
 			await runCodeifyUpdate({
 				currentVersion: "0.81.1",
+				packageDir: join(directory, "packages", "coding-agent"),
+				installerUrl: `${hosted.baseUrl}/install.cjs`,
+				versionUrl: `${hosted.baseUrl}/package.json`,
+			});
+		} finally {
+			await hosted.close();
+		}
+		expect(hosted.requests).toEqual(["/package.json"]);
+	});
+
+	it.each([undefined, "0.81.0\n", "", "invalid"])(
+		"repairs a same-version source install with an incomplete build record: %s",
+		async (completion) => {
+			const directory = await mkdtemp(join(tmpdir(), "codeify-update-test-"));
+			directories.push(directory);
+			await mkdir(join(directory, "scripts"));
+			await mkdir(join(directory, "packages", "coding-agent"), { recursive: true });
+			await writeFile(join(directory, "scripts", "install.cjs"), "installer");
+			if (completion !== undefined) await writeFile(join(directory, ".codeify-install-complete"), completion);
+			const marker = join(directory, "repaired.txt");
+			const hosted = await serve({
+				"/package.json": {
+					body: JSON.stringify({ version: "0.81.1" }),
+					contentType: "application/json",
+					status: 200,
+				},
+				"/install.cjs": {
+					body: `require("node:fs").writeFileSync(${JSON.stringify(marker)}, "repaired");`,
+					contentType: "application/javascript",
+					status: 200,
+				},
+			});
+			try {
+				await runCodeifyUpdate({
+					currentVersion: "0.81.1",
+					packageDir: join(directory, "packages", "coding-agent"),
+					installerUrl: `${hosted.baseUrl}/install.cjs`,
+					versionUrl: `${hosted.baseUrl}/package.json`,
+				});
+			} finally {
+				await hosted.close();
+			}
+			expect(await readFile(marker, "utf8")).toBe("repaired");
+			expect(hosted.requests).toEqual(["/package.json", "/install.cjs"]);
+		},
+	);
+
+	it("does not require a source-install marker for npm installations", async () => {
+		const directory = await mkdtemp(join(tmpdir(), "codeify-update-test-"));
+		directories.push(directory);
+		const hosted = await serve({
+			"/package.json": { body: JSON.stringify({ version: "0.81.1" }), contentType: "application/json", status: 200 },
+		});
+		try {
+			await runCodeifyUpdate({
+				currentVersion: "0.81.1",
+				packageDir: join(directory, "node_modules", "codeify-coding-agent"),
 				installerUrl: `${hosted.baseUrl}/install.cjs`,
 				versionUrl: `${hosted.baseUrl}/package.json`,
 			});

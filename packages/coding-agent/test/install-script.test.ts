@@ -440,6 +440,77 @@ describe("Codeify install script", () => {
 		expect(calls.some((call) => call.args.some((arg) => arg.endsWith("build-lowmem.mjs")))).toBe(true);
 	});
 
+	it.each([undefined, "dependencies", "build", "verify"])(
+		"records completion only after a successful install (failure: %s)",
+		(failure) => {
+			const installHome = "/tmp/codeify-marker-test";
+			const marker = `${installHome}/.codeify-install-complete`;
+			let completed = true;
+			let verified = false;
+			const execFileSync = vi.fn((command: string, args: string[]) => {
+				if (args.includes("pull")) expect(completed).toBe(false);
+				const phase = args.includes("ci")
+					? "dependencies"
+					: args.some((arg) => arg.endsWith("build-lowmem.mjs"))
+						? "build"
+						: command === "/usr/bin/node" && args.includes("--version")
+							? "verify"
+							: undefined;
+				if (phase !== undefined && phase === failure) throw new Error("Interrupted");
+				if (phase === "verify") verified = true;
+				return phase === "verify" ? "0.82.14\n" : "";
+			});
+			const source = readFileSync(new URL("../../../scripts/install.cjs", import.meta.url), "utf8");
+			const run = () =>
+				vm.runInNewContext(source, {
+					console: { log: vi.fn() },
+					process: {
+						env: { CODEIFY_INSTALL_HOME: installHome, PATH: "/usr/local/bin" },
+						execPath: "/usr/bin/node",
+						platform: "linux",
+						stderr: { write: vi.fn() },
+						versions: { node: "24.15.0" },
+					},
+					require: (specifier: string) => {
+						switch (specifier) {
+							case "node:child_process":
+								return { execFileSync };
+							case "node:path":
+								return path;
+							case "node:os":
+								return { homedir: () => "/root", tmpdir: () => "/tmp", totalmem: () => gigabyte };
+							case "node:fs":
+								return {
+									accessSync: vi.fn(),
+									constants: { W_OK: 2 },
+									chmodSync: vi.fn(),
+									existsSync: (file: string) => file === `${installHome}/.git`,
+									mkdirSync: vi.fn(),
+									mkdtempSync: () => "/tmp/codeify-compiler",
+									readFileSync: () => compilerPackageJson,
+									rmSync: (file: string) => {
+										if (file === marker) completed = false;
+									},
+									symlinkSync: vi.fn(),
+									writeFileSync: (file: string, contents: string) => {
+										if (file === marker) {
+											expect(verified).toBe(true);
+											expect(contents).toBe("0.82.14\n");
+											completed = true;
+										}
+									},
+								};
+							default:
+								throw new Error(`Unexpected import: ${specifier}`);
+						}
+					},
+				});
+			if (failure) expect(run).toThrow("Interrupted");
+			else run();
+			expect(completed).toBe(failure === undefined);
+		},
+	);
+
 	it("reports an out-of-memory hint when a build step is killed", () => {
 		const source = readFileSync(new URL("../../../scripts/install.cjs", import.meta.url), "utf8");
 		const execFileSync = vi.fn((_command: string, args: string[]) => {

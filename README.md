@@ -74,7 +74,7 @@ codeify --version
 CODEIFY_TIMING=1 codeify
 ```
 
-The Codeify provider defaults to `https://codeify.cc/v1` and `gpt-5.6-sol`. Override them with `CODEIFY_BASE_URL` and `CODEIFY_MODEL` when testing compatible gateways.
+The Codeify provider defaults to `https://codeify.cc/v1` and `gpt-6-astra` with `xhigh` reasoning effort. Saved model and effort settings take precedence. Override the endpoint and default model with `CODEIFY_BASE_URL` and `CODEIFY_MODEL` when testing compatible gateways.
 
 ## Packages
 

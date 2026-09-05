@@ -1,8 +1,9 @@
 import { spawnSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { VERSION } from "../config.ts";
+import { join, resolve } from "node:path";
+import { getPackageDir, isBunBinary, VERSION } from "../config.ts";
 
 export const CODEIFY_INSTALLER_URL = "https://codeify.cc/install.cjs";
 export const CODEIFY_VERSION_URL =
@@ -12,6 +13,7 @@ export interface CodeifyUpdateOptions {
 	installerUrl?: string;
 	versionUrl?: string;
 	currentVersion?: string;
+	packageDir?: string;
 	fetchImpl?: typeof globalThis.fetch;
 	nodeExecutable?: string;
 	env?: NodeJS.ProcessEnv;
@@ -19,6 +21,18 @@ export interface CodeifyUpdateOptions {
 
 export function isCodeifyUpdateCommand(args: readonly string[]): boolean {
 	return args.length === 1 && args[0] === "update";
+}
+
+function hasCompleteBuild(packageDir: string, currentVersion: string): boolean {
+	const resolvedPackageDir = resolve(packageDir);
+	const sourceRoot = resolve(resolvedPackageDir, "../..");
+	const isSourceInstall = resolvedPackageDir === resolve(sourceRoot, "packages", "coding-agent");
+	if (isBunBinary || !isSourceInstall || !existsSync(join(sourceRoot, "scripts", "install.cjs"))) return true;
+	try {
+		return readFileSync(join(sourceRoot, ".codeify-install-complete"), "utf8").trim() === currentVersion;
+	} catch {
+		return false;
+	}
 }
 
 async function fetchCloudVersion(fetchImpl: typeof globalThis.fetch, versionUrl: string): Promise<string> {
@@ -50,11 +64,15 @@ export async function runCodeifyUpdate(options: CodeifyUpdateOptions = {}): Prom
 	const currentVersion = options.currentVersion ?? VERSION;
 	const fetchImpl = options.fetchImpl ?? globalThis.fetch;
 	const cloudVersion = await fetchCloudVersion(fetchImpl, versionUrl);
-	if (cloudVersion === currentVersion) {
+	if (cloudVersion === currentVersion && hasCompleteBuild(options.packageDir ?? getPackageDir(), currentVersion)) {
 		console.log(`Codeify CLI ${currentVersion} is already up to date.`);
 		return;
 	}
-	console.log(`Updating Codeify CLI ${currentVersion} to ${cloudVersion}.`);
+	if (cloudVersion === currentVersion) {
+		console.log(`Repairing Codeify CLI ${currentVersion} installation.`);
+	} else {
+		console.log(`Updating Codeify CLI ${currentVersion} to ${cloudVersion}.`);
+	}
 	const response = await fetchImpl(installerUrl, {
 		redirect: "follow",
 		signal: AbortSignal.timeout(30_000),

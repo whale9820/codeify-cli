@@ -7,12 +7,12 @@ import type { ThinkingLevel } from "codeify-agent-core";
 import { type Api, type KnownProvider, type Model, modelsAreEqual } from "codeify-ai";
 import { minimatch } from "minimatch";
 import { isValidThinkingLevel } from "../cli/args.ts";
-import { DEFAULT_THINKING_LEVEL } from "./defaults.ts";
+import { CODEIFY_DEFAULT_MODEL, DEFAULT_THINKING_LEVEL } from "./defaults.ts";
 import type { ModelRuntime } from "./model-runtime.ts";
 
 /** Default model IDs for each known provider */
 export const defaultModelPerProvider: Record<string, string> = {
-	codeify: "gpt-5.6-sol",
+	codeify: CODEIFY_DEFAULT_MODEL,
 	"amazon-bedrock": "us.anthropic.claude-opus-4-6-v1",
 	"ant-ling": "Ring-2.6-1T",
 	anthropic: "claude-opus-4-8",

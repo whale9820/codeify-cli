@@ -4,6 +4,9 @@ dist/
 *.log
 .DS_Store
 *.tsbuildinfo
+.codeify-dist-*/
+.codeify-tsconfig-*.json
+.codeify-install-complete
 # packages/*/node_modules/
 packages/*/dist/
 packages/*/dist-chrome/

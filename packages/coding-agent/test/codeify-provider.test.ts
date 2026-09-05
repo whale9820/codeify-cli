@@ -31,12 +31,12 @@ function oauthCallbacks(onAuth: (url: URL) => void): OAuthLoginCallbacks {
 }
 
 describe("Codeify provider", () => {
-	it("uses Codeify service branding and the bundled catalog for the initial default model", () => {
+	it("defaults to GPT-6 Astra with extra-high reasoning support", () => {
 		const provider = codeifyProvider();
-		const model = provider.models?.find((candidate) => candidate.id === "gpt-5.6-sol");
+		const model = provider.models?.find((candidate) => candidate.id === "gpt-6-astra");
 
 		expect(provider).toMatchObject({ name: "Codeify", oauth: { name: "Codeify" } });
-		expect(model).toMatchObject({ contextWindow: 1_050_000, maxTokens: 128_000 });
+		expect(model).toMatchObject({ reasoning: true, thinkingLevelMap: { xhigh: "xhigh" } });
 	});
 
 	it("joins Codeify availability with Pi's remote model metadata", async () => {

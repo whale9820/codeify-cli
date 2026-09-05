@@ -36,7 +36,7 @@ npm run build:offline
 npm run check
 ```
 
-The Codeify provider defaults to `https://codeify.cc/v1` and `gpt-5.6-sol`. Use `CODEIFY_BASE_URL` and `CODEIFY_MODEL` to point at a compatible test gateway.
+The Codeify provider defaults to `https://codeify.cc/v1` and `gpt-6-astra` with `xhigh` reasoning effort. Use `CODEIFY_BASE_URL` and `CODEIFY_MODEL` to point at a compatible test gateway.
 
 ## License
 

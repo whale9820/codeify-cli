@@ -4,12 +4,14 @@
 
 ### Changed
 
+- Default new sessions without saved preferences to `gpt-6-astra` with `xhigh` reasoning effort.
 - Restricted the shipped CLI to the Codeify provider. Custom providers in `models.json` are ignored, non-Codeify `--provider` values are rejected, and legacy provider-specific authentication UI and documentation have been removed.
 
 ### Fixed
 
 - Reduced installer disk usage by installing production dependencies for the low-memory build, cleaned up failed fresh checkouts, reclaimed Unix dependencies before Git updates, and made Git updates fetch the `main` branch explicitly.
 - Fixed newly discovered GPT-6 models being treated as non-reasoning when model catalogs have not published capability metadata yet.
+- Prevented interrupted low-memory builds from mixing old and new runtime files, and made `codeify update` repair incomplete source installations even when the version is unchanged.
 
 ## [0.82.2] - 2025-01-29
 

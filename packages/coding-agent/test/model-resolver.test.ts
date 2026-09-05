@@ -587,6 +587,41 @@ describe("resolveCliModel", () => {
 });
 
 describe("default model selection", () => {
+	test("selects GPT-6 Astra before other available models on a fresh install", async () => {
+		const astra = { ...mockModels[0], id: "gpt-6-astra", provider: "codeify" };
+		const registry = {
+			getAvailable: async () => [...allModels, astra],
+		} as unknown as Parameters<typeof findInitialModel>[0]["modelRuntime"];
+
+		const result = await findInitialModel({ scopedModels: [], isContinuing: false, modelRuntime: registry });
+
+		expect(defaultModelPerProvider.codeify).toBe("gpt-6-astra");
+		expect(result.model).toBe(astra);
+		expect(result.thinkingLevel).toBe("xhigh");
+	});
+
+	test("preserves saved model and effort instead of the new-install defaults", async () => {
+		const saved = { ...mockModels[0], id: "gpt-5.6-sol", provider: "codeify" };
+		const astra = { ...saved, id: "gpt-6-astra" };
+		const registry = {
+			getModel: (_provider: string, id: string) => (id === saved.id ? saved : astra),
+			hasConfiguredAuth: () => true,
+			getAvailable: async () => [astra, saved],
+		} as unknown as Parameters<typeof findInitialModel>[0]["modelRuntime"];
+
+		const result = await findInitialModel({
+			scopedModels: [],
+			isContinuing: false,
+			defaultProvider: "codeify",
+			defaultModelId: saved.id,
+			defaultThinkingLevel: "medium",
+			modelRuntime: registry,
+		});
+
+		expect(result.model).toBe(saved);
+		expect(result.thinkingLevel).toBe("medium");
+	});
+
 	test("openai defaults track current models", () => {
 		expect(defaultModelPerProvider.openai).toBe("gpt-5.5");
 		expect(defaultModelPerProvider["openai-codex"]).toBe("gpt-5.5");

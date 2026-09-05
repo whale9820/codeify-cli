@@ -4,11 +4,13 @@ import type { Model, ModelCost, ModelsStoreEntry, OAuthCredentials, OAuthLoginCa
 import { getBuiltinModels } from "codeify-ai/providers/all";
 import { VERSION } from "../config.ts";
 import { getCodeifyUserAgent } from "../utils/codeify-user-agent.ts";
+import { CODEIFY_DEFAULT_MODEL } from "./defaults.ts";
 import type { RuntimeProviderConfig } from "./provider-composer.ts";
+
+export { CODEIFY_DEFAULT_MODEL } from "./defaults.ts";
 
 export const CODEIFY_PROVIDER_ID = "codeify";
 export const CODEIFY_BASE_URL = process.env.CODEIFY_BASE_URL ?? "https://codeify.cc/v1";
-export const CODEIFY_DEFAULT_MODEL = process.env.CODEIFY_MODEL ?? "gpt-5.6-sol";
 export const CODEIFY_CATALOG_BASE_URL = process.env.CODEIFY_CATALOG_BASE_URL ?? "https://pi.dev";
 export const CODEIFY_CATALOG_PROVIDER = process.env.CODEIFY_CATALOG_PROVIDER ?? "opencode";
 export const CODEIFY_MODEL_REFRESH_INTERVAL_MS = 4 * 60 * 60 * 1000;
