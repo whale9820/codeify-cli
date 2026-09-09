@@ -141,10 +141,9 @@ describe("parseModelPattern", () => {
 			expect(result.warning).toBeUndefined();
 		});
 
-		test("openrouter/qwen/qwen3-coder:exacto matches with provider prefix", () => {
+		test("does not interpret a provider prefix as a slug", () => {
 			const result = parseModelPattern("openrouter/qwen/qwen3-coder:exacto", allModels);
-			expect(result.model?.id).toBe("qwen/qwen3-coder:exacto");
-			expect(result.model?.provider).toBe("openrouter");
+			expect(result.model).toBeUndefined();
 			expect(result.thinkingLevel).toBeUndefined();
 			expect(result.warning).toBeUndefined();
 		});
@@ -156,11 +155,10 @@ describe("parseModelPattern", () => {
 			expect(result.warning).toBeUndefined();
 		});
 
-		test("openrouter/qwen/qwen3-coder:exacto:high matches with provider and thinking level", () => {
+		test("does not interpret a provider prefix with thinking as a slug", () => {
 			const result = parseModelPattern("openrouter/qwen/qwen3-coder:exacto:high", allModels);
-			expect(result.model?.id).toBe("qwen/qwen3-coder:exacto");
-			expect(result.model?.provider).toBe("openrouter");
-			expect(result.thinkingLevel).toBe("high");
+			expect(result.model).toBeUndefined();
+			expect(result.thinkingLevel).toBeUndefined();
 			expect(result.warning).toBeUndefined();
 		});
 
@@ -622,21 +620,12 @@ describe("default model selection", () => {
 		expect(result.thinkingLevel).toBe("medium");
 	});
 
-	test("openai defaults track current models", () => {
-		expect(defaultModelPerProvider.openai).toBe("gpt-5.5");
-		expect(defaultModelPerProvider["openai-codex"]).toBe("gpt-5.5");
+	test("only ships a Codeify default", () => {
+		expect(defaultModelPerProvider).toEqual({ codeify: "gpt-6-astra" });
 	});
 
-	test("zai, minimax, cerebras, and ant-ling defaults track current models", () => {
-		expect(defaultModelPerProvider.zai).toBe("glm-5.1");
-		expect(defaultModelPerProvider.minimax).toBe("MiniMax-M2.7");
-		expect(defaultModelPerProvider["minimax-cn"]).toBe("MiniMax-M2.7");
-		expect(defaultModelPerProvider.cerebras).toBe("zai-glm-4.7");
-		expect(defaultModelPerProvider["ant-ling"]).toBe("Ring-2.6-1T");
-	});
-
-	test("ai-gateway default tracks current model", () => {
-		expect(defaultModelPerProvider["vercel-ai-gateway"]).toBe("zai/glm-5.1");
+	test("does not match human-readable names", () => {
+		expect(parseModelPattern("Claude Sonnet", allModels).model).toBeUndefined();
 	});
 
 	test("findInitialModel accepts explicit provider custom model ids", async () => {

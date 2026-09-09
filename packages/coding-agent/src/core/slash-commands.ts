@@ -18,7 +18,7 @@ export interface BuiltinSlashCommand {
 
 export const BUILTIN_SLASH_COMMANDS: ReadonlyArray<BuiltinSlashCommand> = [
 	{ name: "settings", description: "Open settings menu" },
-	{ name: "model", description: "Select model (opens selector UI)", argumentHint: "<provider/model>" },
+	{ name: "model", description: "Select model (opens selector UI)", argumentHint: "<model-slug>" },
 	{ name: "thinking", description: "Set reasoning effort", argumentHint: "<level>" },
 	{ name: "effort", description: "Set reasoning effort", argumentHint: "<level>" },
 	{ name: "smart", description: "Enable or disable agentic smart model delegation", argumentHint: "<on|off>" },
@@ -34,8 +34,8 @@ export const BUILTIN_SLASH_COMMANDS: ReadonlyArray<BuiltinSlashCommand> = [
 	{ name: "clone", description: "Duplicate the current session at the current position" },
 	{ name: "tree", description: "Navigate session tree (switch branches)" },
 	{ name: "trust", description: "Save project trust decision for future sessions" },
-	{ name: "login", description: "Configure provider authentication", argumentHint: "<provider>" },
-	{ name: "logout", description: "Remove provider authentication" },
+	{ name: "login", description: "Configure Codeify authentication" },
+	{ name: "logout", description: "Remove Codeify authentication" },
 	{ name: "new", description: "Start a new session" },
 	{ name: "compact", description: "Manually compact the session context" },
 	{ name: "resume", description: "Resume a different session" },

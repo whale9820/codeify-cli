@@ -40,7 +40,7 @@ export interface CreateAgentSessionServicesOptions {
 	agentDir?: string;
 	settingsManager?: SettingsManager;
 	modelRuntime?: ModelRuntime;
-	/** Register pi-ai's built-in providers when creating the runtime. Defaults to true; the CLI passes false. */
+	/** Register SDK built-in providers when explicitly requested. */
 	includeBuiltinProviders?: boolean;
 	resourceLoaderOptions?: Omit<DefaultResourceLoaderOptions, "cwd" | "agentDir" | "settingsManager">;
 	resourceLoaderReloadOptions?: ResourceLoaderReloadOptions;
@@ -93,7 +93,7 @@ export async function createAgentSessionServices(
 		options.modelRuntime ??
 		(await ModelRuntime.create({
 			authPath: join(agentDir, "auth.json"),
-			modelsPath: options.includeBuiltinProviders === false ? null : join(agentDir, "models.json"),
+			modelsPath: options.includeBuiltinProviders === true ? join(agentDir, "models.json") : null,
 			modelsStorePath: join(agentDir, "models-store.json"),
 			includeBuiltinProviders: options.includeBuiltinProviders,
 		}));

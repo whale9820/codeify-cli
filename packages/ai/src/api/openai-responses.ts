@@ -126,7 +126,7 @@ export const stream: StreamFunction<"openai-responses", OpenAIResponsesOptions> 
 			const apiKey = getClientApiKey(model.provider, options?.apiKey, options?.headers);
 			const cacheRetention = resolveCacheRetention(options?.cacheRetention, options?.env);
 			const cacheSessionId = cacheRetention === "none" ? undefined : options?.sessionId;
-			const client = createClient(model, context, apiKey, options?.headers, cacheSessionId);
+			const client = createClient(model, context, apiKey, options?.headers, cacheSessionId, output);
 			let params = buildParams(model, context, options);
 			const nextParams = await options?.onPayload?.(params, model);
 			if (nextParams !== undefined) {
@@ -195,6 +195,7 @@ function createClient(
 	apiKey: string,
 	optionsHeaders?: ProviderHeaders,
 	sessionId?: string,
+	output?: AssistantMessage,
 ) {
 	const compat = getCompat(model);
 	const headers: ProviderHeaders = { ...model.headers };
@@ -228,6 +229,29 @@ function createClient(
 		baseURL: model.baseUrl,
 		dangerouslyAllowBrowser: true,
 		defaultHeaders: headers,
+		logger: {
+			debug: console.debug.bind(console),
+			info: console.info.bind(console),
+			warn: console.warn.bind(console),
+			error: (...args: unknown[]) => {
+				if (output && (args[0] === "Could not parse message into JSON:" || args[0] === "From chunk:")) {
+					output.diagnostics = [
+						...(output.diagnostics ?? []),
+						{
+							type: "malformed_json_payload",
+							timestamp: Date.now(),
+							error: {
+								message: args
+									.map((value) => (typeof value === "string" ? value : JSON.stringify(value)))
+									.join(" "),
+							},
+						},
+					];
+					return;
+				}
+				console.error(...args);
+			},
+		},
 	});
 }
 

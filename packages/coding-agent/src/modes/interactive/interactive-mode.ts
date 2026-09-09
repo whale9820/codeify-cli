@@ -10,7 +10,7 @@ import * as path from "node:path";
 import chalk from "chalk";
 import { spawn, spawnSync } from "child_process";
 import type { AgentMessage, ThinkingLevel } from "codeify-agent-core";
-import type { AuthEvent, AuthPrompt } from "codeify-ai";
+import { type AuthEvent, type AuthPrompt, isMalformedJsonError, NETWORK_UNSTABLE_ERROR_MESSAGE } from "codeify-ai";
 import type { AssistantMessage, ImageContent, Message, Model } from "codeify-ai/compat";
 import type {
 	AutocompleteItem,
@@ -53,11 +53,12 @@ import {
 	computeCacheWaste,
 	detectCacheMiss,
 } from "../../core/cache-stats.ts";
+import { CODEIFY_DEFAULT_MODEL } from "../../core/defaults.ts";
 import { FooterDataProvider } from "../../core/footer-data-provider.ts";
 import { configureHttpDispatcher, formatHttpIdleTimeoutMs } from "../../core/http-dispatcher.ts";
 import { type AppKeybinding, KeybindingsManager } from "../../core/keybindings.ts";
 import { createCompactionSummaryMessage } from "../../core/messages.ts";
-import { defaultModelPerProvider, findExactModelReferenceMatch, resolveModelScope } from "../../core/model-resolver.ts";
+import { findExactModelReferenceMatch, resolveModelScope } from "../../core/model-resolver.ts";
 import type { ProjectTrustContext } from "../../core/project-trust.ts";
 import type { ResourceDiagnostic } from "../../core/resource-loader.ts";
 import { formatMissingSessionCwdPrompt, MissingSessionCwdError } from "../../core/session-cwd.ts";
@@ -81,10 +82,10 @@ import { BranchSummaryMessageComponent } from "./components/branch-summary-messa
 import { CompactionSummaryMessageComponent } from "./components/compaction-summary-message.ts";
 import { CustomEditor } from "./components/custom-editor.ts";
 import { CustomMessageComponent } from "./components/custom-message.ts";
-import { DaxnutsComponent } from "./components/daxnuts.ts";
 import { DynamicBorder } from "./components/dynamic-border.ts";
 import { EarendilAnnouncementComponent } from "./components/earendil-announcement.ts";
 import { EditorDialogComponent } from "./components/editor-dialog.ts";
+import { ErrorDetailsComponent } from "./components/error-details.ts";
 import { FooterComponent, formatTokens } from "./components/footer.ts";
 import { InputDialogComponent } from "./components/input-dialog.ts";
 import { formatKeyText, keyDisplayText, keyHint, keyText, rawKeyHint } from "./components/keybinding-hints.ts";
@@ -214,10 +215,6 @@ export function formatResumeCommand(sessionManager: SessionManager): string | un
 	}
 	args.push("--session", sessionManager.getSessionId());
 	return args.join(" ");
-}
-
-function hasDefaultModelProvider(providerId: string): providerId is keyof typeof defaultModelPerProvider {
-	return providerId in defaultModelPerProvider;
 }
 
 type LoginProviderCompletionOption = {
@@ -491,18 +488,11 @@ export class InteractiveMode {
 
 				if (models.length === 0) return null;
 
-				// Create items with provider/id format
-				const items = models.map((m) => ({
-					id: m.id,
-					provider: m.provider,
-					name: m.name,
-					label: `${m.provider}/${m.id}`,
-				}));
+				const items = models.map((m) => ({ id: m.id }));
 
 				return createFuzzyAutocompleteItems(items, prefix, getModelSearchText, (item) => ({
-					value: item.label,
+					value: item.id,
 					label: item.id,
-					description: item.provider,
 				}));
 			};
 		}
@@ -1879,7 +1869,12 @@ export class InteractiveMode {
 						}
 						for (const [, component] of this.pendingTools.entries()) {
 							component.updateResult({
-								content: [{ type: "text", text: errorMessage }],
+								content: [
+									{
+										type: "text",
+										text: isMalformedJsonError(errorMessage) ? NETWORK_UNSTABLE_ERROR_MESSAGE : errorMessage,
+									},
+								],
 								isError: true,
 							});
 						}
@@ -2199,6 +2194,7 @@ export class InteractiveMode {
 					this.hiddenThinkingLabel,
 					this.outputPad,
 				);
+				assistantComponent.setExpanded(this.toolOutputExpanded);
 				this.chatContainer.addChild(assistantComponent);
 				break;
 			}
@@ -2268,7 +2264,15 @@ export class InteractiveMode {
 							} else {
 								errorMessage = message.errorMessage || "Error";
 							}
-							component.updateResult({ content: [{ type: "text", text: errorMessage }], isError: true });
+							component.updateResult({
+								content: [
+									{
+										type: "text",
+										text: isMalformedJsonError(errorMessage) ? NETWORK_UNSTABLE_ERROR_MESSAGE : errorMessage,
+									},
+								],
+								isError: true,
+							});
 						} else {
 							renderedPendingTools.set(content.id, component);
 						}
@@ -2698,7 +2702,7 @@ export class InteractiveMode {
 				this.updateEditorBorderColor();
 				const thinkingStr =
 					result.model.reasoning && result.thinkingLevel !== "off" ? ` (thinking: ${result.thinkingLevel})` : "";
-				this.showStatus(`Switched to ${result.model.name || result.model.id}${thinkingStr}`);
+				this.showStatus(`Switched to ${result.model.id}${thinkingStr}`);
 			}
 		} catch (error) {
 			this.showError(error instanceof Error ? error.message : String(error));
@@ -2810,7 +2814,11 @@ export class InteractiveMode {
 
 	showError(errorMessage: string): void {
 		this.chatContainer.addChild(new Spacer(1));
-		this.chatContainer.addChild(new Text(theme.fg("error", `Error: ${errorMessage}`), 1, 0));
+		this.chatContainer.addChild(
+			isMalformedJsonError(errorMessage)
+				? new ErrorDetailsComponent(errorMessage)
+				: new Text(theme.fg("error", `Error: ${errorMessage}`), 1, 0),
+		);
 		this.ui.requestRender();
 	}
 
@@ -3084,6 +3092,7 @@ export class InteractiveMode {
 						for (const child of this.chatContainer.children) {
 							if (child instanceof AssistantMessageComponent) {
 								child.setHideThinkingBlock(hidden);
+								child.setExpanded(this.toolOutputExpanded);
 							}
 						}
 						this.chatContainer.clear();
@@ -3193,7 +3202,6 @@ export class InteractiveMode {
 				this.footer.invalidate();
 				this.updateEditorBorderColor();
 				this.showStatus(`Model: ${model.id}`);
-				this.checkDaxnutsEasterEgg(model);
 			} catch (error) {
 				this.showError(error instanceof Error ? error.message : String(error));
 			}
@@ -3297,7 +3305,6 @@ export class InteractiveMode {
 						this.updateEditorBorderColor();
 						done();
 						this.showStatus(`Model: ${model.id}`);
-						this.checkDaxnutsEasterEgg(model);
 					} catch (error) {
 						done();
 						this.showError(error instanceof Error ? error.message : String(error));
@@ -3332,13 +3339,13 @@ export class InteractiveMode {
 
 		if (hasSessionScope) {
 			// Use current session's scoped models
-			currentEnabledIds = sessionScopedModels.map((scoped) => `${scoped.model.provider}/${scoped.model.id}`);
+			currentEnabledIds = sessionScopedModels.map((scoped) => scoped.model.id);
 		} else {
 			// Fall back to settings
 			const patterns = this.settingsManager.getEnabledModels();
 			if (patterns !== undefined && patterns.length > 0) {
 				const scopedModels = await resolveModelScope(patterns, this.session.modelRuntime);
-				currentEnabledIds = scopedModels.map((scoped) => `${scoped.model.provider}/${scoped.model.id}`);
+				currentEnabledIds = scopedModels.map((scoped) => scoped.model.id);
 			}
 		}
 
@@ -3917,12 +3924,12 @@ export class InteractiveMode {
 		if (isUnknownModel(previousModel)) {
 			const availableModels = await this.session.modelRuntime.getAvailable();
 			const providerModels = availableModels.filter((model) => model.provider === providerId);
-			if (!hasDefaultModelProvider(providerId)) {
+			if (providerId !== "codeify") {
 				selectionError = `${actionLabel}, but no default model is configured for provider "${providerId}". Use /model to select a model.`;
 			} else if (providerModels.length === 0) {
 				selectionError = `${actionLabel}, but no models are available for that provider. Use /model to select a model.`;
 			} else {
-				const defaultModelId = defaultModelPerProvider[providerId];
+				const defaultModelId = CODEIFY_DEFAULT_MODEL;
 				selectedModel = providerModels.find((model) => model.id === defaultModelId);
 				if (!selectedModel) {
 					selectionError = `${actionLabel}, but its default model "${defaultModelId}" is not available. Use /model to select a model.`;
@@ -3943,7 +3950,6 @@ export class InteractiveMode {
 		this.updateEditorBorderColor();
 		if (selectedModel) {
 			this.showStatus(`${actionLabel}. Selected ${selectedModel.id}. Credentials saved to ${getAuthPath()}`);
-			this.checkDaxnutsEasterEgg(selectedModel);
 		} else {
 			this.showStatus(`${actionLabel}. Credentials saved to ${getAuthPath()}`);
 			if (selectionError) {
@@ -4683,18 +4689,6 @@ export class InteractiveMode {
 		this.chatContainer.addChild(new Spacer(1));
 		this.chatContainer.addChild(new EarendilAnnouncementComponent());
 		this.ui.requestRender();
-	}
-
-	private handleDaxnuts(): void {
-		this.chatContainer.addChild(new Spacer(1));
-		this.chatContainer.addChild(new DaxnutsComponent(this.ui));
-		this.ui.requestRender();
-	}
-
-	private checkDaxnutsEasterEgg(model: { provider: string; id: string }): void {
-		if (model.provider === "opencode" && model.id.toLowerCase().includes("kimi-k2.5")) {
-			this.handleDaxnuts();
-		}
 	}
 
 	private async handleBashCommand(command: string, excludeFromContext = false): Promise<void> {

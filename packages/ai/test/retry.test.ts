@@ -54,6 +54,14 @@ describe("provider retry classification", () => {
 		).toBe(true);
 	});
 
+	it.each([
+		"Expected ':' after property name in JSON at position 4058 (line 1 column 4059)",
+		"Error: Unterminated string in JSON at position 2621 (line 1 column 2622)",
+		"Expected double-quoted property name in JSON at position 21751 (line 1 column 21752)",
+	])("matches malformed JSON error %s", (errorMessage) => {
+		expect(isRetryableAssistantError(fauxAssistantMessage("", { stopReason: "error", errorMessage }))).toBe(true);
+	});
+
 	it("keeps provider limit errors non-retryable", () => {
 		expect(
 			isRetryableAssistantError(
@@ -78,6 +86,17 @@ describe("provider retry classification", () => {
 describe("retryAssistantCall", () => {
 	const disabled: RetryPolicy = { enabled: false, maxRetries: 3, baseDelayMs: 0 };
 	const enabled: RetryPolicy = { enabled: true, maxRetries: 3, baseDelayMs: 0 };
+
+	it("caps malformed JSON retries at three and retains the final diagnostic", async () => {
+		const errorMessage = "Expected double-quoted property name in JSON at position 21751";
+		const produce = vi.fn(async () => fauxAssistantMessage("", { stopReason: "error", errorMessage }));
+		const onRetryFinished = vi.fn();
+		const result = await retryAssistantCall(produce, { ...enabled, maxRetries: 10 }, undefined, { onRetryFinished });
+		expect(produce).toHaveBeenCalledTimes(4);
+		expect(result.errorMessage).toBe("network unstable please try again");
+		expect(result.diagnostics).toMatchObject([{ type: "malformed_json", error: { message: errorMessage } }]);
+		expect(onRetryFinished).toHaveBeenCalledWith(false, 3, "network unstable please try again");
+	});
 
 	it("returns a successful response immediately without retrying", async () => {
 		const produce = vi.fn(async () => fauxAssistantMessage("ok"));

@@ -151,8 +151,7 @@ export class FooterComponent implements Component {
 
 		let statsLeft = statsParts.join(" ");
 
-		// Add model name on the right side, plus thinking level if model supports it
-		const modelName = state.model?.id || "no-model";
+		const modelSlug = state.model?.id || "no-model";
 
 		let statsLeftWidth = visibleWidth(statsLeft);
 
@@ -166,21 +165,10 @@ export class FooterComponent implements Component {
 		const minPadding = 2;
 
 		// Add thinking level indicator if model supports reasoning
-		let rightSideWithoutProvider = modelName;
+		let rightSide = modelSlug;
 		if (state.model?.reasoning) {
 			const thinkingLevel = state.thinkingLevel || "off";
-			rightSideWithoutProvider =
-				thinkingLevel === "off" ? `${modelName} • thinking off` : `${modelName} • ${thinkingLevel}`;
-		}
-
-		// Prepend the provider in parentheses if there are multiple providers and there's enough room
-		let rightSide = rightSideWithoutProvider;
-		if (this.footerData.getAvailableProviderCount() > 1 && state.model) {
-			rightSide = `(${state.model!.provider}) ${rightSideWithoutProvider}`;
-			if (statsLeftWidth + minPadding + visibleWidth(rightSide) > width) {
-				// Too wide, fall back
-				rightSide = rightSideWithoutProvider;
-			}
+			rightSide = thinkingLevel === "off" ? `${modelSlug} • thinking off` : `${modelSlug} • ${thinkingLevel}`;
 		}
 
 		const rightSideWidth = visibleWidth(rightSide);

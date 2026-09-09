@@ -45,7 +45,7 @@ codeify
 
 Codeify retrieves available models from `GET /v1/models` and caches the catalog in `~/.codeify/agent/models-store.json` for offline startup. Use `/model` or `--list-models` to inspect models currently available to your account.
 
-The CLI does not register built-in third-party providers and does not load custom providers from `~/.codeify/agent/models.json`. The lower-level SDK still supports programmatic runtime registration for applications embedding `codeify-coding-agent`.
+The CLI does not register built-in third-party providers and does not load custom providers from `~/.codeify/agent/models.json`. Models are displayed by slug only. The lower-level SDK supports explicit opt-in to built-in providers and programmatic runtime registration for applications embedding `codeify-coding-agent`.
 
 ## Network Settings
 

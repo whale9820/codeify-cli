@@ -24,7 +24,12 @@ import type {
 	PrepareNextTurnContext,
 	ThinkingLevel,
 } from "codeify-agent-core";
-import { contentText } from "codeify-ai";
+import {
+	contentText,
+	isMalformedJsonError,
+	MALFORMED_JSON_MAX_RETRIES,
+	NETWORK_UNSTABLE_ERROR_MESSAGE,
+} from "codeify-ai";
 import type {
 	AssistantMessage,
 	AuthResult,
@@ -501,6 +506,22 @@ export class AgentSession {
 			}
 		}
 
+		if (event.type === "message_end" && event.message.role === "assistant") {
+			const message = event.message as AssistantMessage;
+			const settings = this.settingsManager.getRetrySettings();
+			if (
+				message.stopReason === "error" &&
+				isMalformedJsonError(message.errorMessage ?? "") &&
+				(!settings.enabled || this._retryAttempt >= Math.min(settings.maxRetries, MALFORMED_JSON_MAX_RETRIES))
+			) {
+				message.diagnostics = [
+					...(message.diagnostics ?? []),
+					{ type: "malformed_json", timestamp: Date.now(), error: { message: message.errorMessage! } },
+				];
+				message.errorMessage = NETWORK_UNSTABLE_ERROR_MESSAGE;
+			}
+		}
+
 		// Notify all listeners
 		this._emit(event.type === "agent_end" ? { ...event, willRetry: this._willRetryAfterAgentEnd(event) } : event);
 
@@ -550,14 +571,16 @@ export class AgentSession {
 
 	private _willRetryAfterAgentEnd(event: Extract<AgentEvent, { type: "agent_end" }>): boolean {
 		const settings = this.settingsManager.getRetrySettings();
-		if (!settings.enabled || this._retryAttempt >= settings.maxRetries) {
-			return false;
-		}
+		if (!settings.enabled) return false;
 
 		for (let i = event.messages.length - 1; i >= 0; i--) {
 			const message = event.messages[i];
 			if (message.role === "assistant") {
-				return this._isRetryableError(message as AssistantMessage);
+				const assistantMessage = message as AssistantMessage;
+				const maxRetries = isMalformedJsonError(assistantMessage.errorMessage ?? "")
+					? Math.min(settings.maxRetries, MALFORMED_JSON_MAX_RETRIES)
+					: settings.maxRetries;
+				return this._retryAttempt < maxRetries && this._isRetryableError(assistantMessage);
 			}
 		}
 		return false;
@@ -1902,7 +1925,10 @@ export class AgentSession {
 	private _isRetryableError(message: AssistantMessage): boolean {
 		// Context overflow is handled by compaction, not retry.
 		if (isContextOverflow(message, this.model?.contextWindow ?? 0)) return false;
-		return isRetryableAssistantError(message);
+		return (
+			message.stopReason === "error" &&
+			(isMalformedJsonError(message.errorMessage ?? "") || isRetryableAssistantError(message))
+		);
 	}
 
 	/**
@@ -1946,9 +1972,12 @@ export class AgentSession {
 			return false;
 		}
 
+		const maxRetries = isMalformedJsonError(message.errorMessage ?? "")
+			? Math.min(settings.maxRetries, MALFORMED_JSON_MAX_RETRIES)
+			: settings.maxRetries;
 		this._retryAttempt++;
 
-		if (this._retryAttempt > settings.maxRetries) {
+		if (this._retryAttempt > maxRetries) {
 			// Preserve the completed attempt count so post-run handling can emit the final failure.
 			this._retryAttempt--;
 			return false;
@@ -1959,7 +1988,7 @@ export class AgentSession {
 		this._emit({
 			type: "auto_retry_start",
 			attempt: this._retryAttempt,
-			maxAttempts: settings.maxRetries,
+			maxAttempts: maxRetries,
 			delayMs,
 			errorMessage: message.errorMessage || "Unknown error",
 		});

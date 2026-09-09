@@ -4,10 +4,15 @@
 
 ### Changed
 
+- Display and search Codeify models by slug only, remove provider badges, and discover metadata exclusively through Codeify.
+- Raise GPT-5.5 and all GPT-5.6 variants to at least 1,050,000 context tokens, including cached entries.
+
 - Default new sessions without saved preferences to `gpt-6-astra` with `xhigh` reasoning effort.
 - Restricted the shipped CLI to the Codeify provider. Custom providers in `models.json` are ignored, non-Codeify `--provider` values are rejected, and legacy provider-specific authentication UI and documentation have been removed.
 
 ### Fixed
+
+- Retry malformed JSON property, unterminated-string, and double-quoted-property responses up to three times, collapse raw diagnostics, and report `network unstable please try again` on exhaustion.
 
 - Reduced installer disk usage by installing production dependencies for the low-memory build, cleaned up failed fresh checkouts, reclaimed Unix dependencies before Git updates, and made Git updates fetch the `main` branch explicitly.
 - Fixed newly discovered GPT-6 models being treated as non-reasoning when model catalogs have not published capability metadata yet.

@@ -177,7 +177,7 @@ function formatModel(model: Model<Api>): string {
 	const capabilities = [model.input.includes("image") ? "vision" : "text-only"];
 	const levels = getSupportedThinkingLevels(model);
 	if (model.reasoning) capabilities.push(`reasoning:${levels.join(",")}`);
-	return `- ${model.id} | ${model.name} | ${capabilities.join(" | ")} | context:${model.contextWindow} | max-output:${model.maxTokens} | $/M input:${formatRate(model.cost.input)} output:${formatRate(model.cost.output)} cache-read:${formatRate(model.cost.cacheRead)} cache-write:${formatRate(model.cost.cacheWrite)}`;
+	return `- ${model.id} | ${capabilities.join(" | ")} | context:${model.contextWindow} | max-output:${model.maxTokens} | $/M input:${formatRate(model.cost.input)} output:${formatRate(model.cost.output)} cache-read:${formatRate(model.cost.cacheRead)} cache-write:${formatRate(model.cost.cacheWrite)}`;
 }
 
 function responseText(messages: readonly AgentMessage[]): string {

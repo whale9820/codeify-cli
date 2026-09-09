@@ -67,7 +67,7 @@ export interface CreateModelRuntimeOptions {
 	/** Timeout for the create-time network model refresh. */
 	modelRefreshTimeoutMs?: number;
 	catalogBaseUrl?: string;
-	/** Register pi-ai's built-in providers. Defaults to true; the CLI disables it to stay Codeify-only. */
+	/** Register SDK built-in providers. The CLI disables these. */
 	includeBuiltinProviders?: boolean;
 }
 

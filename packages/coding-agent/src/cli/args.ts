@@ -299,8 +299,6 @@ ${chalk.bold("Environment Variables:")}
   CODEIFY_API_KEY                  - Codeify API key
   CODEIFY_BASE_URL                 - Override the Codeify API base URL
   CODEIFY_MODEL                    - Override the default Codeify model
-  CODEIFY_CATALOG_BASE_URL         - Override the model metadata catalog base URL
-  CODEIFY_CATALOG_PROVIDER         - Override the model metadata catalog source
   ${ENV_AGENT_DIR.padEnd(32)} - Config directory (default: ~/${CONFIG_DIR_NAME}/agent)
   ${ENV_SESSION_DIR.padEnd(32)} - Session storage directory (overridden by --session-dir)
   CODEIFY_PACKAGE_DIR              - Override package directory (for Nix/Guix store paths)

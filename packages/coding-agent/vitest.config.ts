@@ -23,6 +23,11 @@ export default defineConfig({
 	},
 	resolve: {
 		alias: [
+			{ find: /^codeify-ai$/, replacement: aiSrcIndex },
+			{ find: /^codeify-ai\/compat$/, replacement: aiSrcCompat },
+			{ find: /^codeify-ai\/providers\/(.+)$/, replacement: `${aiSrcProviders}/$1.ts` },
+			{ find: /^codeify-agent-core$/, replacement: agentSrcIndex },
+			{ find: /^codeify-tui$/, replacement: tuiSrcIndex },
 			{ find: /^@earendil-works\/pi-ai$/, replacement: aiSrcIndex },
 			{ find: /^@earendil-works\/pi-ai\/compat$/, replacement: aiSrcCompat },
 			{ find: /^@earendil-works\/pi-ai\/oauth$/, replacement: aiSrcOAuth },

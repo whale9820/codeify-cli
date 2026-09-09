@@ -11,7 +11,7 @@ const OSC133_ZONE_FINAL = "\x1b]133;C\x07";
 
 function createAssistantMessage(
 	content: AssistantMessage["content"],
-	overrides: Partial<Pick<AssistantMessage, "stopReason">> = {},
+	overrides: Partial<Pick<AssistantMessage, "stopReason" | "errorMessage">> = {},
 ): AssistantMessage {
 	return {
 		role: "assistant",
@@ -28,6 +28,7 @@ function createAssistantMessage(
 			cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
 		},
 		stopReason: overrides.stopReason ?? "stop",
+		errorMessage: overrides.errorMessage,
 		timestamp: Date.now(),
 	};
 }
@@ -69,12 +70,12 @@ describe("AssistantMessageComponent", () => {
 		);
 		const rendered = component.render(80).join("\n");
 
-		expect(rendered).toContain("Thinking...");
+		expect(rendered).toContain("private reasoning");
 		expect(rendered).toContain("maximum output token limit");
 		expect(rendered).toContain("response may be incomplete");
 	});
 
-	test("coalesces adjacent thinking blocks into one hidden thinking label", () => {
+	test("renders adjacent thinking blocks in order", () => {
 		initTheme("dark");
 
 		const component = new AssistantMessageComponent(
@@ -88,8 +89,33 @@ describe("AssistantMessageComponent", () => {
 		);
 		const rendered = stripAnsi(component.render(80).join("\n"));
 
-		expect(rendered.match(/Thinking\.\.\./g)).toHaveLength(1);
+		expect(rendered).toContain("first thought");
+		expect(rendered).toContain("second thought");
 		expect(rendered).toContain("answer");
+	});
+
+	test.each([
+		"Expected ':' after property name in JSON at position 4058",
+		"Unterminated string in JSON at position 2621",
+		"Expected double-quoted property name in JSON at position 21751",
+	])("collapses %s diagnostics until expanded", (parseError) => {
+		initTheme("dark");
+
+		const errorMessage = `${parseError}\n${"diagnostic-payload ".repeat(4000)}`;
+		const component = new AssistantMessageComponent(
+			createAssistantMessage([], { stopReason: "error", errorMessage }),
+		);
+
+		const collapsed = stripAnsi(component.render(120).join("\n"));
+		expect(collapsed).toContain("Response interrupted");
+		expect(collapsed).not.toContain(errorMessage);
+
+		component.setExpanded(true);
+		const expanded = stripAnsi(component.render(120).join("\n"));
+		expect(expanded).toContain(parseError);
+		expect(expanded).toContain("diagnostic-payload");
+		component.setExpanded(false);
+		expect(component.render(80).length).toBeLessThan(5);
 	});
 
 	test("uses configured output padding for text and thinking", () => {

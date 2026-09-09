@@ -1,13 +1,7 @@
 import { createHash } from "node:crypto";
 import type { ModelsStoreEntry, OAuthLoginCallbacks } from "codeify-ai";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-	CODEIFY_BASE_URL,
-	CODEIFY_CATALOG_BASE_URL,
-	CODEIFY_CATALOG_PROVIDER,
-	codeifyProvider,
-	loginWithCodeifyOAuth,
-} from "../src/core/codeify-provider.ts";
+import { CODEIFY_BASE_URL, codeifyProvider, loginWithCodeifyOAuth } from "../src/core/codeify-provider.ts";
 import { openBrowser } from "../src/utils/open-browser.ts";
 
 vi.mock("../src/utils/open-browser.ts", () => ({ openBrowser: vi.fn() }));
@@ -39,59 +33,43 @@ describe("Codeify provider", () => {
 		expect(model).toMatchObject({ reasoning: true, thinkingLevelMap: { xhigh: "xhigh" } });
 	});
 
-	it("joins Codeify availability with Pi's remote model metadata", async () => {
-		const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
-			const url = String(input);
-			if (url === `${CODEIFY_BASE_URL}/models`) {
-				return new Response(JSON.stringify({ data: [{ id: "gpt-5.6-sol" }] }), { status: 200 });
-			}
-			expect(url).toBe(`${CODEIFY_CATALOG_BASE_URL}/api/models/providers/${CODEIFY_CATALOG_PROVIDER}`);
-			return new Response(
+	it("uses only Codeify model metadata", async () => {
+		const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+			new Response(
 				JSON.stringify({
-					"gpt-5.6-sol": {
-						id: "gpt-5.6-sol",
-						name: "GPT-5.6 Sol",
-						contextWindow: 1_050_000,
-						maxTokens: 128_000,
-						reasoning: true,
-						thinkingLevelMap: { off: null, low: "low", high: "high", max: "max" },
-						input: ["text", "image"],
-						cost: { input: 5, output: 30, cacheRead: 0.5, cacheWrite: 6.25 },
-						compat: { sessionAffinityFormat: "openai-nosession" },
-					},
+					data: [
+						{
+							id: "gpt-5.6-sol",
+							context: 1_050_000,
+							max_tokens: 128_000,
+							capabilities: { reasoning: true },
+							input_modalities: ["text", "image"],
+							pricing: { input: 5, output: 30, cache_read: 0.5, cache_write: 6.25 },
+						},
+					],
 				}),
-				{ status: 200, headers: { "last-modified": "Wed, 22 Jul 2026 12:49:31 GMT" } },
-			);
-		});
-		const provider = codeifyProvider();
-		const models = await provider.refreshModels?.({
+				{ status: 200 },
+			),
+		);
+		const models = await codeifyProvider().refreshModels?.({
 			credential: { type: "api_key", key: "test-key" },
-			store: {
-				read: async () => undefined,
-				write: async (entry) => {
-					expect(entry.models[0]).toMatchObject({
-						provider: "codeify",
-						contextWindow: 1_050_000,
-						maxTokens: 128_000,
-					});
-				},
-				delete: async () => {},
-			},
+			store: { read: async () => undefined, write: async () => {}, delete: async () => {} },
 			allowNetwork: true,
 			force: true,
 		});
 
-		expect(fetchSpy).toHaveBeenCalledTimes(2);
+		expect(fetchSpy).toHaveBeenCalledTimes(1);
 		expect(models?.[0]).toMatchObject({
+			id: "gpt-5.6-sol",
+			name: "gpt-5.6-sol",
 			contextWindow: 1_050_000,
 			maxTokens: 128_000,
 			cost: { input: 5, output: 30, cacheRead: 0.5, cacheWrite: 6.25 },
-			thinkingLevelMap: { off: null, low: "low", high: "high", max: "max" },
-			compat: { sessionAffinityFormat: "openai-nosession", supportsToolSearch: true },
+			input: ["text", "image"],
 		});
 	});
 
-	it("prefers Codeify v1 model metadata and pricing over the remote catalog", async () => {
+	it("uses Codeify v1 model metadata and pricing", async () => {
 		vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
 			const url = String(input);
 			if (url === `${CODEIFY_BASE_URL}/models`) {
@@ -100,7 +78,6 @@ describe("Codeify provider", () => {
 						data: [
 							{
 								id: "gpt-5.6-sol",
-								name: "GPT-5.6 Sol (Codeify)",
 								context: 400_000,
 								max_tokens: 64_000,
 								capabilities: { reasoning: false },
@@ -140,12 +117,54 @@ describe("Codeify provider", () => {
 		});
 
 		expect(models?.[0]).toMatchObject({
-			name: "GPT-5.6 Sol (Codeify)",
+			name: "gpt-5.6-sol",
 			reasoning: false,
-			contextWindow: 400_000,
+			contextWindow: 1_050_000,
 			maxTokens: 64_000,
 			cost: { input: 1, output: 4, cacheRead: 0.1, cacheWrite: 0.2 },
 		});
+	});
+
+	it("raises GPT-5.5 and every GPT-5.6 variant in live and cached catalogs", async () => {
+		const ids = [
+			"gpt-5.5",
+			"gpt-5.5-pro",
+			"gpt-5.6",
+			"gpt-5.6-luna",
+			"gpt-5.6-sol",
+			"gpt-5.6-terra",
+			"gpt-5.6-sol-uncensored",
+		];
+		vi.spyOn(globalThis, "fetch").mockResolvedValue(
+			new Response(
+				JSON.stringify({
+					data: [
+						...ids.map((id) => ({ id, context: 272_000, name: "Ignored display name" })),
+						{ id: "gpt-5.4", context: 272_000 },
+					],
+				}),
+			),
+		);
+		let stored: ModelsStoreEntry | undefined;
+		const store = {
+			read: async () => stored,
+			write: async (entry: ModelsStoreEntry) => {
+				stored = entry;
+			},
+			delete: async () => {},
+		};
+		const live = await codeifyProvider().refreshModels!({
+			credential: { type: "api_key", key: "test" },
+			store,
+			allowNetwork: true,
+		});
+		stored = { models: stored!.models.map((model) => ({ ...model, contextWindow: 272_000 })) };
+		const cached = await codeifyProvider().refreshModels!({ credential: undefined, store, allowNetwork: false });
+		for (const models of [live, cached]) {
+			for (const id of ids)
+				expect(models.find((model) => model.id === id)).toMatchObject({ name: id, contextWindow: 1_050_000 });
+			expect(models.find((model) => model.id === "gpt-5.4")?.contextWindow).toBe(272_000);
+		}
 	});
 
 	it("recognizes GPT-6 models as reasoning models without catalog metadata", async () => {
@@ -228,7 +247,7 @@ describe("Codeify provider", () => {
 		});
 	});
 
-	it("restores a cached remote catalog without network access", async () => {
+	it("restores the cached Codeify catalog without network access", async () => {
 		const fetchSpy = vi.spyOn(globalThis, "fetch");
 		const provider = codeifyProvider();
 		const models = await provider.refreshModels?.({
@@ -318,7 +337,7 @@ describe("Codeify provider", () => {
 		expect(codeifyFetches).toHaveLength(2);
 	});
 
-	it("takes input modalities from the Codeify v1 catalog over every other source", async () => {
+	it("takes input modalities from the Codeify v1 catalog", async () => {
 		vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
 			const url = String(input);
 			if (url === `${CODEIFY_BASE_URL}/models`) {

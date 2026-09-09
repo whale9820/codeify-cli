@@ -8,7 +8,6 @@ import { DynamicBorder } from "./dynamic-border.ts";
 import { keyHint } from "./keybinding-hints.ts";
 
 interface ModelItem {
-	provider: string;
 	id: string;
 	model: Model<any>;
 }
@@ -129,7 +128,6 @@ export class ModelSelectorComponent extends Container implements Focusable {
 
 	private loadModelsFromSnapshot(): void {
 		const models = this.modelRuntime.getAvailableSnapshot().map((model: Model<any>) => ({
-			provider: model.provider,
 			id: model.id,
 			model,
 		}));
@@ -139,7 +137,6 @@ export class ModelSelectorComponent extends Container implements Focusable {
 			return refreshed ? { ...scoped, model: refreshed } : scoped;
 		});
 		this.scopedModelItems = this.scopedModels.map((scoped) => ({
-			provider: scoped.model.provider,
 			id: scoped.model.id,
 			model: scoped.model,
 		}));
@@ -190,13 +187,12 @@ export class ModelSelectorComponent extends Container implements Focusable {
 
 	private sortModels(models: ModelItem[]): ModelItem[] {
 		const sorted = [...models];
-		// Sort: current model first, then by provider
 		sorted.sort((a, b) => {
 			const aIsCurrent = modelsAreEqual(this.currentModel, a.model);
 			const bIsCurrent = modelsAreEqual(this.currentModel, b.model);
 			if (aIsCurrent && !bIsCurrent) return -1;
 			if (!aIsCurrent && bIsCurrent) return 1;
-			return a.provider.localeCompare(b.provider);
+			return a.id.localeCompare(b.id);
 		});
 		return sorted;
 	}
@@ -225,9 +221,7 @@ export class ModelSelectorComponent extends Container implements Focusable {
 
 	private filterModels(query: string): void {
 		this.filteredModels = query
-			? fuzzyFilter(this.activeModels, query, ({ id, provider, model }) =>
-					getModelSelectorSearchText({ id, provider, name: model.name }),
-				)
+			? fuzzyFilter(this.activeModels, query, ({ id }) => getModelSelectorSearchText({ id }))
 			: this.activeModels;
 		this.selectedIndex = Math.min(this.selectedIndex, Math.max(0, this.filteredModels.length - 1));
 		this.updateList();
@@ -254,15 +248,11 @@ export class ModelSelectorComponent extends Container implements Focusable {
 			let line = "";
 			if (isSelected) {
 				const prefix = theme.fg("accent", "→ ");
-				const modelText = `${item.id}`;
-				const providerBadge = theme.fg("muted", `[${item.provider}]`);
 				const checkmark = isCurrent ? theme.fg("success", " ✓") : "";
-				line = `${prefix + theme.fg("accent", modelText)} ${providerBadge}${checkmark}`;
+				line = `${prefix + theme.fg("accent", item.id)}${checkmark}`;
 			} else {
-				const modelText = `  ${item.id}`;
-				const providerBadge = theme.fg("muted", `[${item.provider}]`);
 				const checkmark = isCurrent ? theme.fg("success", " ✓") : "";
-				line = `${modelText} ${providerBadge}${checkmark}`;
+				line = `  ${item.id}${checkmark}`;
 			}
 
 			this.listContainer.addChild(new Text(line, 0, 0));
@@ -283,10 +273,6 @@ export class ModelSelectorComponent extends Container implements Focusable {
 			}
 		} else if (this.filteredModels.length === 0) {
 			this.listContainer.addChild(new Text(theme.fg("muted", "  No matching models"), 0, 0));
-		} else {
-			const selected = this.filteredModels[this.selectedIndex];
-			this.listContainer.addChild(new Spacer(1));
-			this.listContainer.addChild(new Text(theme.fg("muted", `  Model Name: ${selected.model.name}`), 0, 0));
 		}
 		if (this.refreshStatusMessage) {
 			this.listContainer.addChild(new Spacer(1));

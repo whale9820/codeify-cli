@@ -23,6 +23,16 @@ const NON_RETRYABLE_PROVIDER_LIMIT_ERROR_PATTERN = buildProviderErrorPattern([
 	"billing",
 ]);
 
+export const NETWORK_UNSTABLE_ERROR_MESSAGE = "network unstable please try again";
+export const MALFORMED_JSON_MAX_RETRIES = 3;
+
+const MALFORMED_JSON_ERROR_PATTERN =
+	/expected ':' after property name in json|unterminated string in json|expected double-quoted property name in json/i;
+
+export function isMalformedJsonError(errorMessage: string): boolean {
+	return MALFORMED_JSON_ERROR_PATTERN.test(errorMessage);
+}
+
 const RETRYABLE_PROVIDER_ERROR_PATTERN = buildProviderErrorPattern([
 	// Generic provider load, HTTP status, and server-side transient failures.
 	"overloaded",
@@ -187,7 +197,17 @@ export async function retryAssistantCall(
 		}
 
 		// Non-retryable, or budget exhausted: return the final error message.
-		if (attempt >= maxAttempts || !isRetryableAssistantError(response)) {
+		const retryLimit = isMalformedJsonError(response.errorMessage ?? "")
+			? Math.min(maxAttempts, MALFORMED_JSON_MAX_RETRIES)
+			: maxAttempts;
+		if (attempt >= retryLimit || !isRetryableAssistantError(response)) {
+			if (lastRetry && isMalformedJsonError(response.errorMessage ?? "")) {
+				response.diagnostics = [
+					...(response.diagnostics ?? []),
+					{ type: "malformed_json", timestamp: Date.now(), error: { message: response.errorMessage! } },
+				];
+				response.errorMessage = NETWORK_UNSTABLE_ERROR_MESSAGE;
+			}
 			if (lastRetry) await callbacks?.onRetryFinished?.(false, lastRetry.attempt, response.errorMessage);
 			return response;
 		}
@@ -195,7 +215,7 @@ export async function retryAssistantCall(
 		attempt++;
 		lastRetry = { attempt, errorMessage: response.errorMessage || "Unknown error" };
 		const delayMs = policy!.baseDelayMs * 2 ** (attempt - 1);
-		await callbacks?.onRetryScheduled?.(attempt, maxAttempts, delayMs, lastRetry.errorMessage);
+		await callbacks?.onRetryScheduled?.(attempt, retryLimit, delayMs, lastRetry.errorMessage);
 
 		// Normalize aborts during retry backoff to the same AssistantMessage shape as
 		// provider stream aborts, so callers do not need to care when cancellation happened.
@@ -225,5 +245,5 @@ export function isRetryableAssistantError(message: AssistantMessage): boolean {
 	if (message.stopReason !== "error" || !message.errorMessage) return false;
 	const errorMessage = message.errorMessage;
 	if (NON_RETRYABLE_PROVIDER_LIMIT_ERROR_PATTERN.test(errorMessage)) return false;
-	return RETRYABLE_PROVIDER_ERROR_PATTERN.test(errorMessage);
+	return isMalformedJsonError(errorMessage) || RETRYABLE_PROVIDER_ERROR_PATTERN.test(errorMessage);
 }

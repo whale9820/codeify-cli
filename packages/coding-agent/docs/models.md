@@ -1,6 +1,6 @@
 # Models
 
-Codeify CLI selects models from the authenticated Codeify catalog. Every model shown by the CLI uses the `codeify` provider, even when its model ID names a GPT, Claude, Gemini, or another model family.
+Codeify CLI selects models from the authenticated Codeify catalog. Models are identified only by their slugs; the CLI does not display or search human-readable model names or provider labels.
 
 ## List Models
 
@@ -41,10 +41,8 @@ codeify --models gpt-5.6-sol:high,claude-haiku-4-5-20251001:low
 
 ## Catalog Metadata
 
-The Codeify `/v1/models` response is authoritative for availability, pricing, context length, output limits, reasoning support, and input modalities. Additional metadata may be joined from the configured catalog source and is cached in `~/.codeify/agent/models-store.json`.
-
-`CODEIFY_CATALOG_BASE_URL` overrides the metadata catalog base URL. `CODEIFY_CATALOG_PROVIDER` changes the metadata catalog source joined to Codeify model IDs.
+The Codeify `/v1/models` response is authoritative for availability, pricing, context length, output limits, reasoning support, and input modalities. Metadata is cached in `~/.codeify/agent/models-store.json`; the CLI does not fetch third-party metadata catalogs. GPT-5.5 and every GPT-5.6 variant use a minimum context window of 1,050,000 tokens, matching GPT-6's 1.1M display value.
 
 ## Custom Providers
 
-The shipped CLI ignores `~/.codeify/agent/models.json`; custom providers and direct third-party credentials are not supported. Applications embedding the SDK can construct or register a custom `ModelRuntime` programmatically without changing the CLI provider set.
+The shipped CLI ignores `~/.codeify/agent/models.json`; custom providers and direct third-party credentials are not supported. Applications embedding the SDK can explicitly opt into built-in providers or register a custom `ModelRuntime` programmatically without changing the CLI provider set.

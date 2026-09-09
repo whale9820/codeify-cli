@@ -1,6 +1,7 @@
-import type { AssistantMessage } from "codeify-ai";
+import { type AssistantMessage, isMalformedJsonError, NETWORK_UNSTABLE_ERROR_MESSAGE } from "codeify-ai";
 import { Container, Markdown, type MarkdownTheme, Spacer, Text } from "codeify-tui";
 import { getMarkdownTheme, theme } from "../theme/theme.ts";
+import { ErrorDetailsComponent } from "./error-details.ts";
 
 const OSC133_ZONE_START = "\x1b]133;A\x07";
 const OSC133_ZONE_END = "\x1b]133;B\x07";
@@ -15,6 +16,8 @@ export class AssistantMessageComponent extends Container {
 	private outputPad: number;
 	private lastMessage?: AssistantMessage;
 	private hasToolCalls = false;
+	private expanded = false;
+	private errorDetails?: ErrorDetailsComponent;
 
 	constructor(
 		message?: AssistantMessage,
@@ -57,6 +60,12 @@ export class AssistantMessageComponent extends Container {
 		if (this.lastMessage) {
 			this.updateContent(this.lastMessage);
 		}
+	}
+
+	setExpanded(expanded: boolean): void {
+		if (this.expanded === expanded) return;
+		this.expanded = expanded;
+		this.errorDetails?.setExpanded(expanded);
 	}
 
 	override render(width: number): string[] {
@@ -142,6 +151,27 @@ export class AssistantMessageComponent extends Container {
 					0,
 				),
 			);
+		} else if (
+			message.stopReason === "error" &&
+			(isMalformedJsonError(message.errorMessage ?? "") ||
+				message.diagnostics?.some((entry) => entry.type === "malformed_json"))
+		) {
+			const details =
+				message.diagnostics?.find((entry) => entry.type === "malformed_json")?.error?.message ??
+				message.errorMessage!;
+			const payloads =
+				message.diagnostics
+					?.filter((entry) => entry.type === "malformed_json_payload")
+					.map((entry) => entry.error?.message ?? "") ?? [];
+			this.errorDetails = new ErrorDetailsComponent([details, ...payloads].join("\n"), this.outputPad);
+			this.errorDetails.setExpanded(this.expanded);
+			this.contentContainer.addChild(new Spacer(1));
+			if (message.errorMessage === NETWORK_UNSTABLE_ERROR_MESSAGE) {
+				this.contentContainer.addChild(
+					new Text(theme.fg("error", NETWORK_UNSTABLE_ERROR_MESSAGE), this.outputPad, 0),
+				);
+			}
+			this.contentContainer.addChild(this.errorDetails);
 		} else if (!hasToolCalls) {
 			if (message.stopReason === "aborted") {
 				const abortMessage =

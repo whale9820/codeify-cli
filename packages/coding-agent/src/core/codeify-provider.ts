@@ -1,9 +1,6 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { createServer } from "node:http";
 import type { Model, ModelCost, ModelsStoreEntry, OAuthCredentials, OAuthLoginCallbacks } from "codeify-ai";
-import { getBuiltinModels } from "codeify-ai/providers/all";
-import { VERSION } from "../config.ts";
-import { getCodeifyUserAgent } from "../utils/codeify-user-agent.ts";
 import { CODEIFY_DEFAULT_MODEL } from "./defaults.ts";
 import type { RuntimeProviderConfig } from "./provider-composer.ts";
 
@@ -11,13 +8,10 @@ export { CODEIFY_DEFAULT_MODEL } from "./defaults.ts";
 
 export const CODEIFY_PROVIDER_ID = "codeify";
 export const CODEIFY_BASE_URL = process.env.CODEIFY_BASE_URL ?? "https://codeify.cc/v1";
-export const CODEIFY_CATALOG_BASE_URL = process.env.CODEIFY_CATALOG_BASE_URL ?? "https://pi.dev";
-export const CODEIFY_CATALOG_PROVIDER = process.env.CODEIFY_CATALOG_PROVIDER ?? "opencode";
 export const CODEIFY_MODEL_REFRESH_INTERVAL_MS = 4 * 60 * 60 * 1000;
 
 type CodeifyModel = {
 	id: string;
-	name?: string;
 	context?: number;
 	max_tokens?: number;
 	max_output_tokens?: number;
@@ -25,6 +19,7 @@ type CodeifyModel = {
 	input_modalities?: string[];
 	modalities?: { input?: string[]; output?: string[] };
 	capabilities?: { reasoning?: boolean; vision?: boolean };
+	thinkingLevelMap?: Model<"openai-responses">["thinkingLevelMap"];
 	cost?: ModelCost;
 	pricing?: {
 		input?: number;
@@ -35,28 +30,12 @@ type CodeifyModel = {
 	};
 };
 
-type RemoteCatalogModel = {
-	id: string;
-	name?: string;
-	inputModalities?: string[];
-	reasoning?: boolean;
-	thinkingLevelMap?: Model<"openai-responses">["thinkingLevelMap"];
-	input?: ("text" | "image")[];
-	contextWindow?: number;
-	maxTokens?: number;
-	cost?: ModelCost;
-	compat?: Model<"openai-responses">["compat"];
-};
-
 type CodeifyModelDefinition = NonNullable<RuntimeProviderConfig["models"]>[number];
 
-/** Cached model plus the input modalities `/v1/models` declared for it. */
 type StoredCodeifyModel = Model<"openai-responses"> & {
 	inputModalities?: string[];
 	declaredReasoning?: boolean;
 };
-
-const bundledModels = getBuiltinModels("opencode") as Model<"openai-responses">[];
 
 function positiveNumber(value: number | undefined): number | undefined {
 	return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : undefined;
@@ -102,130 +81,56 @@ function declaredModalities(model: CodeifyModel): string[] | undefined {
 	return declared?.filter((entry): entry is string => typeof entry === "string");
 }
 
-/**
- * Codeify ids often carry a date or variant suffix (claude-haiku-4-5-20251001,
- * gpt-5.6-sol-uncensored) that no catalog lists. Fall back to the longest bundled
- * id the requested model is derived from before guessing by family.
- */
-function relatedBundledInput(id: string): ("text" | "image")[] | undefined {
-	let best: Model<"openai-responses"> | undefined;
-	for (const candidate of bundledModels) {
-		if (candidate.id === id || !id.startsWith(`${candidate.id}-`)) continue;
-		if (!best || candidate.id.length > best.id.length) best = candidate;
-	}
-	return toInput(best?.input);
-}
-
-/**
- * Resolve vision support from the most authoritative source available. Models newer
- * than both the bundled and remote catalogs used to silently degrade to text-only,
- * which stripped images from requests to models that do support them.
- */
-function resolveInput(
-	model: CodeifyModel,
-	remote: RemoteCatalogModel | undefined,
-	bundled: Model<"openai-responses"> | undefined,
-): ("text" | "image")[] {
-	const declared = toInput(declaredModalities(model)) ?? toInput(remote?.inputModalities);
+function resolveInput(model: CodeifyModel): ("text" | "image")[] {
+	const declared = toInput(declaredModalities(model));
 	if (declared) return declared;
 	if (model.capabilities?.vision !== undefined) return model.capabilities.vision ? ["text", "image"] : ["text"];
-	return (
-		toInput(model.input) ??
-		toInput(remote?.input) ??
-		toInput(bundled?.input) ??
-		relatedBundledInput(model.id) ??
-		(VISION_MODEL_FAMILIES.test(model.id) ? ["text", "image"] : ["text"])
-	);
+	return toInput(model.input) ?? (VISION_MODEL_FAMILIES.test(model.id) ? ["text", "image"] : ["text"]);
 }
 
-function toModelDefinition(model: CodeifyModel, remote?: RemoteCatalogModel): CodeifyModelDefinition {
-	const bundled = bundledModels.find((candidate) => candidate.id === model.id);
-	const reasoning = model.capabilities?.reasoning ?? remote?.reasoning ?? supportsReasoning(model.id, model);
-	const contextWindow =
-		positiveNumber(model.context) ??
-		positiveNumber(remote?.contextWindow) ??
-		positiveNumber(bundled?.contextWindow) ??
-		272_000;
-	const maxTokens =
-		positiveNumber(model.max_tokens ?? model.max_output_tokens) ??
-		positiveNumber(remote?.maxTokens) ??
-		positiveNumber(bundled?.maxTokens) ??
-		32_768;
+function toModelDefinition(model: CodeifyModel): CodeifyModelDefinition {
+	const reasoning = model.capabilities?.reasoning ?? supportsReasoning(model.id, model);
+	const contextWindow = /^gpt-5\.[56](?:-|$)/i.test(model.id)
+		? Math.max(positiveNumber(model.context) ?? 0, 1_050_000)
+		: (positiveNumber(model.context) ?? 272_000);
+	const maxTokens = positiveNumber(model.max_tokens ?? model.max_output_tokens) ?? 32_768;
 	return {
 		id: model.id,
-		name: model.name ?? remote?.name ?? bundled?.name ?? model.id,
+		name: model.id,
 		api: "openai-responses",
 		reasoning,
 		thinkingLevelMap:
-			remote?.thinkingLevelMap ??
-			bundled?.thinkingLevelMap ??
-			(reasoning ? { off: "none", xhigh: "xhigh", max: "max" } : { off: null }),
-		input: resolveInput(model, remote, bundled),
-		cost: pricingToCost(model.pricing) ??
-			model.cost ??
-			remote?.cost ??
-			bundled?.cost ?? { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+			model.thinkingLevelMap ?? (reasoning ? { off: "none", xhigh: "xhigh", max: "max" } : { off: null }),
+		input: resolveInput(model),
+		cost: pricingToCost(model.pricing) ?? model.cost ?? { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
 		contextWindow,
 		maxTokens,
-		compat: { ...remote?.compat, supportsToolSearch: true, promoteToolResultImages: true },
-	};
-}
-
-function parseRemoteCatalog(value: unknown): Map<string, RemoteCatalogModel> {
-	const entries =
-		typeof value === "object" && value !== null && "models" in value && Array.isArray(value.models)
-			? value.models
-			: typeof value === "object" && value !== null
-				? Object.values(value)
-				: Array.isArray(value)
-					? value
-					: undefined;
-	if (!entries) throw new Error("Invalid Codeify CLI remote model catalog");
-	const models = new Map<string, RemoteCatalogModel>();
-	for (const entry of entries) {
-		if (typeof entry !== "object" || entry === null || !("id" in entry) || typeof entry.id !== "string") continue;
-		models.set(entry.id, entry as RemoteCatalogModel);
-	}
-	return models;
-}
-
-async function fetchRemoteCatalog(signal?: AbortSignal): Promise<{
-	models: Map<string, RemoteCatalogModel>;
-	lastModified: number;
-}> {
-	const url = new URL(
-		`/api/models/providers/${encodeURIComponent(CODEIFY_CATALOG_PROVIDER)}`,
-		CODEIFY_CATALOG_BASE_URL,
-	);
-	const response = await fetch(url, {
-		headers: { accept: "application/json", "User-Agent": getCodeifyUserAgent(VERSION) },
-		signal,
-	});
-	if (!response.ok) throw new Error(`Codeify CLI remote model catalog failed (${response.status})`);
-	const lastModified = Date.parse(response.headers.get("last-modified") ?? "");
-	return {
-		models: parseRemoteCatalog(await response.json()),
-		lastModified: Number.isNaN(lastModified) ? 0 : lastModified,
+		compat: { supportsToolSearch: true, promoteToolResultImages: true },
 	};
 }
 
 /**
- * Caches written by earlier versions hold heuristic input arrays and can have wrongly
- * downgraded an entry to text-only. Trust `inputModalities` when a cache recorded what
- * `/v1/models` declared; otherwise keep the metadata and let vision be re-derived.
+ * Cached entries retain declared modalities when the Codeify catalog supplied them;
+ * otherwise model-family heuristics are recalculated for offline startup.
  */
-function cachedCatalogEntry(model: StoredCodeifyModel): RemoteCatalogModel {
-	const { input, inputModalities, declaredReasoning, reasoning, thinkingLevelMap, ...rest } = model;
-	const cached = inputModalities?.length
-		? { ...rest, inputModalities }
-		: input?.includes("image")
-			? { ...rest, input: ["text", "image"] as ("text" | "image")[] }
-			: rest;
-	if (declaredReasoning === undefined && /^gpt-6/i.test(model.id) && !reasoning) return cached;
+function cachedCodeifyModel(model: StoredCodeifyModel): CodeifyModel {
+	const input = model.inputModalities?.length
+		? model.inputModalities
+		: model.input.includes("image")
+			? ["text", "image"]
+			: undefined;
 	return {
-		...cached,
-		...(reasoning !== undefined ? { reasoning } : {}),
-		...(thinkingLevelMap !== undefined ? { thinkingLevelMap } : {}),
+		id: model.id,
+		context: model.contextWindow,
+		max_tokens: model.maxTokens,
+		cost: model.cost,
+		input_modalities: input,
+		...(model.declaredReasoning === undefined && /^gpt-6/i.test(model.id) && !model.reasoning
+			? {}
+			: {
+					capabilities: { reasoning: model.declaredReasoning ?? model.reasoning },
+					thinkingLevelMap: model.thinkingLevelMap,
+				}),
 	};
 }
 
@@ -239,7 +144,7 @@ async function fetchModels(
 	const stored = await store.read();
 	const cached = stored?.models
 		.filter((model): model is StoredCodeifyModel => model.provider === CODEIFY_PROVIDER_ID)
-		.map((model) => toModelDefinition({ id: model.id, name: model.name }, cachedCatalogEntry(model)));
+		.map((model) => toModelDefinition(cachedCodeifyModel(model)));
 	if (!allowNetwork || signal?.aborted)
 		return cached?.length ? cached : [toModelDefinition({ id: CODEIFY_DEFAULT_MODEL })];
 	if (
@@ -251,13 +156,10 @@ async function fetchModels(
 		return cached;
 	}
 
-	const [codeifyResponse, remoteCatalog] = await Promise.all([
-		fetch(`${CODEIFY_BASE_URL}/models`, {
-			headers: { Accept: "application/json", Authorization: `Bearer ${apiKey}` },
-			signal,
-		}),
-		fetchRemoteCatalog(signal).catch(() => undefined),
-	]);
+	const codeifyResponse = await fetch(`${CODEIFY_BASE_URL}/models`, {
+		headers: { Accept: "application/json", Authorization: `Bearer ${apiKey}` },
+		signal,
+	});
 	if (!codeifyResponse.ok) throw new Error(`Codeify CLI model discovery failed (${codeifyResponse.status})`);
 	const payload = (await codeifyResponse.json()) as { data?: CodeifyModel[] };
 	const models = (payload.data ?? []).filter((model) => typeof model.id === "string" && model.id.length > 0);
@@ -265,13 +167,9 @@ async function fetchModels(
 	const definitions: CodeifyModelDefinition[] = [];
 	const storedModels: StoredCodeifyModel[] = [];
 	for (const model of discovered) {
-		const remote = remoteCatalog?.models.get(model.id);
-		const definition = toModelDefinition(model, remote);
+		const definition = toModelDefinition(model);
 		const inputModalities = declaredModalities(model);
-		const declaredReasoning =
-			model.capabilities?.reasoning ??
-			remote?.reasoning ??
-			bundledModels.find((candidate) => candidate.id === model.id)?.reasoning;
+		const declaredReasoning = model.capabilities?.reasoning;
 		definitions.push(definition);
 		storedModels.push({
 			...definition,
@@ -285,7 +183,7 @@ async function fetchModels(
 	await store.write({
 		models: storedModels,
 		checkedAt: Date.now(),
-		lastModified: remoteCatalog?.lastModified ?? stored?.lastModified ?? 0,
+		lastModified: stored?.lastModified ?? 0,
 	});
 	return definitions;
 }

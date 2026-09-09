@@ -4,7 +4,7 @@
 
 import chalk from "chalk";
 import type { ThinkingLevel } from "codeify-agent-core";
-import { type Api, type KnownProvider, type Model, modelsAreEqual } from "codeify-ai";
+import { type Api, type Model, modelsAreEqual } from "codeify-ai";
 import { minimatch } from "minimatch";
 import { isValidThinkingLevel } from "../cli/args.ts";
 import { CODEIFY_DEFAULT_MODEL, DEFAULT_THINKING_LEVEL } from "./defaults.ts";
@@ -13,44 +13,6 @@ import type { ModelRuntime } from "./model-runtime.ts";
 /** Default model IDs for each known provider */
 export const defaultModelPerProvider: Record<string, string> = {
 	codeify: CODEIFY_DEFAULT_MODEL,
-	"amazon-bedrock": "us.anthropic.claude-opus-4-6-v1",
-	"ant-ling": "Ring-2.6-1T",
-	anthropic: "claude-opus-4-8",
-	openai: "gpt-5.5",
-	"azure-openai-responses": "gpt-5.4",
-	"openai-codex": "gpt-5.5",
-	radius: "auto",
-	nvidia: "nvidia/nemotron-3-super-120b-a12b",
-	deepseek: "deepseek-v4-pro",
-	google: "gemini-3.1-pro-preview",
-	"google-vertex": "gemini-3.1-pro-preview",
-	"github-copilot": "gpt-5.4",
-	openrouter: "moonshotai/kimi-k2.6",
-	"vercel-ai-gateway": "zai/glm-5.1",
-	xai: "grok-4.5",
-	groq: "openai/gpt-oss-120b",
-	cerebras: "zai-glm-4.7",
-	zai: "glm-5.1",
-	"zai-coding-cn": "glm-5.1",
-	mistral: "devstral-medium-latest",
-	minimax: "MiniMax-M2.7",
-	"minimax-cn": "MiniMax-M2.7",
-	moonshotai: "kimi-k2.6",
-	"moonshotai-cn": "kimi-k2.6",
-	huggingface: "moonshotai/Kimi-K2.6",
-	fireworks: "accounts/fireworks/models/kimi-k2p6",
-	together: "moonshotai/Kimi-K2.6",
-	opencode: "kimi-k2.6",
-	"opencode-go": "kimi-k2.6",
-	"kimi-coding": "kimi-for-coding",
-	"cloudflare-workers-ai": "@cf/moonshotai/kimi-k2.6",
-	"cloudflare-ai-gateway": "workers-ai/@cf/moonshotai/kimi-k2.6",
-	"qwen-token-plan": "qwen3.7-max",
-	"qwen-token-plan-cn": "qwen3.7-max",
-	xiaomi: "mimo-v2.5-pro",
-	"xiaomi-token-plan-cn": "mimo-v2.5-pro",
-	"xiaomi-token-plan-ams": "mimo-v2.5-pro",
-	"xiaomi-token-plan-sgp": "mimo-v2.5-pro",
 };
 
 export interface ScopedModel {
@@ -72,53 +34,15 @@ function isAlias(id: string): boolean {
 	return !datePattern.test(id);
 }
 
-/**
- * Find an exact model reference match.
- * Supports either a bare model id or a canonical provider/modelId reference.
- * When matching by bare id, ambiguous matches across providers are rejected.
- */
+/** Find a model by its Codeify slug. */
 export function findExactModelReferenceMatch(
 	modelReference: string,
 	availableModels: Model<Api>[],
 ): Model<Api> | undefined {
-	const trimmedReference = modelReference.trim();
-	if (!trimmedReference) {
-		return undefined;
-	}
-
-	const normalizedReference = trimmedReference.toLowerCase();
-
-	const canonicalMatches = availableModels.filter(
-		(model) => `${model.provider}/${model.id}`.toLowerCase() === normalizedReference,
-	);
-	if (canonicalMatches.length === 1) {
-		return canonicalMatches[0];
-	}
-	if (canonicalMatches.length > 1) {
-		return undefined;
-	}
-
-	const slashIndex = trimmedReference.indexOf("/");
-	if (slashIndex !== -1) {
-		const provider = trimmedReference.substring(0, slashIndex).trim();
-		const modelId = trimmedReference.substring(slashIndex + 1).trim();
-		if (provider && modelId) {
-			const providerMatches = availableModels.filter(
-				(model) =>
-					model.provider.toLowerCase() === provider.toLowerCase() &&
-					model.id.toLowerCase() === modelId.toLowerCase(),
-			);
-			if (providerMatches.length === 1) {
-				return providerMatches[0];
-			}
-			if (providerMatches.length > 1) {
-				return undefined;
-			}
-		}
-	}
-
-	const idMatches = availableModels.filter((model) => model.id.toLowerCase() === normalizedReference);
-	return idMatches.length === 1 ? idMatches[0] : undefined;
+	const normalizedReference = modelReference.trim().toLowerCase();
+	if (!normalizedReference) return undefined;
+	const matches = availableModels.filter((model) => model.id.toLowerCase() === normalizedReference);
+	return matches.length === 1 ? matches[0] : undefined;
 }
 
 /**
@@ -132,11 +56,7 @@ function tryMatchModel(modelPattern: string, availableModels: Model<Api>[]): Mod
 	}
 
 	// No exact match - fall back to partial matching
-	const matches = availableModels.filter(
-		(m) =>
-			m.id.toLowerCase().includes(modelPattern.toLowerCase()) ||
-			m.name?.toLowerCase().includes(modelPattern.toLowerCase()),
-	);
+	const matches = availableModels.filter((m) => m.id.toLowerCase().includes(modelPattern.toLowerCase()));
 
 	if (matches.length === 0) {
 		return undefined;
@@ -168,7 +88,7 @@ function buildFallbackModel(provider: string, modelId: string, availableModels: 
 	const providerModels = availableModels.filter((m) => m.provider === provider);
 	if (providerModels.length === 0) return undefined;
 
-	const defaultId = defaultModelPerProvider[provider as KnownProvider];
+	const defaultId = defaultModelPerProvider[provider];
 	const baseModel = defaultId
 		? (providerModels.find((m) => m.id === defaultId) ?? providerModels[0])
 		: providerModels[0];
@@ -294,12 +214,7 @@ export async function resolveModelScopeWithDiagnostics(
 				}
 			}
 
-			// Match against "provider/modelId" format OR just model ID
-			// This allows "*sonnet*" to match without requiring "anthropic/*sonnet*"
-			const matchingModels = availableModels.filter((m) => {
-				const fullId = `${m.provider}/${m.id}`;
-				return minimatch(fullId, globPattern, { nocase: true }) || minimatch(m.id, globPattern, { nocase: true });
-			});
+			const matchingModels = availableModels.filter((m) => minimatch(m.id, globPattern, { nocase: true }));
 
 			if (matchingModels.length === 0) {
 				diagnostics.push({ type: "warning", message: `No models match pattern "${pattern}"`, pattern });
@@ -616,8 +531,8 @@ export async function findInitialModel(options: {
 	const availableModels = [...(await modelRuntime.getAvailable())];
 
 	if (availableModels.length > 0) {
-		// Try to find a default model from known providers
-		for (const provider of Object.keys(defaultModelPerProvider) as KnownProvider[]) {
+		// Try to find the Codeify default model
+		for (const provider of Object.keys(defaultModelPerProvider)) {
 			const defaultId = defaultModelPerProvider[provider];
 			const match = availableModels.find((m) => m.provider === provider && m.id === defaultId);
 			if (match) {
@@ -677,9 +592,9 @@ export async function restoreModelFromSession(
 	const availableModels = [...(await modelRuntime.getAvailable())];
 
 	if (availableModels.length > 0) {
-		// Try to find a default model from known providers
+		// Try to find the Codeify default model
 		let fallbackModel: Model<Api> | undefined;
-		for (const provider of Object.keys(defaultModelPerProvider) as KnownProvider[]) {
+		for (const provider of Object.keys(defaultModelPerProvider)) {
 			const defaultId = defaultModelPerProvider[provider];
 			const match = availableModels.find((m) => m.provider === provider && m.id === defaultId);
 			if (match) {

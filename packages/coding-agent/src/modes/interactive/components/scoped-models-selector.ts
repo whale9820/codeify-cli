@@ -66,7 +66,7 @@ function getSortedIds(enabledIds: EnabledIds, allIds: string[]): string[] {
 }
 
 interface ModelItem {
-	fullId: string;
+	id: string;
 	model: Model<any>;
 	enabled: boolean;
 }
@@ -116,9 +116,8 @@ export class ScopedModelsSelectorComponent extends Container implements Focusabl
 		this.callbacks = callbacks;
 
 		for (const model of config.allModels) {
-			const fullId = `${model.provider}/${model.id}`;
-			this.modelsById.set(fullId, model);
-			this.allIds.push(fullId);
+			this.modelsById.set(model.id, model);
+			this.allIds.push(model.id);
 		}
 
 		this.enabledIds = config.enabledModelIds === null ? null : [...config.enabledModelIds];
@@ -156,7 +155,7 @@ export class ScopedModelsSelectorComponent extends Container implements Focusabl
 		return getSortedIds(this.enabledIds, this.allIds)
 			.filter((id) => this.modelsById.has(id))
 			.map((id) => ({
-				fullId: id,
+				id,
 				model: this.modelsById.get(id)!,
 				enabled: isEnabled(this.enabledIds, id),
 			}));
@@ -170,7 +169,6 @@ export class ScopedModelsSelectorComponent extends Container implements Focusabl
 			`${keyText("tui.select.confirm")} toggle`,
 			`${keyText("app.models.enableAll")} all`,
 			`${keyText("app.models.clearAll")} clear`,
-			`${keyText("app.models.toggleProvider")} provider`,
 			`${keyText("app.models.reorderUp")}/${keyText("app.models.reorderDown")} reorder`,
 			`${keyText("app.models.save")} save`,
 			countText,
@@ -183,11 +181,7 @@ export class ScopedModelsSelectorComponent extends Container implements Focusabl
 	private refresh(): void {
 		const query = this.searchInput.getValue();
 		const items = this.buildItems();
-		this.filteredItems = query
-			? fuzzyFilter(items, query, (i) =>
-					getModelSearchText({ id: i.model.id, provider: i.model.provider, name: i.model.name }),
-				)
-			: items;
+		this.filteredItems = query ? fuzzyFilter(items, query, (i) => getModelSearchText({ id: i.model.id })) : items;
 		this.selectedIndex = Math.min(this.selectedIndex, Math.max(0, this.filteredItems.length - 1));
 		this.updateList();
 		this.footerText.setText(this.getFooterText());
@@ -217,9 +211,8 @@ export class ScopedModelsSelectorComponent extends Container implements Focusabl
 			const isSelected = i === this.selectedIndex;
 			const prefix = isSelected ? theme.fg("accent", "→ ") : "  ";
 			const modelText = isSelected ? theme.fg("accent", item.model.id) : item.model.id;
-			const providerBadge = theme.fg("muted", ` [${item.model.provider}]`);
 			const status = allEnabled ? "" : item.enabled ? theme.fg("success", " ✓") : theme.fg("dim", " ✗");
-			this.listContainer.addChild(new Text(`${prefix}${modelText}${providerBadge}${status}`, 0, 0));
+			this.listContainer.addChild(new Text(`${prefix}${modelText}${status}`, 0, 0));
 		}
 
 		// Add scroll indicator if needed
@@ -227,12 +220,6 @@ export class ScopedModelsSelectorComponent extends Container implements Focusabl
 			this.listContainer.addChild(
 				new Text(theme.fg("muted", `  (${this.selectedIndex + 1}/${this.filteredItems.length})`), 0, 0),
 			);
-		}
-
-		if (this.filteredItems.length > 0) {
-			const selected = this.filteredItems[this.selectedIndex];
-			this.listContainer.addChild(new Spacer(1));
-			this.listContainer.addChild(new Text(theme.fg("muted", `  Model Name: ${selected.model.name}`), 0, 0));
 		}
 	}
 
@@ -259,13 +246,13 @@ export class ScopedModelsSelectorComponent extends Container implements Focusabl
 		if (reorderUp || reorderDown) {
 			if (this.enabledIds === null) return;
 			const item = this.filteredItems[this.selectedIndex];
-			if (item && isEnabled(this.enabledIds, item.fullId)) {
+			if (item && isEnabled(this.enabledIds, item.id)) {
 				const delta = reorderUp ? -1 : 1;
-				const currentIndex = this.enabledIds.indexOf(item.fullId);
+				const currentIndex = this.enabledIds.indexOf(item.id);
 				const newIndex = currentIndex + delta;
 				// Only move if within bounds
 				if (newIndex >= 0 && newIndex < this.enabledIds.length) {
-					this.enabledIds = move(this.enabledIds, item.fullId, delta);
+					this.enabledIds = move(this.enabledIds, item.id, delta);
 					this.isDirty = true;
 					this.selectedIndex += delta;
 					this.refresh();
@@ -279,7 +266,7 @@ export class ScopedModelsSelectorComponent extends Container implements Focusabl
 		if (kb.matches(data, "tui.select.confirm")) {
 			const item = this.filteredItems[this.selectedIndex];
 			if (item) {
-				this.enabledIds = toggle(this.enabledIds, item.fullId);
+				this.enabledIds = toggle(this.enabledIds, item.id);
 				this.isDirty = true;
 				this.refresh();
 				this.notifyChange();
@@ -289,7 +276,7 @@ export class ScopedModelsSelectorComponent extends Container implements Focusabl
 
 		// Enable all (filtered if search active, otherwise all)
 		if (kb.matches(data, "app.models.enableAll")) {
-			const targetIds = this.searchInput.getValue() ? this.filteredItems.map((i) => i.fullId) : undefined;
+			const targetIds = this.searchInput.getValue() ? this.filteredItems.map((i) => i.id) : undefined;
 			this.enabledIds = enableAll(this.enabledIds, this.allIds, targetIds);
 			this.isDirty = true;
 			this.refresh();
@@ -299,28 +286,11 @@ export class ScopedModelsSelectorComponent extends Container implements Focusabl
 
 		// Clear all (filtered if search active, otherwise all)
 		if (kb.matches(data, "app.models.clearAll")) {
-			const targetIds = this.searchInput.getValue() ? this.filteredItems.map((i) => i.fullId) : undefined;
+			const targetIds = this.searchInput.getValue() ? this.filteredItems.map((i) => i.id) : undefined;
 			this.enabledIds = clearAll(this.enabledIds, this.allIds, targetIds);
 			this.isDirty = true;
 			this.refresh();
 			this.notifyChange();
-			return;
-		}
-
-		// Toggle provider of current item
-		if (kb.matches(data, "app.models.toggleProvider")) {
-			const item = this.filteredItems[this.selectedIndex];
-			if (item) {
-				const provider = item.model.provider;
-				const providerIds = this.allIds.filter((id) => this.modelsById.get(id)!.provider === provider);
-				const allEnabled = providerIds.every((id) => isEnabled(this.enabledIds, id));
-				this.enabledIds = allEnabled
-					? clearAll(this.enabledIds, this.allIds, providerIds)
-					: enableAll(this.enabledIds, this.allIds, providerIds);
-				this.isDirty = true;
-				this.refresh();
-				this.notifyChange();
-			}
 			return;
 		}
 
