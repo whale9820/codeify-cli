@@ -56,6 +56,8 @@ describe("provider retry classification", () => {
 
 	it.each([
 		"Expected ':' after property name in JSON at position 4058 (line 1 column 4059)",
+		"Error: Expected ',' or '}' after property value in JSON at position 4077 (line 1 column 4078)",
+		"Expected ',' or '}' after property value in JSON at position 8184 (line 1 column 8185)",
 		"Error: Unterminated string in JSON at position 2621 (line 1 column 2622)",
 		"Expected double-quoted property name in JSON at position 21751 (line 1 column 21752)",
 	])("matches malformed JSON error %s", (errorMessage) => {
@@ -87,8 +89,11 @@ describe("retryAssistantCall", () => {
 	const disabled: RetryPolicy = { enabled: false, maxRetries: 3, baseDelayMs: 0 };
 	const enabled: RetryPolicy = { enabled: true, maxRetries: 3, baseDelayMs: 0 };
 
-	it("caps malformed JSON retries at three and retains the final diagnostic", async () => {
-		const errorMessage = "Expected double-quoted property name in JSON at position 21751";
+	it.each([
+		"Expected double-quoted property name in JSON at position 21751",
+		"Error: Expected ',' or '}' after property value in JSON at position 4077 (line 1 column 4078)",
+		"Expected ',' or '}' after property value in JSON at position 8184 (line 1 column 8185)",
+	])("caps malformed JSON retries at three and retains the final diagnostic for %s", async (errorMessage) => {
 		const produce = vi.fn(async () => fauxAssistantMessage("", { stopReason: "error", errorMessage }));
 		const onRetryFinished = vi.fn();
 		const result = await retryAssistantCall(produce, { ...enabled, maxRetries: 10 }, undefined, { onRetryFinished });

@@ -96,6 +96,8 @@ describe("AssistantMessageComponent", () => {
 
 	test.each([
 		"Expected ':' after property name in JSON at position 4058",
+		"Error: Expected ',' or '}' after property value in JSON at position 4077 (line 1 column 4078)",
+		"Expected ',' or '}' after property value in JSON at position 8184 (line 1 column 8185)",
 		"Unterminated string in JSON at position 2621",
 		"Expected double-quoted property name in JSON at position 21751",
 	])("collapses %s diagnostics until expanded", (parseError) => {
