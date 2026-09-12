@@ -6,6 +6,7 @@ const malformedJsonErrors = [
 	"Expected ':' after property name in JSON at position 4058 (line 1 column 4059)",
 	"Error: Expected ',' or '}' after property value in JSON at position 4077 (line 1 column 4078)",
 	"Expected ',' or '}' after property value in JSON at position 8184 (line 1 column 8185)",
+	"Error: Expected ',' or ']' after array element in JSON at position 4083 (line 1 column 4084)",
 	"Error: Unterminated string in JSON at position 2621 (line 1 column 2622)",
 	"Expected double-quoted property name in JSON at position 21751 (line 1 column 21752)",
 ];

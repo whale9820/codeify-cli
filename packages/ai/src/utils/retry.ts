@@ -27,7 +27,7 @@ export const NETWORK_UNSTABLE_ERROR_MESSAGE = "network unstable please try again
 export const MALFORMED_JSON_MAX_RETRIES = 3;
 
 const MALFORMED_JSON_ERROR_PATTERN =
-	/expected ':' after property name in json|expected ',' or '}' after property value in json|unterminated string in json|expected double-quoted property name in json/i;
+	/expected ':' after property name in json|expected ',' or '}' after property value in json|expected ',' or ']' after array element in json|unterminated string in json|expected double-quoted property name in json/i;
 
 export function isMalformedJsonError(errorMessage: string): boolean {
 	return MALFORMED_JSON_ERROR_PATTERN.test(errorMessage);
