@@ -25,6 +25,10 @@ export const HUGGINGFACE_MODELS = values as {
 		id: "MiniMaxAI/MiniMax-M3";
 		provider: "huggingface";
 	};
+	"Qwen/Qwen2.5-Coder-32B-Instruct": Model<"openai-completions"> & {
+		id: "Qwen/Qwen2.5-Coder-32B-Instruct";
+		provider: "huggingface";
+	};
 	"Qwen/Qwen3-235B-A22B": Model<"openai-completions"> & {
 		id: "Qwen/Qwen3-235B-A22B";
 		provider: "huggingface";
@@ -35,6 +39,10 @@ export const HUGGINGFACE_MODELS = values as {
 	};
 	"Qwen/Qwen3-235B-A22B-Thinking-2507": Model<"openai-completions"> & {
 		id: "Qwen/Qwen3-235B-A22B-Thinking-2507";
+		provider: "huggingface";
+	};
+	"Qwen/Qwen3-30B-A3B": Model<"openai-completions"> & {
+		id: "Qwen/Qwen3-30B-A3B";
 		provider: "huggingface";
 	};
 	"Qwen/Qwen3-32B": Model<"openai-completions"> & {
@@ -59,6 +67,14 @@ export const HUGGINGFACE_MODELS = values as {
 	};
 	"Qwen/Qwen3-Next-80B-A3B-Thinking": Model<"openai-completions"> & {
 		id: "Qwen/Qwen3-Next-80B-A3B-Thinking";
+		provider: "huggingface";
+	};
+	"Qwen/Qwen3-VL-235B-A22B-Instruct": Model<"openai-completions"> & {
+		id: "Qwen/Qwen3-VL-235B-A22B-Instruct";
+		provider: "huggingface";
+	};
+	"Qwen/Qwen3-VL-235B-A22B-Thinking": Model<"openai-completions"> & {
+		id: "Qwen/Qwen3-VL-235B-A22B-Thinking";
 		provider: "huggingface";
 	};
 	"Qwen/Qwen3.5-122B-A10B": Model<"openai-completions"> & {
@@ -89,6 +105,14 @@ export const HUGGINGFACE_MODELS = values as {
 		id: "Qwen/Qwen3.6-35B-A3B";
 		provider: "huggingface";
 	};
+	"Qwen/Qwen3.8-2.4T-A95B": Model<"openai-completions"> & {
+		id: "Qwen/Qwen3.8-2.4T-A95B";
+		provider: "huggingface";
+	};
+	"Qwen/Qwen3.8-27B": Model<"openai-completions"> & {
+		id: "Qwen/Qwen3.8-27B";
+		provider: "huggingface";
+	};
 	"XiaomiMiMo/MiMo-V2-Flash": Model<"openai-completions"> & {
 		id: "XiaomiMiMo/MiMo-V2-Flash";
 		provider: "huggingface";
@@ -113,6 +137,10 @@ export const HUGGINGFACE_MODELS = values as {
 		id: "deepseek-ai/DeepSeek-V3";
 		provider: "huggingface";
 	};
+	"deepseek-ai/DeepSeek-V3-0324": Model<"openai-completions"> & {
+		id: "deepseek-ai/DeepSeek-V3-0324";
+		provider: "huggingface";
+	};
 	"deepseek-ai/DeepSeek-V3.1": Model<"openai-completions"> & {
 		id: "deepseek-ai/DeepSeek-V3.1";
 		provider: "huggingface";
@@ -129,8 +157,32 @@ export const HUGGINGFACE_MODELS = values as {
 		id: "deepseek-ai/DeepSeek-V4-Flash-0731";
 		provider: "huggingface";
 	};
+	"deepseek-ai/DeepSeek-V4-Flash-Vision-Exp": Model<"openai-completions"> & {
+		id: "deepseek-ai/DeepSeek-V4-Flash-Vision-Exp";
+		provider: "huggingface";
+	};
 	"deepseek-ai/DeepSeek-V4-Pro": Model<"openai-completions"> & {
 		id: "deepseek-ai/DeepSeek-V4-Pro";
+		provider: "huggingface";
+	};
+	"deepseek-ai/DeepSeek-V4-Pro-0813": Model<"openai-completions"> & {
+		id: "deepseek-ai/DeepSeek-V4-Pro-0813";
+		provider: "huggingface";
+	};
+	"deepseek-ai/DeepSeek-V4.1-Flash": Model<"openai-completions"> & {
+		id: "deepseek-ai/DeepSeek-V4.1-Flash";
+		provider: "huggingface";
+	};
+	"google/gemma-3-12b-it": Model<"openai-completions"> & {
+		id: "google/gemma-3-12b-it";
+		provider: "huggingface";
+	};
+	"google/gemma-3-27b-it": Model<"openai-completions"> & {
+		id: "google/gemma-3-27b-it";
+		provider: "huggingface";
+	};
+	"google/gemma-3-4b-it": Model<"openai-completions"> & {
+		id: "google/gemma-3-4b-it";
 		provider: "huggingface";
 	};
 	"google/gemma-4-26B-A4B-it": Model<"openai-completions"> & {
@@ -139,6 +191,10 @@ export const HUGGINGFACE_MODELS = values as {
 	};
 	"google/gemma-4-31B-it": Model<"openai-completions"> & {
 		id: "google/gemma-4-31B-it";
+		provider: "huggingface";
+	};
+	"meta-llama/Llama-3.1-8B-Instruct": Model<"openai-completions"> & {
+		id: "meta-llama/Llama-3.1-8B-Instruct";
 		provider: "huggingface";
 	};
 	"meta-llama/Llama-3.3-70B-Instruct": Model<"openai-completions"> & {
@@ -217,6 +273,10 @@ export const HUGGINGFACE_MODELS = values as {
 		id: "zai-org/GLM-4.6";
 		provider: "huggingface";
 	};
+	"zai-org/GLM-4.6V-Flash": Model<"openai-completions"> & {
+		id: "zai-org/GLM-4.6V-Flash";
+		provider: "huggingface";
+	};
 	"zai-org/GLM-4.7": Model<"openai-completions"> & {
 		id: "zai-org/GLM-4.7";
 		provider: "huggingface";
@@ -235,6 +295,14 @@ export const HUGGINGFACE_MODELS = values as {
 	};
 	"zai-org/GLM-5.2": Model<"openai-completions"> & {
 		id: "zai-org/GLM-5.2";
+		provider: "huggingface";
+	};
+	"zai-org/GLM-5.3": Model<"openai-completions"> & {
+		id: "zai-org/GLM-5.3";
+		provider: "huggingface";
+	};
+	"zai-org/GLM-5.3-Flash": Model<"openai-completions"> & {
+		id: "zai-org/GLM-5.3-Flash";
 		provider: "huggingface";
 	};
 };

@@ -9,6 +9,10 @@ export const ANTHROPIC_MODELS = values as {
 		id: "claude-fable-5";
 		provider: "anthropic";
 	};
+	"claude-fable-5-1": Model<"anthropic-messages"> & {
+		id: "claude-fable-5-1";
+		provider: "anthropic";
+	};
 	"claude-haiku-4-5": Model<"anthropic-messages"> & {
 		id: "claude-haiku-4-5";
 		provider: "anthropic";

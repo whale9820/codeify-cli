@@ -5,28 +5,40 @@ import values from "./data/fireworks.json" with { type: "json" };
 import type { Model } from "../types.ts";
 
 export const FIREWORKS_MODELS = values as {
-	"accounts/fireworks/models/deepseek-v4-flash": Model<"anthropic-messages"> & {
-		id: "accounts/fireworks/models/deepseek-v4-flash";
-		provider: "fireworks";
-	};
 	"accounts/fireworks/models/deepseek-v4-flash-0731": Model<"anthropic-messages"> & {
 		id: "accounts/fireworks/models/deepseek-v4-flash-0731";
 		provider: "fireworks";
 	};
-	"accounts/fireworks/models/deepseek-v4-pro": Model<"anthropic-messages"> & {
-		id: "accounts/fireworks/models/deepseek-v4-pro";
+	"accounts/fireworks/models/deepseek-v4-flash-vision-exp": Model<"anthropic-messages"> & {
+		id: "accounts/fireworks/models/deepseek-v4-flash-vision-exp";
+		provider: "fireworks";
+	};
+	"accounts/fireworks/models/deepseek-v4-pro-0813": Model<"anthropic-messages"> & {
+		id: "accounts/fireworks/models/deepseek-v4-pro-0813";
+		provider: "fireworks";
+	};
+	"accounts/fireworks/models/deepseek-v4p1-flash": Model<"anthropic-messages"> & {
+		id: "accounts/fireworks/models/deepseek-v4p1-flash";
 		provider: "fireworks";
 	};
 	"accounts/fireworks/models/glm-5p2": Model<"openai-completions"> & {
 		id: "accounts/fireworks/models/glm-5p2";
 		provider: "fireworks";
 	};
+	"accounts/fireworks/models/glm-5p3": Model<"anthropic-messages"> & {
+		id: "accounts/fireworks/models/glm-5p3";
+		provider: "fireworks";
+	};
+	"accounts/fireworks/models/glm-5p3-flash": Model<"anthropic-messages"> & {
+		id: "accounts/fireworks/models/glm-5p3-flash";
+		provider: "fireworks";
+	};
 	"accounts/fireworks/models/gpt-oss-120b": Model<"anthropic-messages"> & {
 		id: "accounts/fireworks/models/gpt-oss-120b";
 		provider: "fireworks";
 	};
-	"accounts/fireworks/models/gpt-oss-20b": Model<"anthropic-messages"> & {
-		id: "accounts/fireworks/models/gpt-oss-20b";
+	"accounts/fireworks/models/inkling": Model<"anthropic-messages"> & {
+		id: "accounts/fireworks/models/inkling";
 		provider: "fireworks";
 	};
 	"accounts/fireworks/models/kimi-k2p6": Model<"anthropic-messages"> & {
@@ -41,32 +53,44 @@ export const FIREWORKS_MODELS = values as {
 		id: "accounts/fireworks/models/kimi-k3";
 		provider: "fireworks";
 	};
-	"accounts/fireworks/models/minimax-m2p7": Model<"anthropic-messages"> & {
-		id: "accounts/fireworks/models/minimax-m2p7";
-		provider: "fireworks";
-	};
 	"accounts/fireworks/models/minimax-m3": Model<"anthropic-messages"> & {
 		id: "accounts/fireworks/models/minimax-m3";
+		provider: "fireworks";
+	};
+	"accounts/fireworks/models/mistral-large-3-fp8": Model<"anthropic-messages"> & {
+		id: "accounts/fireworks/models/mistral-large-3-fp8";
+		provider: "fireworks";
+	};
+	"accounts/fireworks/models/muse-glimmer-30b": Model<"anthropic-messages"> & {
+		id: "accounts/fireworks/models/muse-glimmer-30b";
+		provider: "fireworks";
+	};
+	"accounts/fireworks/models/nemotron-3-ultra-nvfp4": Model<"anthropic-messages"> & {
+		id: "accounts/fireworks/models/nemotron-3-ultra-nvfp4";
+		provider: "fireworks";
+	};
+	"accounts/fireworks/models/nemotron-lightning-3p5-30b-a3b": Model<"anthropic-messages"> & {
+		id: "accounts/fireworks/models/nemotron-lightning-3p5-30b-a3b";
 		provider: "fireworks";
 	};
 	"accounts/fireworks/models/qwen3p7-plus": Model<"anthropic-messages"> & {
 		id: "accounts/fireworks/models/qwen3p7-plus";
 		provider: "fireworks";
 	};
+	"accounts/fireworks/models/qwen3p8-2p4t-a95b": Model<"anthropic-messages"> & {
+		id: "accounts/fireworks/models/qwen3p8-2p4t-a95b";
+		provider: "fireworks";
+	};
+	"accounts/fireworks/models/qwen3p8-max": Model<"anthropic-messages"> & {
+		id: "accounts/fireworks/models/qwen3p8-max";
+		provider: "fireworks";
+	};
 	"accounts/fireworks/routers/glm-5p2-fast": Model<"openai-completions"> & {
 		id: "accounts/fireworks/routers/glm-5p2-fast";
 		provider: "fireworks";
 	};
-	"accounts/fireworks/routers/kimi-k2p6-fast": Model<"anthropic-messages"> & {
-		id: "accounts/fireworks/routers/kimi-k2p6-fast";
-		provider: "fireworks";
-	};
-	"accounts/fireworks/routers/kimi-k2p6-turbo": Model<"anthropic-messages"> & {
-		id: "accounts/fireworks/routers/kimi-k2p6-turbo";
-		provider: "fireworks";
-	};
-	"accounts/fireworks/routers/kimi-k2p7-code-fast": Model<"anthropic-messages"> & {
-		id: "accounts/fireworks/routers/kimi-k2p7-code-fast";
+	"accounts/fireworks/routers/glm-5p3-fast": Model<"anthropic-messages"> & {
+		id: "accounts/fireworks/routers/glm-5p3-fast";
 		provider: "fireworks";
 	};
 	"accounts/fireworks/routers/kimi-k3-fast": Model<"anthropic-messages"> & {

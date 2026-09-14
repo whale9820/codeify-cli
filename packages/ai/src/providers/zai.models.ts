@@ -21,4 +21,16 @@ export const ZAI_MODELS = values as {
 		id: "glm-5.2-highspeed";
 		provider: "zai";
 	};
+	"glm-5.3": Model<"openai-completions"> & {
+		id: "glm-5.3";
+		provider: "zai";
+	};
+	"glm-5.3-flash": Model<"openai-completions"> & {
+		id: "glm-5.3-flash";
+		provider: "zai";
+	};
+	"glm-5.3-highspeed": Model<"openai-completions"> & {
+		id: "glm-5.3-highspeed";
+		provider: "zai";
+	};
 };

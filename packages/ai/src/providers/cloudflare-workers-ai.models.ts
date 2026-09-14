@@ -5,6 +5,14 @@ import values from "./data/cloudflare-workers-ai.json" with { type: "json" };
 import type { Model } from "../types.ts";
 
 export const CLOUDFLARE_WORKERS_AI_MODELS = values as {
+	"@cf/deepseek-ai/deepseek-v4-flash-0731": Model<"openai-completions"> & {
+		id: "@cf/deepseek-ai/deepseek-v4-flash-0731";
+		provider: "cloudflare-workers-ai";
+	};
+	"@cf/deepseek-ai/deepseek-v4-pro-0813": Model<"openai-completions"> & {
+		id: "@cf/deepseek-ai/deepseek-v4-pro-0813";
+		provider: "cloudflare-workers-ai";
+	};
 	"@cf/google/gemma-4-26b-a4b-it": Model<"openai-completions"> & {
 		id: "@cf/google/gemma-4-26b-a4b-it";
 		provider: "cloudflare-workers-ai";
@@ -49,12 +57,24 @@ export const CLOUDFLARE_WORKERS_AI_MODELS = values as {
 		id: "@cf/qwen/qwen3-30b-a3b-fp8";
 		provider: "cloudflare-workers-ai";
 	};
+	"@cf/qwen/qwen3.8-27b": Model<"openai-completions"> & {
+		id: "@cf/qwen/qwen3.8-27b";
+		provider: "cloudflare-workers-ai";
+	};
 	"@cf/zai-org/glm-4.7-flash": Model<"openai-completions"> & {
 		id: "@cf/zai-org/glm-4.7-flash";
 		provider: "cloudflare-workers-ai";
 	};
 	"@cf/zai-org/glm-5.2": Model<"openai-completions"> & {
 		id: "@cf/zai-org/glm-5.2";
+		provider: "cloudflare-workers-ai";
+	};
+	"@cf/zai-org/glm-5.3": Model<"openai-completions"> & {
+		id: "@cf/zai-org/glm-5.3";
+		provider: "cloudflare-workers-ai";
+	};
+	"@cf/zai-org/glm-5.3-flash": Model<"openai-completions"> & {
+		id: "@cf/zai-org/glm-5.3-flash";
 		provider: "cloudflare-workers-ai";
 	};
 };

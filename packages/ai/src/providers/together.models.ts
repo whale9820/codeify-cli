@@ -37,6 +37,14 @@ export const TOGETHER_MODELS = values as {
 		id: "deepseek-ai/DeepSeek-V4-Pro";
 		provider: "together";
 	};
+	"deepseek-ai/DeepSeek-V4-Pro-0813": Model<"openai-completions"> & {
+		id: "deepseek-ai/DeepSeek-V4-Pro-0813";
+		provider: "together";
+	};
+	"deepseek-ai/DeepSeek-V4.1-Flash": Model<"openai-completions"> & {
+		id: "deepseek-ai/DeepSeek-V4.1-Flash";
+		provider: "together";
+	};
 	"google/gemma-4-31B-it": Model<"openai-completions"> & {
 		id: "google/gemma-4-31B-it";
 		provider: "together";
@@ -75,6 +83,14 @@ export const TOGETHER_MODELS = values as {
 	};
 	"zai-org/GLM-5.2": Model<"openai-completions"> & {
 		id: "zai-org/GLM-5.2";
+		provider: "together";
+	};
+	"zai-org/GLM-5.3": Model<"openai-completions"> & {
+		id: "zai-org/GLM-5.3";
+		provider: "together";
+	};
+	"zai-org/GLM-5.3-Flash": Model<"openai-completions"> & {
+		id: "zai-org/GLM-5.3-Flash";
 		provider: "together";
 	};
 };

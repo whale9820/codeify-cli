@@ -1263,6 +1263,36 @@ async function loadModelsDevData(): Promise<Model<any>[]> {
 			}
 		}
 
+		// Process Cloudflare Workers AI models routed through AI Gateway
+		if (data["cloudflare-workers-ai"]?.models) {
+			for (const [modelId, model] of Object.entries(data["cloudflare-workers-ai"].models)) {
+				const m = model as ModelsDevModel;
+				if (m.tool_call !== true) continue;
+				const prefixedId = `workers-ai/${modelId}`;
+				if (models.some((existing) => existing.id === prefixedId && existing.provider === "cloudflare-ai-gateway")) {
+					continue;
+				}
+				models.push({
+					id: prefixedId,
+					name: m.name || modelId,
+					api: "openai-completions",
+					provider: "cloudflare-ai-gateway",
+					baseUrl: CLOUDFLARE_AI_GATEWAY_COMPAT_BASE_URL,
+					reasoning: m.reasoning === true,
+					input: m.modalities?.input?.includes("image") ? ["text", "image"] : ["text"],
+					cost: {
+						input: m.cost?.input || 0,
+						output: m.cost?.output || 0,
+						cacheRead: m.cost?.cache_read || 0,
+						cacheWrite: m.cost?.cache_write || 0,
+					},
+					contextWindow: m.limit?.context || 4096,
+					maxTokens: m.limit?.output || 4096,
+					compat: { sendSessionAffinityHeaders: true },
+				});
+			}
+		}
+
 		// Process xAi models
 		if (data.xai?.models) {
 			for (const [modelId, model] of Object.entries(data.xai.models)) {
@@ -1646,6 +1676,22 @@ async function loadModelsDevData(): Promise<Model<any>[]> {
 				};
 
 				models.push(copilotModel);
+			}
+
+			if (!models.some((m) => m.provider === "github-copilot" && m.id === "gpt-5.2-codex")) {
+				models.push({
+					id: "gpt-5.2-codex",
+					name: "GPT-5.2 Codex",
+					api: "openai-responses",
+					provider: "github-copilot",
+					baseUrl: "https://api.individual.githubcopilot.com",
+					reasoning: true,
+					input: ["text"],
+					cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+					contextWindow: 128000,
+					maxTokens: 8192,
+					headers: { ...COPILOT_STATIC_HEADERS },
+				});
 			}
 		}
 

@@ -129,6 +129,10 @@ export const OPENAI_MODELS = values as {
 		id: "gpt-5.6-terra";
 		provider: "openai";
 	};
+	"gpt-6-astra": Model<"openai-responses"> & {
+		id: "gpt-6-astra";
+		provider: "openai";
+	};
 	"gpt-realtime-2.1": Model<"openai-responses"> & {
 		id: "gpt-realtime-2.1";
 		provider: "openai";

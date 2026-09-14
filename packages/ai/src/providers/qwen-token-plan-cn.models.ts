@@ -25,6 +25,10 @@ export const QWEN_TOKEN_PLAN_CN_MODELS = values as {
 		id: "deepseek-v4-pro";
 		provider: "qwen-token-plan-cn";
 	};
+	"deepseek-v4-pro-0813": Model<"openai-completions"> & {
+		id: "deepseek-v4-pro-0813";
+		provider: "qwen-token-plan-cn";
+	};
 	"glm-5": Model<"openai-completions"> & {
 		id: "glm-5";
 		provider: "qwen-token-plan-cn";
@@ -63,6 +67,10 @@ export const QWEN_TOKEN_PLAN_CN_MODELS = values as {
 	};
 	"qwen3.7-plus": Model<"openai-completions"> & {
 		id: "qwen3.7-plus";
+		provider: "qwen-token-plan-cn";
+	};
+	"qwen3.8-flash": Model<"openai-completions"> & {
+		id: "qwen3.8-flash";
 		provider: "qwen-token-plan-cn";
 	};
 	"qwen3.8-max": Model<"openai-completions"> & {

@@ -129,6 +129,10 @@ export const AZURE_OPENAI_RESPONSES_MODELS = values as {
 		id: "gpt-5.6-terra";
 		provider: "azure-openai-responses";
 	};
+	"gpt-6-astra": Model<"azure-openai-responses"> & {
+		id: "gpt-6-astra";
+		provider: "azure-openai-responses";
+	};
 	"gpt-realtime-2.1": Model<"azure-openai-responses"> & {
 		id: "gpt-realtime-2.1";
 		provider: "azure-openai-responses";

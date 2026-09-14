@@ -13,6 +13,10 @@ export const OPENCODE_MODELS = values as {
 		id: "claude-fable-5";
 		provider: "opencode";
 	};
+	"claude-fable-5-1": Model<"anthropic-messages"> & {
+		id: "claude-fable-5-1";
+		provider: "opencode";
+	};
 	"claude-haiku-4-5": Model<"anthropic-messages"> & {
 		id: "claude-haiku-4-5";
 		provider: "opencode";
@@ -57,8 +61,8 @@ export const OPENCODE_MODELS = values as {
 		id: "deepseek-v4-flash";
 		provider: "opencode";
 	};
-	"deepseek-v4-flash-free": Model<"openai-completions"> & {
-		id: "deepseek-v4-flash-free";
+	"deepseek-v4-flash-vision-exp": Model<"openai-completions"> & {
+		id: "deepseek-v4-flash-vision-exp";
 		provider: "opencode";
 	};
 	"deepseek-v4-pro": Model<"openai-completions"> & {
@@ -85,6 +89,14 @@ export const OPENCODE_MODELS = values as {
 		id: "gemini-3.6-flash";
 		provider: "opencode";
 	};
+	"gemini-3.7-flash": Model<"google-generative-ai"> & {
+		id: "gemini-3.7-flash";
+		provider: "opencode";
+	};
+	"gemini-3.8-flash": Model<"google-generative-ai"> & {
+		id: "gemini-3.8-flash";
+		provider: "opencode";
+	};
 	"glm-5": Model<"openai-completions"> & {
 		id: "glm-5";
 		provider: "opencode";
@@ -95,6 +107,14 @@ export const OPENCODE_MODELS = values as {
 	};
 	"glm-5.2": Model<"openai-completions"> & {
 		id: "glm-5.2";
+		provider: "opencode";
+	};
+	"glm-5.3": Model<"openai-completions"> & {
+		id: "glm-5.3";
+		provider: "opencode";
+	};
+	"glm-5.3-flash": Model<"openai-completions"> & {
+		id: "glm-5.3-flash";
 		provider: "opencode";
 	};
 	"gpt-5": Model<"openai-responses"> & {
@@ -173,6 +193,10 @@ export const OPENCODE_MODELS = values as {
 		id: "gpt-5.6-terra";
 		provider: "opencode";
 	};
+	"gpt-6-astra": Model<"openai-responses"> & {
+		id: "gpt-6-astra";
+		provider: "opencode";
+	};
 	"grok-4.5": Model<"openai-responses"> & {
 		id: "grok-4.5";
 		provider: "opencode";
@@ -183,10 +207,6 @@ export const OPENCODE_MODELS = values as {
 	};
 	"grok-build-0.1": Model<"openai-responses"> & {
 		id: "grok-build-0.1";
-		provider: "opencode";
-	};
-	"hy3-free": Model<"openai-completions"> & {
-		id: "hy3-free";
 		provider: "opencode";
 	};
 	"kimi-k2.5": Model<"openai-completions"> & {
@@ -205,8 +225,8 @@ export const OPENCODE_MODELS = values as {
 		id: "kimi-k3";
 		provider: "opencode";
 	};
-	"laguna-s-2.1-free": Model<"openai-completions"> & {
-		id: "laguna-s-2.1-free";
+	"ling-3.0-flash-fin-free": Model<"openai-completions"> & {
+		id: "ling-3.0-flash-fin-free";
 		provider: "opencode";
 	};
 	"mimo-v2.5-free": Model<"openai-completions"> & {
@@ -223,6 +243,22 @@ export const OPENCODE_MODELS = values as {
 	};
 	"minimax-m3": Model<"openai-completions"> & {
 		id: "minimax-m3";
+		provider: "opencode";
+	};
+	"muse-spark-1.2": Model<"openai-responses"> & {
+		id: "muse-spark-1.2";
+		provider: "opencode";
+	};
+	"muse-spark-1.2-contributor-free": Model<"openai-responses"> & {
+		id: "muse-spark-1.2-contributor-free";
+		provider: "opencode";
+	};
+	"muse-spark-1.3": Model<"openai-responses"> & {
+		id: "muse-spark-1.3";
+		provider: "opencode";
+	};
+	"muse-spark-1.3-contributor-free": Model<"openai-responses"> & {
+		id: "muse-spark-1.3-contributor-free";
 		provider: "opencode";
 	};
 	"nemotron-3-ultra-free": Model<"openai-completions"> & {

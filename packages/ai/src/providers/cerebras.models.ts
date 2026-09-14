@@ -5,16 +5,12 @@ import values from "./data/cerebras.json" with { type: "json" };
 import type { Model } from "../types.ts";
 
 export const CEREBRAS_MODELS = values as {
-	"gemma-4-31b": Model<"openai-completions"> & {
-		id: "gemma-4-31b";
-		provider: "cerebras";
-	};
 	"gpt-oss-120b": Model<"openai-completions"> & {
 		id: "gpt-oss-120b";
 		provider: "cerebras";
 	};
-	"zai-glm-4.7": Model<"openai-completions"> & {
-		id: "zai-glm-4.7";
+	"qwen-3.8-27b": Model<"openai-completions"> & {
+		id: "qwen-3.8-27b";
 		provider: "cerebras";
 	};
 };

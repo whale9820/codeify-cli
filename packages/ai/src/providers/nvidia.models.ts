@@ -5,20 +5,16 @@ import values from "./data/nvidia.json" with { type: "json" };
 import type { Model } from "../types.ts";
 
 export const NVIDIA_MODELS = values as {
+	"deepseek-ai/deepseek-v4-flash-0731": Model<"openai-completions"> & {
+		id: "deepseek-ai/deepseek-v4-flash-0731";
+		provider: "nvidia";
+	};
 	"google/gemma-3-12b-it": Model<"openai-completions"> & {
 		id: "google/gemma-3-12b-it";
 		provider: "nvidia";
 	};
 	"google/gemma-3-4b-it": Model<"openai-completions"> & {
 		id: "google/gemma-3-4b-it";
-		provider: "nvidia";
-	};
-	"meta/llama-3.1-70b-instruct": Model<"openai-completions"> & {
-		id: "meta/llama-3.1-70b-instruct";
-		provider: "nvidia";
-	};
-	"meta/llama-3.1-8b-instruct": Model<"openai-completions"> & {
-		id: "meta/llama-3.1-8b-instruct";
 		provider: "nvidia";
 	};
 	"meta/llama-3.2-11b-vision-instruct": Model<"openai-completions"> & {
@@ -29,12 +25,8 @@ export const NVIDIA_MODELS = values as {
 		id: "meta/llama-3.2-90b-vision-instruct";
 		provider: "nvidia";
 	};
-	"meta/llama-3.3-70b-instruct": Model<"openai-completions"> & {
-		id: "meta/llama-3.3-70b-instruct";
-		provider: "nvidia";
-	};
-	"minimaxai/minimax-m3": Model<"openai-completions"> & {
-		id: "minimaxai/minimax-m3";
+	"meta/muse-glimmer-30b": Model<"openai-completions"> & {
+		id: "meta/muse-glimmer-30b";
 		provider: "nvidia";
 	};
 	"mistralai/mistral-7b-instruct-v0.3": Model<"openai-completions"> & {
@@ -45,6 +37,10 @@ export const NVIDIA_MODELS = values as {
 		id: "moonshotai/kimi-k2.6";
 		provider: "nvidia";
 	};
+	"moonshotai/kimi-k3": Model<"openai-completions"> & {
+		id: "moonshotai/kimi-k3";
+		provider: "nvidia";
+	};
 	"nvidia/cosmos-reason2-8b": Model<"openai-completions"> & {
 		id: "nvidia/cosmos-reason2-8b";
 		provider: "nvidia";
@@ -53,28 +49,8 @@ export const NVIDIA_MODELS = values as {
 		id: "nvidia/llama-3.1-nemotron-70b-instruct";
 		provider: "nvidia";
 	};
-	"nvidia/llama-3.1-nemotron-nano-8b-v1": Model<"openai-completions"> & {
-		id: "nvidia/llama-3.1-nemotron-nano-8b-v1";
-		provider: "nvidia";
-	};
-	"nvidia/llama-3.1-nemotron-nano-vl-8b-v1": Model<"openai-completions"> & {
-		id: "nvidia/llama-3.1-nemotron-nano-vl-8b-v1";
-		provider: "nvidia";
-	};
 	"nvidia/llama-3.1-nemotron-ultra-253b-v1": Model<"openai-completions"> & {
 		id: "nvidia/llama-3.1-nemotron-ultra-253b-v1";
-		provider: "nvidia";
-	};
-	"nvidia/llama-3.3-nemotron-super-49b-v1": Model<"openai-completions"> & {
-		id: "nvidia/llama-3.3-nemotron-super-49b-v1";
-		provider: "nvidia";
-	};
-	"nvidia/llama-3.3-nemotron-super-49b-v1.5": Model<"openai-completions"> & {
-		id: "nvidia/llama-3.3-nemotron-super-49b-v1.5";
-		provider: "nvidia";
-	};
-	"nvidia/nemotron-3-nano-30b-a3b": Model<"openai-completions"> & {
-		id: "nvidia/nemotron-3-nano-30b-a3b";
 		provider: "nvidia";
 	};
 	"nvidia/nemotron-3-nano-omni-30b-a3b-reasoning": Model<"openai-completions"> & {
@@ -93,18 +69,6 @@ export const NVIDIA_MODELS = values as {
 		id: "nvidia/nemotron-3.5-lightning-30b-a3b";
 		provider: "nvidia";
 	};
-	"nvidia/nemotron-nano-12b-v2-vl": Model<"openai-completions"> & {
-		id: "nvidia/nemotron-nano-12b-v2-vl";
-		provider: "nvidia";
-	};
-	"nvidia/nvidia-nemotron-nano-9b-v2": Model<"openai-completions"> & {
-		id: "nvidia/nvidia-nemotron-nano-9b-v2";
-		provider: "nvidia";
-	};
-	"openai/gpt-oss-120b": Model<"openai-completions"> & {
-		id: "openai/gpt-oss-120b";
-		provider: "nvidia";
-	};
 	"openai/gpt-oss-20b": Model<"openai-completions"> & {
 		id: "openai/gpt-oss-20b";
 		provider: "nvidia";
@@ -113,16 +77,8 @@ export const NVIDIA_MODELS = values as {
 		id: "poolside/laguna-xs-2.1";
 		provider: "nvidia";
 	};
-	"stepfun-ai/step-3.7-flash": Model<"openai-completions"> & {
-		id: "stepfun-ai/step-3.7-flash";
-		provider: "nvidia";
-	};
-	"thinkingmachines/inkling": Model<"openai-completions"> & {
-		id: "thinkingmachines/inkling";
-		provider: "nvidia";
-	};
-	"z-ai/glm-5.2": Model<"openai-completions"> & {
-		id: "z-ai/glm-5.2";
+	"z-ai/glm-5.3-flash": Model<"openai-completions"> & {
+		id: "z-ai/glm-5.3-flash";
 		provider: "nvidia";
 	};
 };

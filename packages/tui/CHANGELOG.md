@@ -5,6 +5,7 @@
 ### Fixed
 
 - Fixed the interactive viewport losing its bottom anchor when tool output shrinks, keeping the latest work visible.
+- Fixed hardware cursor clamping to the visible viewport and ensured line clearing and column alignment on initial and differential renders, preventing cursor drift and spliced line overwrites during streaming appends.
 
 ## [0.81.1] - 2026-07-21
 

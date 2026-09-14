@@ -5,88 +5,60 @@ import values from "./data/cloudflare-ai-gateway.json" with { type: "json" };
 import type { Model } from "../types.ts";
 
 export const CLOUDFLARE_AI_GATEWAY_MODELS = values as {
-	"claude-3-5-haiku": Model<"anthropic-messages"> & {
-		id: "claude-3-5-haiku";
-		provider: "cloudflare-ai-gateway";
-	};
-	"claude-3-haiku": Model<"anthropic-messages"> & {
-		id: "claude-3-haiku";
-		provider: "cloudflare-ai-gateway";
-	};
-	"claude-3-opus": Model<"anthropic-messages"> & {
-		id: "claude-3-opus";
-		provider: "cloudflare-ai-gateway";
-	};
-	"claude-3-sonnet": Model<"anthropic-messages"> & {
-		id: "claude-3-sonnet";
-		provider: "cloudflare-ai-gateway";
-	};
-	"claude-3.5-haiku": Model<"anthropic-messages"> & {
-		id: "claude-3.5-haiku";
-		provider: "cloudflare-ai-gateway";
-	};
-	"claude-3.5-sonnet": Model<"anthropic-messages"> & {
-		id: "claude-3.5-sonnet";
-		provider: "cloudflare-ai-gateway";
-	};
 	"claude-fable-5": Model<"anthropic-messages"> & {
 		id: "claude-fable-5";
 		provider: "cloudflare-ai-gateway";
 	};
-	"claude-haiku-4-5": Model<"anthropic-messages"> & {
-		id: "claude-haiku-4-5";
+	"claude-fable-5.1": Model<"anthropic-messages"> & {
+		id: "claude-fable-5.1";
 		provider: "cloudflare-ai-gateway";
 	};
-	"claude-opus-4": Model<"anthropic-messages"> & {
-		id: "claude-opus-4";
+	"claude-haiku-4.5": Model<"anthropic-messages"> & {
+		id: "claude-haiku-4.5";
 		provider: "cloudflare-ai-gateway";
 	};
-	"claude-opus-4-1": Model<"anthropic-messages"> & {
-		id: "claude-opus-4-1";
+	"claude-opus-4.5": Model<"anthropic-messages"> & {
+		id: "claude-opus-4.5";
 		provider: "cloudflare-ai-gateway";
 	};
-	"claude-opus-4-5": Model<"anthropic-messages"> & {
-		id: "claude-opus-4-5";
+	"claude-opus-4.6": Model<"anthropic-messages"> & {
+		id: "claude-opus-4.6";
 		provider: "cloudflare-ai-gateway";
 	};
-	"claude-opus-4-6": Model<"anthropic-messages"> & {
-		id: "claude-opus-4-6";
+	"claude-opus-4.7": Model<"anthropic-messages"> & {
+		id: "claude-opus-4.7";
 		provider: "cloudflare-ai-gateway";
 	};
-	"claude-opus-4-7": Model<"anthropic-messages"> & {
-		id: "claude-opus-4-7";
-		provider: "cloudflare-ai-gateway";
-	};
-	"claude-opus-4-8": Model<"anthropic-messages"> & {
-		id: "claude-opus-4-8";
+	"claude-opus-4.8": Model<"anthropic-messages"> & {
+		id: "claude-opus-4.8";
 		provider: "cloudflare-ai-gateway";
 	};
 	"claude-opus-5": Model<"anthropic-messages"> & {
 		id: "claude-opus-5";
 		provider: "cloudflare-ai-gateway";
 	};
-	"claude-sonnet-4": Model<"anthropic-messages"> & {
-		id: "claude-sonnet-4";
+	"claude-sonnet-4.5": Model<"anthropic-messages"> & {
+		id: "claude-sonnet-4.5";
 		provider: "cloudflare-ai-gateway";
 	};
-	"claude-sonnet-4-5": Model<"anthropic-messages"> & {
-		id: "claude-sonnet-4-5";
-		provider: "cloudflare-ai-gateway";
-	};
-	"claude-sonnet-4-6": Model<"anthropic-messages"> & {
-		id: "claude-sonnet-4-6";
+	"claude-sonnet-4.6": Model<"anthropic-messages"> & {
+		id: "claude-sonnet-4.6";
 		provider: "cloudflare-ai-gateway";
 	};
 	"claude-sonnet-5": Model<"anthropic-messages"> & {
 		id: "claude-sonnet-5";
 		provider: "cloudflare-ai-gateway";
 	};
-	"gpt-4": Model<"openai-responses"> & {
-		id: "gpt-4";
+	"gpt-4.1": Model<"openai-responses"> & {
+		id: "gpt-4.1";
 		provider: "cloudflare-ai-gateway";
 	};
-	"gpt-4-turbo": Model<"openai-responses"> & {
-		id: "gpt-4-turbo";
+	"gpt-4.1-mini": Model<"openai-responses"> & {
+		id: "gpt-4.1-mini";
+		provider: "cloudflare-ai-gateway";
+	};
+	"gpt-4.1-nano": Model<"openai-responses"> & {
+		id: "gpt-4.1-nano";
 		provider: "cloudflare-ai-gateway";
 	};
 	"gpt-4o": Model<"openai-responses"> & {
@@ -97,32 +69,44 @@ export const CLOUDFLARE_AI_GATEWAY_MODELS = values as {
 		id: "gpt-4o-mini";
 		provider: "cloudflare-ai-gateway";
 	};
+	"gpt-5": Model<"openai-responses"> & {
+		id: "gpt-5";
+		provider: "cloudflare-ai-gateway";
+	};
+	"gpt-5-mini": Model<"openai-responses"> & {
+		id: "gpt-5-mini";
+		provider: "cloudflare-ai-gateway";
+	};
+	"gpt-5-nano": Model<"openai-responses"> & {
+		id: "gpt-5-nano";
+		provider: "cloudflare-ai-gateway";
+	};
 	"gpt-5.1": Model<"openai-responses"> & {
 		id: "gpt-5.1";
-		provider: "cloudflare-ai-gateway";
-	};
-	"gpt-5.1-codex": Model<"openai-responses"> & {
-		id: "gpt-5.1-codex";
-		provider: "cloudflare-ai-gateway";
-	};
-	"gpt-5.2": Model<"openai-responses"> & {
-		id: "gpt-5.2";
-		provider: "cloudflare-ai-gateway";
-	};
-	"gpt-5.2-codex": Model<"openai-responses"> & {
-		id: "gpt-5.2-codex";
-		provider: "cloudflare-ai-gateway";
-	};
-	"gpt-5.3-codex": Model<"openai-responses"> & {
-		id: "gpt-5.3-codex";
 		provider: "cloudflare-ai-gateway";
 	};
 	"gpt-5.4": Model<"openai-responses"> & {
 		id: "gpt-5.4";
 		provider: "cloudflare-ai-gateway";
 	};
+	"gpt-5.4-mini": Model<"openai-responses"> & {
+		id: "gpt-5.4-mini";
+		provider: "cloudflare-ai-gateway";
+	};
+	"gpt-5.4-nano": Model<"openai-responses"> & {
+		id: "gpt-5.4-nano";
+		provider: "cloudflare-ai-gateway";
+	};
+	"gpt-5.4-pro": Model<"openai-responses"> & {
+		id: "gpt-5.4-pro";
+		provider: "cloudflare-ai-gateway";
+	};
 	"gpt-5.5": Model<"openai-responses"> & {
 		id: "gpt-5.5";
+		provider: "cloudflare-ai-gateway";
+	};
+	"gpt-5.5-pro": Model<"openai-responses"> & {
+		id: "gpt-5.5-pro";
 		provider: "cloudflare-ai-gateway";
 	};
 	"gpt-5.6-luna": Model<"openai-responses"> & {
@@ -137,10 +121,6 @@ export const CLOUDFLARE_AI_GATEWAY_MODELS = values as {
 		id: "gpt-5.6-terra";
 		provider: "cloudflare-ai-gateway";
 	};
-	"o1": Model<"openai-responses"> & {
-		id: "o1";
-		provider: "cloudflare-ai-gateway";
-	};
 	"o3": Model<"openai-responses"> & {
 		id: "o3";
 		provider: "cloudflare-ai-gateway";
@@ -149,24 +129,64 @@ export const CLOUDFLARE_AI_GATEWAY_MODELS = values as {
 		id: "o3-mini";
 		provider: "cloudflare-ai-gateway";
 	};
-	"o3-pro": Model<"openai-responses"> & {
-		id: "o3-pro";
-		provider: "cloudflare-ai-gateway";
-	};
 	"o4-mini": Model<"openai-responses"> & {
 		id: "o4-mini";
 		provider: "cloudflare-ai-gateway";
 	};
-	"workers-ai/@cf/moonshotai/kimi-k2.5": Model<"openai-completions"> & {
-		id: "workers-ai/@cf/moonshotai/kimi-k2.5";
+	"workers-ai/@cf/deepseek-ai/deepseek-v4-flash-0731": Model<"openai-completions"> & {
+		id: "workers-ai/@cf/deepseek-ai/deepseek-v4-flash-0731";
+		provider: "cloudflare-ai-gateway";
+	};
+	"workers-ai/@cf/deepseek-ai/deepseek-v4-pro-0813": Model<"openai-completions"> & {
+		id: "workers-ai/@cf/deepseek-ai/deepseek-v4-pro-0813";
+		provider: "cloudflare-ai-gateway";
+	};
+	"workers-ai/@cf/google/gemma-4-26b-a4b-it": Model<"openai-completions"> & {
+		id: "workers-ai/@cf/google/gemma-4-26b-a4b-it";
+		provider: "cloudflare-ai-gateway";
+	};
+	"workers-ai/@cf/ibm-granite/granite-4.0-h-micro": Model<"openai-completions"> & {
+		id: "workers-ai/@cf/ibm-granite/granite-4.0-h-micro";
+		provider: "cloudflare-ai-gateway";
+	};
+	"workers-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast": Model<"openai-completions"> & {
+		id: "workers-ai/@cf/meta/llama-3.3-70b-instruct-fp8-fast";
+		provider: "cloudflare-ai-gateway";
+	};
+	"workers-ai/@cf/meta/llama-4-scout-17b-16e-instruct": Model<"openai-completions"> & {
+		id: "workers-ai/@cf/meta/llama-4-scout-17b-16e-instruct";
+		provider: "cloudflare-ai-gateway";
+	};
+	"workers-ai/@cf/mistralai/mistral-small-3.1-24b-instruct": Model<"openai-completions"> & {
+		id: "workers-ai/@cf/mistralai/mistral-small-3.1-24b-instruct";
 		provider: "cloudflare-ai-gateway";
 	};
 	"workers-ai/@cf/moonshotai/kimi-k2.6": Model<"openai-completions"> & {
 		id: "workers-ai/@cf/moonshotai/kimi-k2.6";
 		provider: "cloudflare-ai-gateway";
 	};
+	"workers-ai/@cf/moonshotai/kimi-k2.7-code": Model<"openai-completions"> & {
+		id: "workers-ai/@cf/moonshotai/kimi-k2.7-code";
+		provider: "cloudflare-ai-gateway";
+	};
 	"workers-ai/@cf/nvidia/nemotron-3-120b-a12b": Model<"openai-completions"> & {
 		id: "workers-ai/@cf/nvidia/nemotron-3-120b-a12b";
+		provider: "cloudflare-ai-gateway";
+	};
+	"workers-ai/@cf/openai/gpt-oss-120b": Model<"openai-completions"> & {
+		id: "workers-ai/@cf/openai/gpt-oss-120b";
+		provider: "cloudflare-ai-gateway";
+	};
+	"workers-ai/@cf/openai/gpt-oss-20b": Model<"openai-completions"> & {
+		id: "workers-ai/@cf/openai/gpt-oss-20b";
+		provider: "cloudflare-ai-gateway";
+	};
+	"workers-ai/@cf/qwen/qwen3-30b-a3b-fp8": Model<"openai-completions"> & {
+		id: "workers-ai/@cf/qwen/qwen3-30b-a3b-fp8";
+		provider: "cloudflare-ai-gateway";
+	};
+	"workers-ai/@cf/qwen/qwen3.8-27b": Model<"openai-completions"> & {
+		id: "workers-ai/@cf/qwen/qwen3.8-27b";
 		provider: "cloudflare-ai-gateway";
 	};
 	"workers-ai/@cf/zai-org/glm-4.7-flash": Model<"openai-completions"> & {
@@ -175,6 +195,14 @@ export const CLOUDFLARE_AI_GATEWAY_MODELS = values as {
 	};
 	"workers-ai/@cf/zai-org/glm-5.2": Model<"openai-completions"> & {
 		id: "workers-ai/@cf/zai-org/glm-5.2";
+		provider: "cloudflare-ai-gateway";
+	};
+	"workers-ai/@cf/zai-org/glm-5.3": Model<"openai-completions"> & {
+		id: "workers-ai/@cf/zai-org/glm-5.3";
+		provider: "cloudflare-ai-gateway";
+	};
+	"workers-ai/@cf/zai-org/glm-5.3-flash": Model<"openai-completions"> & {
+		id: "workers-ai/@cf/zai-org/glm-5.3-flash";
 		provider: "cloudflare-ai-gateway";
 	};
 };

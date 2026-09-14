@@ -9,16 +9,12 @@ export const GITHUB_COPILOT_MODELS = values as {
 		id: "claude-fable-5";
 		provider: "github-copilot";
 	};
+	"claude-fable-5.1": Model<"openai-completions"> & {
+		id: "claude-fable-5.1";
+		provider: "github-copilot";
+	};
 	"claude-haiku-4.5": Model<"anthropic-messages"> & {
 		id: "claude-haiku-4.5";
-		provider: "github-copilot";
-	};
-	"claude-opus-4.5": Model<"anthropic-messages"> & {
-		id: "claude-opus-4.5";
-		provider: "github-copilot";
-	};
-	"claude-opus-4.6": Model<"anthropic-messages"> & {
-		id: "claude-opus-4.6";
 		provider: "github-copilot";
 	};
 	"claude-opus-4.7": Model<"anthropic-messages"> & {
@@ -33,24 +29,12 @@ export const GITHUB_COPILOT_MODELS = values as {
 		id: "claude-opus-5";
 		provider: "github-copilot";
 	};
-	"claude-sonnet-4": Model<"anthropic-messages"> & {
-		id: "claude-sonnet-4";
-		provider: "github-copilot";
-	};
-	"claude-sonnet-4.5": Model<"anthropic-messages"> & {
-		id: "claude-sonnet-4.5";
-		provider: "github-copilot";
-	};
 	"claude-sonnet-4.6": Model<"anthropic-messages"> & {
 		id: "claude-sonnet-4.6";
 		provider: "github-copilot";
 	};
 	"claude-sonnet-5": Model<"anthropic-messages"> & {
 		id: "claude-sonnet-5";
-		provider: "github-copilot";
-	};
-	"gemini-3.1-pro-preview": Model<"openai-completions"> & {
-		id: "gemini-3.1-pro-preview";
 		provider: "github-copilot";
 	};
 	"gemini-3.5-flash": Model<"openai-completions"> & {
@@ -61,16 +45,16 @@ export const GITHUB_COPILOT_MODELS = values as {
 		id: "gemini-3.6-flash";
 		provider: "github-copilot";
 	};
-	"gpt-4.1": Model<"openai-completions"> & {
-		id: "gpt-4.1";
+	"gemini-3.7-flash": Model<"openai-completions"> & {
+		id: "gemini-3.7-flash";
+		provider: "github-copilot";
+	};
+	"gemini-3.8-flash": Model<"openai-completions"> & {
+		id: "gemini-3.8-flash";
 		provider: "github-copilot";
 	};
 	"gpt-5-mini": Model<"openai-responses"> & {
 		id: "gpt-5-mini";
-		provider: "github-copilot";
-	};
-	"gpt-5.2": Model<"openai-responses"> & {
-		id: "gpt-5.2";
 		provider: "github-copilot";
 	};
 	"gpt-5.2-codex": Model<"openai-responses"> & {
@@ -109,8 +93,16 @@ export const GITHUB_COPILOT_MODELS = values as {
 		id: "gpt-5.6-terra";
 		provider: "github-copilot";
 	};
+	"gpt-6-astra": Model<"openai-completions"> & {
+		id: "gpt-6-astra";
+		provider: "github-copilot";
+	};
 	"grok-4.5": Model<"openai-completions"> & {
 		id: "grok-4.5";
+		provider: "github-copilot";
+	};
+	"grok-4.6": Model<"openai-completions"> & {
+		id: "grok-4.6";
 		provider: "github-copilot";
 	};
 	"kimi-k2.7-code": Model<"openai-completions"> & {

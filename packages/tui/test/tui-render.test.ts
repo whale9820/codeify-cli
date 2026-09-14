@@ -9,7 +9,7 @@ import {
 	setCapabilities,
 	setCellDimensions,
 } from "../src/terminal-image.ts";
-import { type Component, TUI } from "../src/tui.ts";
+import { type Component, CURSOR_MARKER, type Focusable, TUI } from "../src/tui.ts";
 import { VirtualTerminal } from "./virtual-terminal.ts";
 
 class TestComponent implements Component {
@@ -17,6 +17,26 @@ class TestComponent implements Component {
 	render(_width: number): string[] {
 		return this.lines;
 	}
+	invalidate(): void {}
+}
+
+class FocusableTestComponent implements Component, Focusable {
+	focused = false;
+	lines: string[] = [];
+	cursorCol = 0;
+	cursorLine = 0;
+
+	render(_width: number): string[] {
+		return this.lines.map((line, index) => {
+			if (this.focused && index === this.cursorLine) {
+				const before = line.slice(0, this.cursorCol);
+				const after = line.slice(this.cursorCol);
+				return `${before}${CURSOR_MARKER}${after}`;
+			}
+			return line;
+		});
+	}
+
 	invalidate(): void {}
 }
 
@@ -795,6 +815,111 @@ describe("TUI differential rendering", () => {
 			"Editor 1",
 			"Editor 2",
 		]);
+
+		tui.stop();
+	});
+
+	it("does not drift hardware cursor when cursor position is off-screen", async () => {
+		const terminal = new VirtualTerminal(40, 8);
+		const tui = new TUI(terminal, true);
+		const chat = new TestComponent();
+		const editor = new FocusableTestComponent();
+		tui.addChild(chat);
+		tui.addChild(editor);
+		tui.setFocus(editor);
+
+		chat.lines = Array.from({ length: 20 }, (_, i) => `Chat line ${i}`);
+		editor.lines = ["Editor input line"];
+		editor.cursorCol = 15;
+		editor.cursorLine = 0;
+
+		tui.start();
+		await terminal.waitForRender();
+
+		// Now simulate a differential update that only touches middle lines (e.g. tool execution / spinner)
+		chat.lines[15] = "Chat line 15 (updated)";
+		tui.requestRender();
+		await terminal.waitForRender();
+
+		const viewport = terminal.getViewport();
+		assert.ok(viewport.some((line) => line.includes("Chat line 15 (updated)")));
+		assert.ok(viewport.some((line) => line.includes("Editor input line")));
+
+		// Further updates must not land on wrong lines
+		chat.lines[16] = "Chat line 16 (updated)";
+		tui.requestRender();
+		await terminal.waitForRender();
+
+		const viewport2 = terminal.getViewport();
+		assert.ok(viewport2.some((line) => line.includes("Chat line 16 (updated)")));
+		assert.ok(viewport2.some((line) => line.includes("Editor input line")));
+
+		tui.stop();
+	});
+
+	it("clears line and starts at column 0 on initial un-cleared render", async () => {
+		const terminal = new LoggingVirtualTerminal(50, 8);
+		// Simulate a dirty terminal with text and cursor at column 22 before TUI starts
+		terminal.write("uld otherwise be serve");
+		terminal.write("\x1b[23G");
+
+		const tui = new TUI(terminal);
+		const component = new TestComponent();
+		tui.addChild(component);
+
+		component.lines = ["Yes, it's in and live."];
+		tui.start();
+		await terminal.waitForRender();
+
+		const viewport = terminal.getViewport();
+		assert.strictEqual(viewport[0], "Yes, it's in and live.");
+		assert.ok(!viewport[0]?.includes("uld otherwise be serve"));
+
+		tui.stop();
+	});
+
+	it("prevents earlier paragraph overwrite during streaming append with focused editor", async () => {
+		const terminal = new VirtualTerminal(80, 8);
+		const tui = new TUI(terminal, true);
+		const chat = new TestComponent();
+		const editor = new FocusableTestComponent();
+		tui.addChild(chat);
+		tui.addChild(editor);
+		tui.setFocus(editor);
+
+		editor.lines = ["> "];
+		editor.cursorCol = 2;
+
+		chat.lines = ["Yes, it's in and live.", "", "This is paragraph two starting."];
+
+		tui.start();
+		await terminal.waitForRender();
+
+		// Stream several lines into paragraph 2
+		const chunks = [
+			"The quick brown fox jumps over the lazy dog.",
+			"And another sentence that could otherwise be served.",
+			"A third line in the stream that pushes viewport.",
+			"A fourth line in the stream.",
+			"A fifth line in the stream.",
+		];
+
+		for (const chunk of chunks) {
+			chat.lines.push(chunk);
+			tui.requestRender();
+			await terminal.waitForRender();
+		}
+
+		// Verify scrollback + viewport integrity: no line should have spliced text
+		const allLines = terminal.getScrollBuffer();
+		for (const line of allLines) {
+			assert.ok(!line.includes("uld otherwise be serveYes"), `Found spliced overwrite text in line: "${line}"`);
+			assert.ok(!line.includes("servedYes"), `Found spliced overwrite text in line: "${line}"`);
+		}
+
+		// Line 0 in scroll buffer must still be the clean first paragraph
+		assert.ok(allLines[0]?.includes("Yes, it's in and live."));
+		assert.ok(!allLines[0]?.includes("could otherwise be served"));
 
 		tui.stop();
 	});

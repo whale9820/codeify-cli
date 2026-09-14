@@ -69,16 +69,20 @@ export const GOOGLE_MODELS = values as {
 		id: "gemini-3.6-flash";
 		provider: "google";
 	};
+	"gemini-3.7-flash": Model<"google-generative-ai"> & {
+		id: "gemini-3.7-flash";
+		provider: "google";
+	};
+	"gemini-3.8-flash": Model<"google-generative-ai"> & {
+		id: "gemini-3.8-flash";
+		provider: "google";
+	};
 	"gemini-flash-latest": Model<"google-generative-ai"> & {
 		id: "gemini-flash-latest";
 		provider: "google";
 	};
 	"gemini-flash-lite-latest": Model<"google-generative-ai"> & {
 		id: "gemini-flash-lite-latest";
-		provider: "google";
-	};
-	"gemini-robotics-er-1.6-preview": Model<"google-generative-ai"> & {
-		id: "gemini-robotics-er-1.6-preview";
 		provider: "google";
 	};
 	"gemma-4-26b-a4b-it": Model<"google-generative-ai"> & {

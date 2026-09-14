@@ -697,8 +697,11 @@ export class TUI extends Container {
 		if (this.previousLines.length > 0) {
 			// Overwrite the inverted cursor with a normal space to clear the artifact
 			this.terminal.write(" ");
-			const targetRow = this.previousLines.length; // Line after the last content
-			const lineDiff = targetRow - this.hardwareCursorRow;
+			const height = this.terminal.rows;
+			const currentScreenRow = Math.max(0, Math.min(height - 1, this.hardwareCursorRow - this.previousViewportTop));
+			const targetRow = Math.min(this.previousLines.length, this.previousViewportTop + height - 1);
+			const targetScreenRow = Math.max(0, Math.min(height - 1, targetRow - this.previousViewportTop));
+			const lineDiff = targetScreenRow - currentScreenRow;
 			if (lineDiff > 0) {
 				this.terminal.write(`\x1b[${lineDiff}B`);
 			} else if (lineDiff < 0) {
@@ -1264,8 +1267,8 @@ export class TUI extends Container {
 		let viewportTop = prevViewportTop;
 		let hardwareCursorRow = this.hardwareCursorRow;
 		const computeLineDiff = (targetRow: number): number => {
-			const currentScreenRow = hardwareCursorRow - prevViewportTop;
-			const targetScreenRow = targetRow - viewportTop;
+			const currentScreenRow = Math.max(0, Math.min(height - 1, hardwareCursorRow - prevViewportTop));
+			const targetScreenRow = Math.max(0, Math.min(height - 1, targetRow - viewportTop));
 			return targetScreenRow - currentScreenRow;
 		};
 
@@ -1289,9 +1292,12 @@ export class TUI extends Container {
 			if (clear) {
 				buffer += this.deleteKittyImages(this.previousKittyImageIds);
 				buffer += "\x1b[2J\x1b[H\x1b[3J"; // Clear screen, home, then clear scrollback
+			} else {
+				buffer += "\r";
 			}
 			for (let i = 0; i < newLines.length; i++) {
 				if (i > 0) buffer += "\r\n";
+				if (!clear) buffer += "\x1b[2K";
 				const line = newLines[i];
 				const isImage = isImageLine(line);
 				const imageReservedRows = isImage ? this.getKittyImageReservedRows(newLines, i) : 1;
@@ -1471,6 +1477,15 @@ export class TUI extends Container {
 			return;
 		}
 
+		// Only render changed lines (firstChanged to lastChanged), not all lines to end
+		// This reduces flicker when only a single line changes (e.g., spinner animation)
+		const renderEnd = Math.min(lastChanged, newLines.length - 1);
+		if (renderEnd - firstChanged + 1 > height) {
+			logRedraw(`changed lines > height (${renderEnd - firstChanged + 1} > ${height})`);
+			fullRender(true);
+			return;
+		}
+
 		// Render from first changed line to end
 		// Build buffer with all updates wrapped in synchronized output
 		let buffer = "\x1b[?2026h"; // Begin synchronized output
@@ -1500,9 +1515,6 @@ export class TUI extends Container {
 
 		buffer += appendStart ? "\r\n" : "\r"; // Move to column 0
 
-		// Only render changed lines (firstChanged to lastChanged), not all lines to end
-		// This reduces flicker when only a single line changes (e.g., spinner animation)
-		const renderEnd = Math.min(lastChanged, newLines.length - 1);
 		for (let i = firstChanged; i <= renderEnd; i++) {
 			if (i > firstChanged) buffer += "\r\n";
 			const line = newLines[i];
@@ -1643,12 +1655,23 @@ export class TUI extends Container {
 			return;
 		}
 
-		// Clamp cursor position to valid range
-		const targetRow = Math.max(0, Math.min(cursorPos.row, totalLines - 1));
+		const height = this.terminal.rows;
+		const viewportTop = this.previousViewportTop;
+		const viewportBottom = viewportTop + height - 1;
+
+		// Only position hardware cursor if it is within the visible viewport
+		if (cursorPos.row < viewportTop || cursorPos.row > viewportBottom) {
+			this.terminal.hideCursor();
+			return;
+		}
+
+		const targetRow = cursorPos.row;
 		const targetCol = Math.max(0, cursorPos.col);
 
 		// Move cursor from current position to target
-		const rowDelta = targetRow - this.hardwareCursorRow;
+		const currentScreenRow = Math.max(0, Math.min(height - 1, this.hardwareCursorRow - viewportTop));
+		const targetScreenRow = targetRow - viewportTop;
+		const rowDelta = targetScreenRow - currentScreenRow;
 		let buffer = "";
 		if (rowDelta > 0) {
 			buffer += `\x1b[${rowDelta}B`; // Move down

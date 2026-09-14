@@ -29,4 +29,8 @@ export const GROQ_MODELS = values as {
 		id: "qwen/qwen3.6-27b";
 		provider: "groq";
 	};
+	"qwen/qwen3.8-27b": Model<"openai-completions"> & {
+		id: "qwen/qwen3.8-27b";
+		provider: "groq";
+	};
 };
