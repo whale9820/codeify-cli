@@ -86,7 +86,10 @@ export class AssistantMessageComponent extends Container {
 		this.contentContainer.clear();
 
 		const hasVisibleContent = message.content.some(
-			(c) => (c.type === "text" && c.text.trim()) || (c.type === "thinking" && c.thinking.trim()),
+			(c) =>
+				(c.type === "text" && c.text.trim()) ||
+				(c.type === "thinking" && c.thinking.trim()) ||
+				c.type === "serverToolUse",
 		);
 
 		if (hasVisibleContent) {
@@ -119,7 +122,12 @@ export class AssistantMessageComponent extends Container {
 				// This avoids a superfluous blank line before separately-rendered tool execution blocks.
 				const hasVisibleContentAfter = message.content
 					.slice(i + 1)
-					.some((c) => (c.type === "text" && c.text.trim()) || (c.type === "thinking" && c.thinking.trim()));
+					.some(
+						(c) =>
+							(c.type === "text" && c.text.trim()) ||
+							(c.type === "thinking" && c.thinking.trim()) ||
+							c.type === "serverToolUse",
+					);
 
 				// Always render thinking blocks as Markdown.
 				this.contentContainer.addChild(
@@ -131,6 +139,26 @@ export class AssistantMessageComponent extends Container {
 				if (hasVisibleContentAfter) {
 					this.contentContainer.addChild(new Spacer(1));
 				}
+			} else if (content.type === "serverToolUse") {
+				const query = (content.input as { query?: string })?.query;
+				const toolLabel = content.name === "web_search" ? "Web search" : content.name;
+				const label = query ? `${toolLabel}: "${query}"` : toolLabel;
+				this.contentContainer.addChild(new Text(theme.fg("muted", label), this.outputPad));
+
+				const nextBlock = message.content[i + 1];
+				if (nextBlock && nextBlock.type === "serverToolResult" && nextBlock.toolUseId === content.id) {
+					i++;
+					const resultCount = Array.isArray(nextBlock.content) ? nextBlock.content.length : 0;
+					if (resultCount > 0) {
+						this.contentContainer.addChild(
+							new Text(
+								theme.fg("dim", `  -> ${resultCount} result${resultCount === 1 ? "" : "s"}`),
+								this.outputPad,
+							),
+						);
+					}
+				}
+				this.contentContainer.addChild(new Spacer(1));
 			}
 		}
 

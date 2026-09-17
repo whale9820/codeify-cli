@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Added support for Antigravity and Claude Code tool names and schemas (`view_file`, `replace_file_content`, `write_to_file`, `run_command`, `grep_search`, `find_by_name`, `list_dir`, `read_url_content`, `search_web`).
+
 ### Changed
 
 - Display and search Codeify models by slug only, remove provider badges, and discover metadata exclusively through Codeify.
@@ -12,6 +16,8 @@
 
 ### Fixed
 
+- Increased default read tool limits to 256KB and 5,000 lines for large-context models (>=100k tokens) to eliminate multi-turn file chunk pagination loops.
+- Stripped line-number prefixes in edit diff matching to prevent target string mismatches when copying code from numbered views.
 - Retry malformed JSON property, unterminated-string, and double-quoted-property responses up to three times, collapse raw diagnostics, and report `network unstable please try again` on exhaustion.
 
 - Reduced installer disk usage by installing production dependencies for the low-memory build, cleaned up failed fresh checkouts, reclaimed Unix dependencies before Git updates, and made Git updates fetch the `main` branch explicitly.

@@ -58,14 +58,18 @@ export interface FindToolOptions {
 	operations?: FindOperations;
 }
 
-function formatFindCall(args: { pattern: string; path?: string; limit?: number } | undefined, theme: Theme): string {
+function formatFindCall(
+	args: { pattern: string; path?: string; limit?: number } | undefined,
+	theme: Theme,
+	toolName = "find",
+): string {
 	const pattern = str(args?.pattern);
 	const rawPath = str(args?.path);
 	const path = rawPath !== null ? shortenPath(rawPath || ".") : null;
 	const limit = args?.limit;
 	const invalidArg = invalidArgText(theme);
 	let text =
-		theme.fg("toolTitle", theme.bold("find")) +
+		theme.fg("toolTitle", theme.bold(toolName)) +
 		" " +
 		(pattern === null ? invalidArg : theme.fg("accent", pattern || "")) +
 		theme.fg("toolOutput", ` in ${path === null ? invalidArg : path}`);
@@ -108,17 +112,64 @@ function formatFindResult(
 	return text;
 }
 
-export function createFindToolDefinition(
+function prepareFindArguments(input: unknown): FindToolInput {
+	if (!input || typeof input !== "object") {
+		return input as FindToolInput;
+	}
+
+	const args = input as Record<string, unknown>;
+	const pattern =
+		typeof args.pattern === "string"
+			? args.pattern
+			: typeof args.Pattern === "string"
+				? args.Pattern
+				: typeof args.glob === "string"
+					? args.glob
+					: args.pattern;
+
+	const searchPath =
+		typeof args.path === "string"
+			? args.path
+			: typeof args.SearchDirectory === "string"
+				? args.SearchDirectory
+				: typeof args.search_directory === "string"
+					? args.search_directory
+					: typeof args.directory === "string"
+						? args.directory
+						: typeof args.dir === "string"
+							? args.dir
+							: args.path;
+
+	const limit =
+		typeof args.limit === "number"
+			? args.limit
+			: typeof args.max_results === "number"
+				? args.max_results
+				: typeof args.MaxDepth === "number"
+					? args.MaxDepth
+					: args.limit;
+
+	return {
+		...args,
+		pattern,
+		...(searchPath !== undefined ? { path: searchPath } : {}),
+		...(limit !== undefined ? { limit } : {}),
+	} as FindToolInput;
+}
+
+function createFileSearchToolDefinition(
+	toolName: "find" | "glob",
 	cwd: string,
 	options?: FindToolOptions,
 ): ToolDefinition<typeof findSchema, FindToolDetails | undefined> {
 	const customOps = options?.operations;
 	return {
-		name: "find",
-		label: "find",
+		name: toolName,
+		label: toolName,
 		description: `Search for files by glob pattern. Returns matching file paths relative to the search directory. Respects .gitignore. Output is truncated to ${DEFAULT_LIMIT} results or ${DEFAULT_MAX_BYTES / 1024}KB (whichever is hit first).`,
 		promptSnippet: "Find files by glob pattern (respects .gitignore)",
 		parameters: findSchema,
+		prepareArguments: prepareFindArguments,
 		async execute(
 			_toolCallId,
 			{ pattern, path: searchDir, limit }: { pattern: string; path?: string; limit?: number },
@@ -197,7 +248,7 @@ export function createFindToolDefinition(
 								details.resultLimitReached = effectiveLimit;
 							}
 							if (truncation.truncated) {
-								const spillPath = writeSpillFile(rawOutput, "codeify-find");
+								const spillPath = writeSpillFile(rawOutput, `codeify-${toolName}`);
 								notices.push(formatSpillNotice(truncation, spillPath));
 								details.truncation = truncation;
 								details.fullOutputPath = spillPath;
@@ -336,7 +387,7 @@ export function createFindToolDefinition(
 								details.resultLimitReached = effectiveLimit;
 							}
 							if (truncation.truncated) {
-								const spillPath = writeSpillFile(rawOutput, "codeify-find");
+								const spillPath = writeSpillFile(rawOutput, `codeify-${toolName}`);
 								notices.push(formatSpillNotice(truncation, spillPath));
 								details.truncation = truncation;
 								details.fullOutputPath = spillPath;
@@ -364,7 +415,7 @@ export function createFindToolDefinition(
 		},
 		renderCall(args, theme, context) {
 			const text = (context.lastComponent as Text | undefined) ?? new Text("", 0, 0);
-			text.setText(formatFindCall(args, theme));
+			text.setText(formatFindCall(args, theme, toolName));
 			return text;
 		},
 		renderResult(result, options, theme, context) {
@@ -375,6 +426,27 @@ export function createFindToolDefinition(
 	};
 }
 
+export function createFindToolDefinition(
+	cwd: string,
+	options?: FindToolOptions,
+): ToolDefinition<typeof findSchema, FindToolDetails | undefined> {
+	return createFileSearchToolDefinition("find", cwd, options);
+}
+
+export function createGlobToolDefinition(
+	cwd: string,
+	options?: FindToolOptions,
+): ToolDefinition<typeof findSchema, FindToolDetails | undefined> {
+	return createFileSearchToolDefinition("glob", cwd, options);
+}
+
 export function createFindTool(cwd: string, options?: FindToolOptions): AgentTool<typeof findSchema> {
 	return wrapToolDefinition(createFindToolDefinition(cwd, options));
 }
+
+export function createGlobTool(cwd: string, options?: FindToolOptions): AgentTool<typeof findSchema> {
+	return wrapToolDefinition(createGlobToolDefinition(cwd, options));
+}
+
+export type GlobToolOptions = FindToolOptions;
+export type GlobToolInput = FindToolInput;

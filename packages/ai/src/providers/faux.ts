@@ -159,7 +159,7 @@ function contentToText(content: string | Array<TextContent | ImageContent>): str
 		.join("\n");
 }
 
-function assistantContentToText(content: Array<TextContent | ThinkingContent | ToolCall>): string {
+function assistantContentToText(content: AssistantMessage["content"]): string {
 	return content
 		.map((block) => {
 			if (block.type === "text") {
@@ -167,6 +167,12 @@ function assistantContentToText(content: Array<TextContent | ThinkingContent | T
 			}
 			if (block.type === "thinking") {
 				return block.thinking;
+			}
+			if (block.type === "serverToolUse") {
+				return `${block.name}:${JSON.stringify(block.input)}`;
+			}
+			if (block.type === "serverToolResult") {
+				return `${block.toolUseId}:${JSON.stringify(block.content)}`;
 			}
 			return `${block.name}:${JSON.stringify(block.arguments)}`;
 		})
@@ -371,6 +377,51 @@ async function streamWithDeltas(
 				stream.push({ type: "text_delta", contentIndex: index, delta: chunk, partial: { ...partial } });
 			}
 			stream.push({ type: "text_end", contentIndex: index, content: block.text, partial: { ...partial } });
+			continue;
+		}
+
+		if (block.type === "serverToolUse") {
+			partial.content = [
+				...partial.content,
+				{ type: "serverToolUse", id: block.id, name: block.name, input: block.input },
+			];
+			stream.push({
+				type: "server_tool_use_start",
+				contentIndex: index,
+				serverToolUse: block,
+				partial: { ...partial },
+			});
+			stream.push({
+				type: "server_tool_use_end",
+				contentIndex: index,
+				serverToolUse: block,
+				partial: { ...partial },
+			});
+			continue;
+		}
+
+		if (block.type === "serverToolResult") {
+			partial.content = [
+				...partial.content,
+				{
+					type: "serverToolResult",
+					toolUseId: block.toolUseId,
+					resultType: block.resultType,
+					content: block.content,
+				},
+			];
+			stream.push({
+				type: "server_tool_result_start",
+				contentIndex: index,
+				serverToolResult: block,
+				partial: { ...partial },
+			});
+			stream.push({
+				type: "server_tool_result_end",
+				contentIndex: index,
+				serverToolResult: block,
+				partial: { ...partial },
+			});
 			continue;
 		}
 

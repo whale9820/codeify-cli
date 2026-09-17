@@ -16,14 +16,17 @@ import { getDefaultSessionDir, SessionManager } from "./session-manager.ts";
 import { SettingsManager } from "./settings-manager.ts";
 import { time } from "./timings.ts";
 import {
+	allToolNames,
 	createBashTool,
 	createCodingTools,
 	createEditTool,
 	createFindTool,
+	createGlobTool,
 	createGrepTool,
 	createLsTool,
 	createReadOnlyTools,
 	createReadTool,
+	createWebSearchTool,
 	createWriteTool,
 	type ToolName,
 	withFileMutationQueue,
@@ -110,7 +113,9 @@ export {
 	createWriteTool,
 	createGrepTool,
 	createFindTool,
+	createGlobTool,
 	createLsTool,
+	createWebSearchTool,
 };
 
 // Helper Functions
@@ -230,12 +235,21 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 		thinkingLevel = clampThinkingLevel(model, thinkingLevel) as ThinkingLevel;
 	}
 
+	const normalizeToolName = (name: string): string => {
+		const lower = name.toLowerCase();
+		return allToolNames.has(lower as ToolName) ? lower : name;
+	};
+
 	const defaultActiveToolNames: ToolName[] = ["read", "bash", "edit", "write"];
-	const allowedToolNames = options.tools ?? (options.noTools === "all" ? [] : undefined);
-	const excludedToolNames = options.excludeTools;
+	const allowedToolNames = options.tools
+		? options.tools.map(normalizeToolName)
+		: options.noTools === "all"
+			? []
+			: undefined;
+	const excludedToolNames = options.excludeTools?.map(normalizeToolName);
 	const excludedToolNameSet = excludedToolNames ? new Set(excludedToolNames) : undefined;
 	const initialActiveToolNames: string[] = (
-		options.tools ? [...options.tools] : options.noTools ? [] : defaultActiveToolNames
+		allowedToolNames ? [...allowedToolNames] : options.noTools ? [] : defaultActiveToolNames
 	).filter((name) => !excludedToolNameSet?.has(name));
 
 	// context_usage is session introspection rather than a coding tool, so it is not part of

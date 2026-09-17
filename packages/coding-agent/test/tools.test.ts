@@ -9,6 +9,7 @@ import { computeEditsDiff } from "../src/core/tools/edit-diff.ts";
 import {
 	createEditTool,
 	createFindTool,
+	createGlobTool,
 	createGrepTool,
 	createLsTool,
 	createReadTool,
@@ -22,6 +23,7 @@ const editTool = createEditTool(process.cwd());
 const bashTool = createBashTool(process.cwd());
 const grepTool = createGrepTool(process.cwd());
 const findTool = createFindTool(process.cwd());
+const globTool = createGlobTool(process.cwd());
 const lsTool = createLsTool(process.cwd());
 
 // Helper to extract text from content blocks
@@ -877,6 +879,69 @@ describe("Coding Agent Tools", () => {
 		});
 	});
 
+	describe("glob tool", () => {
+		it("should expose glob tool name and find files matching glob pattern", async () => {
+			expect(globTool.name).toBe("glob");
+			writeFileSync(join(testDir, "file1.ts"), "content");
+			writeFileSync(join(testDir, "file2.js"), "content");
+
+			const result = await globTool.execute("test-call-glob-1", {
+				pattern: "*.ts",
+				path: testDir,
+			});
+
+			const output = getTextOutput(result);
+			expect(output).toContain("file1.ts");
+			expect(output).not.toContain("file2.js");
+		});
+
+		it("should find files in subdirectories", async () => {
+			mkdirSync(join(testDir, "src", "nested"), { recursive: true });
+			writeFileSync(join(testDir, "src", "nested", "test.ts"), "nested content");
+
+			const result = await globTool.execute("test-call-glob-2", {
+				pattern: "**/*.ts",
+				path: testDir,
+			});
+
+			const output = getTextOutput(result);
+			expect(output).toContain("src/nested/test.ts");
+		});
+
+		it("should respect .gitignore", async () => {
+			writeFileSync(join(testDir, ".gitignore"), "ignored.txt\n");
+			writeFileSync(join(testDir, "ignored.txt"), "ignored");
+			writeFileSync(join(testDir, "kept.txt"), "kept");
+
+			const result = await globTool.execute("test-call-glob-3", {
+				pattern: "**/*.txt",
+				path: testDir,
+			});
+
+			const output = getTextOutput(result);
+			expect(output).toContain("kept.txt");
+			expect(output).not.toContain("ignored.txt");
+		});
+
+		it("should surface fd glob parse errors", async () => {
+			await expect(
+				globTool.execute("test-call-glob-4", {
+					pattern: "[",
+					path: testDir,
+				}),
+			).rejects.toThrow(/error parsing glob|fd exited with code 1|fd error/i);
+		});
+
+		it("should treat flag-like patterns as search text", async () => {
+			const result = await globTool.execute("test-call-glob-flag-pattern", {
+				pattern: "--help",
+				path: testDir,
+			});
+
+			expect(getTextOutput(result)).toContain("No files found matching pattern");
+		});
+	});
+
 	describe("ls tool", () => {
 		it("should list dotfiles and directories", async () => {
 			writeFileSync(join(testDir, ".hidden-file"), "secret");
@@ -1209,5 +1274,143 @@ describe("edit tool CRLF handling", () => {
 
 		const content = readFileSync(testFile, "utf-8");
 		expect(content).toBe("\uFEFFfirst\r\nSECOND\r\nthird\r\nFOURTH\r\n");
+	});
+
+	describe("Antigravity and Claude Code tool parameter normalization", () => {
+		it("normalizes read tool parameters from Antigravity format", async () => {
+			const prepared = readTool.prepareArguments?.({
+				AbsolutePath: "/path/to/file.ts",
+				StartLine: 10,
+				EndLine: 25,
+			});
+			expect(prepared).toEqual(
+				expect.objectContaining({
+					path: "/path/to/file.ts",
+					offset: 10,
+					limit: 16,
+				}),
+			);
+		});
+
+		it("normalizes edit tool parameters from Antigravity format", async () => {
+			const prepared = editTool.prepareArguments?.({
+				TargetFile: "/path/to/file.ts",
+				TargetContent: "old code",
+				ReplacementContent: "new code",
+				AllowMultiple: true,
+			});
+			expect(prepared).toEqual(
+				expect.objectContaining({
+					path: "/path/to/file.ts",
+					edits: [{ oldText: "old code", newText: "new code" }],
+					allowMultiple: true,
+				}),
+			);
+		});
+
+		it("strips line number prefixes in edit tool when model includes them", async () => {
+			const testFile = join(testDir, "line-prefix-test.ts");
+			writeFileSync(testFile, "function test() {\n  const a = 1;\n  const b = 2;\n  return a + b;\n}\n");
+
+			const prepared = editTool.prepareArguments?.({
+				TargetFile: testFile,
+				TargetContent: "2:   const a = 1;\n3:   const b = 2;",
+				ReplacementContent: "2:   const a = 10;\n3:   const b = 20;",
+			});
+
+			await editTool.execute("test-line-prefix", prepared as any);
+			const result = readFileSync(testFile, "utf-8");
+			expect(result).toBe("function test() {\n  const a = 10;\n  const b = 20;\n  return a + b;\n}\n");
+		});
+
+		it("replaces all occurrences when AllowMultiple is true", async () => {
+			const testFile = join(testDir, "allow-multiple-test.ts");
+			writeFileSync(testFile, "const x = 1;\nconst y = 1;\nconst z = 1;\n");
+
+			const prepared = editTool.prepareArguments?.({
+				TargetFile: testFile,
+				TargetContent: "1",
+				ReplacementContent: "2",
+				AllowMultiple: true,
+			});
+
+			await editTool.execute("test-allow-multiple", prepared as any);
+			const result = readFileSync(testFile, "utf-8");
+			expect(result).toBe("const x = 2;\nconst y = 2;\nconst z = 2;\n");
+		});
+
+		it("normalizes write tool parameters from Antigravity format", async () => {
+			const testFile = join(testDir, "antigravity-write.txt");
+			const prepared = writeTool.prepareArguments?.({
+				TargetFile: testFile,
+				CodeContent: "hello antigravity",
+			});
+			expect(prepared).toEqual(
+				expect.objectContaining({
+					path: testFile,
+					content: "hello antigravity",
+				}),
+			);
+			await writeTool.execute("test-write-ag", prepared as any);
+			expect(readFileSync(testFile, "utf-8")).toBe("hello antigravity");
+		});
+
+		it("normalizes bash tool parameters from Antigravity format", () => {
+			const prepared = bashTool.prepareArguments?.({
+				CommandLine: "echo hello",
+				WaitMsBeforeAsync: 5000,
+			});
+			expect(prepared).toEqual(
+				expect.objectContaining({
+					command: "echo hello",
+					timeout: 5,
+				}),
+			);
+		});
+
+		it("normalizes grep tool parameters from Antigravity format", () => {
+			const prepared = grepTool.prepareArguments?.({
+				SearchPath: "src",
+				Query: "testPattern",
+				CaseInsensitive: true,
+				IsRegex: false,
+				Includes: ["*.ts"],
+			});
+			expect(prepared).toEqual(
+				expect.objectContaining({
+					path: "src",
+					pattern: "testPattern",
+					ignoreCase: true,
+					literal: true,
+					glob: "*.ts",
+				}),
+			);
+		});
+
+		it("normalizes find tool parameters from Antigravity format", () => {
+			const prepared = findTool.prepareArguments?.({
+				SearchDirectory: "packages",
+				Pattern: "*.json",
+				MaxDepth: 5,
+			});
+			expect(prepared).toEqual(
+				expect.objectContaining({
+					path: "packages",
+					pattern: "*.json",
+					limit: 5,
+				}),
+			);
+		});
+
+		it("normalizes ls tool parameters from Antigravity format", () => {
+			const prepared = lsTool.prepareArguments?.({
+				DirectoryPath: "src/core",
+			});
+			expect(prepared).toEqual(
+				expect.objectContaining({
+					path: "src/core",
+				}),
+			);
+		});
 	});
 });

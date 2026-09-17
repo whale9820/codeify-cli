@@ -53,6 +53,10 @@ export function estimateMessageTokens(message: Message): number {
 			chars += block.text.length;
 		} else if (block.type === "thinking") {
 			chars += block.thinking.length;
+		} else if (block.type === "serverToolUse") {
+			chars += block.name.length + safeJsonStringify(block.input).length;
+		} else if (block.type === "serverToolResult") {
+			chars += block.toolUseId.length + safeJsonStringify(block.content).length;
 		} else {
 			chars += block.name.length + safeJsonStringify(block.arguments).length;
 		}

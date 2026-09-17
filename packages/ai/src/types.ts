@@ -356,6 +356,20 @@ export interface ToolCall {
 	thoughtSignature?: string; // Google-specific: opaque signature for reusing thought context
 }
 
+export interface ServerToolUse {
+	type: "serverToolUse";
+	id: string;
+	name: string;
+	input: Record<string, any>;
+}
+
+export interface ServerToolResult {
+	type: "serverToolResult";
+	toolUseId: string;
+	resultType?: string;
+	content: unknown;
+}
+
 export interface Usage {
 	input: number;
 	output: number;
@@ -389,7 +403,7 @@ export interface UserMessage {
 
 export interface AssistantMessage {
 	role: "assistant";
-	content: (TextContent | ThinkingContent | ToolCall)[];
+	content: (TextContent | ThinkingContent | ToolCall | ServerToolUse | ServerToolResult)[];
 	api: Api;
 	provider: ProviderId;
 	model: string;
@@ -476,6 +490,21 @@ export type AssistantMessageEvent =
 	| { type: "toolcall_start"; contentIndex: number; partial: AssistantMessage }
 	| { type: "toolcall_delta"; contentIndex: number; delta: string; partial: AssistantMessage }
 	| { type: "toolcall_end"; contentIndex: number; toolCall: ToolCall; partial: AssistantMessage }
+	| { type: "server_tool_use_start"; contentIndex: number; serverToolUse: ServerToolUse; partial: AssistantMessage }
+	| { type: "server_tool_use_delta"; contentIndex: number; delta: string; partial: AssistantMessage }
+	| { type: "server_tool_use_end"; contentIndex: number; serverToolUse: ServerToolUse; partial: AssistantMessage }
+	| {
+			type: "server_tool_result_start";
+			contentIndex: number;
+			serverToolResult: ServerToolResult;
+			partial: AssistantMessage;
+	  }
+	| {
+			type: "server_tool_result_end";
+			contentIndex: number;
+			serverToolResult: ServerToolResult;
+			partial: AssistantMessage;
+	  }
 	| { type: "done"; reason: Extract<StopReason, "stop" | "length" | "toolUse">; message: AssistantMessage }
 	| { type: "error"; reason: Extract<StopReason, "aborted" | "error">; error: AssistantMessage };
 

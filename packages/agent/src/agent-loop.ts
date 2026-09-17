@@ -332,6 +332,11 @@ async function streamAssistantResponse(
 			case "toolcall_start":
 			case "toolcall_delta":
 			case "toolcall_end":
+			case "server_tool_use_start":
+			case "server_tool_use_delta":
+			case "server_tool_use_end":
+			case "server_tool_result_start":
+			case "server_tool_result_end":
 				if (partialMessage) {
 					partialMessage = event.partial;
 					context.messages[context.messages.length - 1] = partialMessage;
@@ -597,6 +602,40 @@ function prepareToolCallArguments(tool: AgentTool<any>, toolCall: AgentToolCall)
 	};
 }
 
+const TOOL_ALIASES: Record<string, string> = {
+	view_file: "read",
+	view: "read",
+	replace_file_content: "edit",
+	write_to_file: "write",
+	run_command: "bash",
+	execute_command: "bash",
+	grep_search: "grep",
+	find_by_name: "find",
+	list_dir: "ls",
+	read_url_content: "web_fetch",
+	fetch_web_page: "web_fetch",
+	search_web: "web_search",
+	websearch: "web_search",
+};
+
+function resolveTool(tools: AgentTool<any>[] | undefined, toolCallName: string): AgentTool<any> | undefined {
+	if (!tools) return undefined;
+	const exact = tools.find((t) => t.name === toolCallName);
+	if (exact) return exact;
+
+	const lower = toolCallName.toLowerCase();
+	const caseMatch = tools.find((t) => t.name.toLowerCase() === lower);
+	if (caseMatch) return caseMatch;
+
+	const targetName = TOOL_ALIASES[lower];
+	if (targetName) {
+		const aliasMatch = tools.find((t) => t.name === targetName || t.name.toLowerCase() === targetName.toLowerCase());
+		if (aliasMatch) return aliasMatch;
+	}
+
+	return undefined;
+}
+
 async function prepareToolCall(
 	currentContext: AgentContext,
 	assistantMessage: AssistantMessage,
@@ -604,7 +643,7 @@ async function prepareToolCall(
 	config: AgentLoopConfig,
 	signal: AbortSignal | undefined,
 ): Promise<PreparedToolCall | ImmediateToolCallOutcome> {
-	const tool = currentContext.tools?.find((t) => t.name === toolCall.name);
+	const tool = resolveTool(currentContext.tools, toolCall.name);
 	if (!tool) {
 		return {
 			kind: "immediate",

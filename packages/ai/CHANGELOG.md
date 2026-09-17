@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Added support for Anthropic server_tool_use and web_search tool mappings.
+
 ### Fixed
 
 - Classify malformed JSON property, unterminated-string, and double-quoted-property responses as retryable and cap their assistant-call retry budget at three. Capture OpenAI Responses parser dumps as diagnostics instead of printing them directly.

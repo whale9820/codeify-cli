@@ -90,7 +90,7 @@ export function buildSystemPrompt(options: BuildSystemPromptOptions): string {
 
 	const hasBash = tools.includes("bash");
 	const hasGrep = tools.includes("grep");
-	const hasFind = tools.includes("find");
+	const hasFind = tools.includes("find") || tools.includes("glob");
 	const hasLs = tools.includes("ls");
 	const hasRead = tools.includes("read");
 

@@ -36,7 +36,7 @@ const DEFAULT_MAX_TOOL_CALLS = 24;
 const MAX_TOOL_CALLS = 64;
 const MAX_CONCURRENT_CALLS = 5;
 const MAX_WALL_TIME_MS = 5 * 60_000;
-const DEFAULT_READ_ONLY_TOOLS = ["read", "grep", "find", "ls"];
+const DEFAULT_READ_ONLY_TOOLS = ["read", "grep", "find", "glob", "ls"];
 
 class DelegationInputError extends Error {}
 

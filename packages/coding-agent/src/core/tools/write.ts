@@ -178,6 +178,43 @@ function formatWriteResult(
 	return `\n${theme.fg("error", output)}`;
 }
 
+function prepareWriteArguments(input: unknown): WriteToolInput {
+	if (!input || typeof input !== "object") {
+		return input as WriteToolInput;
+	}
+
+	const args = input as Record<string, unknown>;
+	const path =
+		typeof args.path === "string"
+			? args.path
+			: typeof args.TargetFile === "string"
+				? args.TargetFile
+				: typeof args.target_file === "string"
+					? args.target_file
+					: typeof args.filePath === "string"
+						? args.filePath
+						: typeof args.file_path === "string"
+							? args.file_path
+							: args.path;
+
+	const content =
+		typeof args.content === "string"
+			? args.content
+			: typeof args.CodeContent === "string"
+				? args.CodeContent
+				: typeof args.code_content === "string"
+					? args.code_content
+					: typeof args.text === "string"
+						? args.text
+						: args.content;
+
+	return {
+		...args,
+		path,
+		content,
+	} as WriteToolInput;
+}
+
 export function createWriteToolDefinition(
 	cwd: string,
 	options?: WriteToolOptions,
@@ -191,6 +228,7 @@ export function createWriteToolDefinition(
 		promptSnippet: "Create or overwrite files",
 		promptGuidelines: ["Use write only for new files or complete rewrites."],
 		parameters: writeSchema,
+		prepareArguments: prepareWriteArguments,
 		async execute(
 			_toolCallId,
 			{ path, content }: { path: string; content: string },

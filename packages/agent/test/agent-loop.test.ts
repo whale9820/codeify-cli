@@ -368,6 +368,73 @@ describe("agentLoop with AgentMessage", () => {
 		expect(toolResult?.role === "toolResult" ? toolResult.usage : undefined).toEqual(patchedToolUsage);
 	});
 
+	it("should resolve tool aliases and case-insensitive tool names", async () => {
+		const toolSchema = Type.Object({ value: Type.String() });
+		const executed: string[] = [];
+		const tool: AgentTool<typeof toolSchema, { value: string }> = {
+			name: "read",
+			label: "Read",
+			description: "Read tool",
+			parameters: toolSchema,
+			prepareArguments: (args: any) => {
+				if (args && typeof args.AbsolutePath === "string") {
+					return { value: args.AbsolutePath };
+				}
+				return args;
+			},
+			async execute(_toolCallId, params) {
+				executed.push(params.value);
+				return {
+					content: [{ type: "text", text: `read: ${params.value}` }],
+					details: { value: params.value },
+				};
+			},
+		};
+
+		const context: AgentContext = {
+			systemPrompt: "",
+			messages: [],
+			tools: [tool],
+		};
+
+		const userPrompt: AgentMessage = createUserMessage("read something");
+		const config: AgentLoopConfig = {
+			model: createModel(),
+			convertToLlm: identityConverter,
+		};
+
+		let callIndex = 0;
+		const streamFn = () => {
+			const stream = new MockAssistantStream();
+			queueMicrotask(() => {
+				if (callIndex === 0) {
+					// Model calls Antigravity alias "view_file" with Antigravity arguments
+					const message = createAssistantMessage(
+						[{ type: "toolCall", id: "tool-1", name: "view_file", arguments: { AbsolutePath: "/foo/bar.txt" } }],
+						"toolUse",
+					);
+					stream.push({ type: "done", reason: "toolUse", message });
+				} else {
+					const message = createAssistantMessage([{ type: "text", text: "done" }]);
+					stream.push({ type: "done", reason: "stop", message });
+				}
+				callIndex++;
+			});
+			return stream;
+		};
+
+		const stream = agentLoop([userPrompt], context, config, undefined, streamFn);
+		const messages = await stream.result();
+
+		expect(executed).toEqual(["/foo/bar.txt"]);
+		const toolResult = messages.find((m) => m.role === "toolResult");
+		expect(toolResult).toBeDefined();
+		if (toolResult?.role === "toolResult") {
+			expect(toolResult.toolName).toBe("view_file");
+			expect(toolResult.isError).toBe(false);
+		}
+	});
+
 	it("should not execute tool calls from a length-truncated assistant message", async () => {
 		const toolSchema = Type.Object({ value: Type.String() });
 		const executed: string[] = [];

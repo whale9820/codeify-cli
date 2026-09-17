@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Added transparent tool alias and case-insensitive resolution in the agent loop.
+
 ## [0.81.1] - 2026-07-21
 
 ### Added

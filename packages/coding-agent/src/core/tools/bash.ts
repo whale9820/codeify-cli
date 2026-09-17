@@ -16,6 +16,7 @@ import {
 	untrackDetachedChildPid,
 } from "../../utils/shell.ts";
 import { OutputAccumulator } from "./output-accumulator.ts";
+import { resolveToCwd } from "./path-utils.ts";
 import { getTextOutput, invalidArgText, str } from "./render-utils.ts";
 import { wrapToolDefinition } from "./tool-definition-wrapper.ts";
 import { DEFAULT_MAX_BYTES, DEFAULT_MAX_LINES, formatSize, type TruncationResult } from "./truncate.ts";
@@ -285,6 +286,39 @@ function rebuildBashResultRenderComponent(
 	}
 }
 
+function prepareBashArguments(input: unknown): BashToolInput {
+	if (!input || typeof input !== "object") {
+		return input as BashToolInput;
+	}
+
+	const args = input as Record<string, unknown>;
+	const command =
+		typeof args.command === "string"
+			? args.command
+			: typeof args.CommandLine === "string"
+				? args.CommandLine
+				: typeof args.command_line === "string"
+					? args.command_line
+					: typeof args.cmd === "string"
+						? args.cmd
+						: args.command;
+
+	const timeout =
+		typeof args.timeout === "number"
+			? args.timeout
+			: typeof args.WaitMsBeforeAsync === "number"
+				? args.WaitMsBeforeAsync / 1000
+				: typeof args.wait_ms === "number"
+					? args.wait_ms / 1000
+					: args.timeout;
+
+	return {
+		...args,
+		command,
+		...(timeout !== undefined ? { timeout } : {}),
+	} as BashToolInput;
+}
+
 export function createBashToolDefinition(
 	cwd: string,
 	options?: BashToolOptions,
@@ -298,15 +332,13 @@ export function createBashToolDefinition(
 		description: `Execute a bash command in the current working directory. Returns stdout and stderr. Output is truncated to last ${DEFAULT_MAX_LINES} lines or ${DEFAULT_MAX_BYTES / 1024}KB (whichever is hit first). If truncated, full output is saved to a temp file. Optionally provide a timeout in seconds.`,
 		promptSnippet: "Execute bash commands (ls, grep, find, etc.)",
 		parameters: bashSchema,
-		async execute(
-			_toolCallId,
-			{ command, timeout }: { command: string; timeout?: number },
-			signal?: AbortSignal,
-			onUpdate?,
-			_ctx?,
-		) {
+		prepareArguments: prepareBashArguments,
+		async execute(_toolCallId, input: BashToolInput, signal?: AbortSignal, onUpdate?, _ctx?) {
+			const { command, timeout } = input;
+			const rawCwd = (input as Record<string, unknown>).Cwd ?? (input as Record<string, unknown>).cwd;
+			const effectiveCwd = typeof rawCwd === "string" ? resolveToCwd(rawCwd, cwd) : cwd;
 			const resolvedCommand = commandPrefix ? `${commandPrefix}\n${command}` : command;
-			const spawnContext = resolveSpawnContext(resolvedCommand, cwd, spawnHook);
+			const spawnContext = resolveSpawnContext(resolvedCommand, effectiveCwd, spawnHook);
 			const output = new OutputAccumulator({ tempFilePrefix: "codeify-bash" });
 			let acceptingOutput = true;
 			let updateTimer: NodeJS.Timeout | undefined;

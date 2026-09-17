@@ -94,6 +94,39 @@ function formatLsResult(
 	return text;
 }
 
+function prepareLsArguments(input: unknown): LsToolInput {
+	if (!input || typeof input !== "object") {
+		return input as LsToolInput;
+	}
+
+	const args = input as Record<string, unknown>;
+	const path =
+		typeof args.path === "string"
+			? args.path
+			: typeof args.DirectoryPath === "string"
+				? args.DirectoryPath
+				: typeof args.directory_path === "string"
+					? args.directory_path
+					: typeof args.directory === "string"
+						? args.directory
+						: typeof args.dir === "string"
+							? args.dir
+							: args.path;
+
+	const limit =
+		typeof args.limit === "number"
+			? args.limit
+			: typeof args.max_results === "number"
+				? args.max_results
+				: args.limit;
+
+	return {
+		...args,
+		...(path !== undefined ? { path } : {}),
+		...(limit !== undefined ? { limit } : {}),
+	} as LsToolInput;
+}
+
 export function createLsToolDefinition(
 	cwd: string,
 	options?: LsToolOptions,
@@ -105,6 +138,7 @@ export function createLsToolDefinition(
 		description: `List directory contents. Returns entries sorted alphabetically, with '/' suffix for directories. Includes dotfiles. Output is truncated to ${DEFAULT_LIMIT} entries or ${DEFAULT_MAX_BYTES / 1024}KB (whichever is hit first).`,
 		promptSnippet: "List directory contents",
 		parameters: lsSchema,
+		prepareArguments: prepareLsArguments,
 		async execute(
 			_toolCallId,
 			{ path, limit }: { path?: string; limit?: number },

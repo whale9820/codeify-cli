@@ -122,6 +122,78 @@ function formatGrepResult(
 	return text;
 }
 
+function prepareGrepArguments(input: unknown): GrepToolInput {
+	if (!input || typeof input !== "object") {
+		return input as GrepToolInput;
+	}
+
+	const args = input as Record<string, unknown>;
+	const pattern =
+		typeof args.pattern === "string"
+			? args.pattern
+			: typeof args.Query === "string"
+				? args.Query
+				: typeof args.query === "string"
+					? args.query
+					: typeof args.search_term === "string"
+						? args.search_term
+						: args.pattern;
+
+	const searchPath =
+		typeof args.path === "string"
+			? args.path
+			: typeof args.SearchPath === "string"
+				? args.SearchPath
+				: typeof args.search_path === "string"
+					? args.search_path
+					: typeof args.directory === "string"
+						? args.directory
+						: typeof args.dir === "string"
+							? args.dir
+							: args.path;
+
+	const ignoreCase =
+		typeof args.ignoreCase === "boolean"
+			? args.ignoreCase
+			: typeof args.CaseInsensitive === "boolean"
+				? args.CaseInsensitive
+				: typeof args.case_insensitive === "boolean"
+					? args.case_insensitive
+					: typeof args.ignore_case === "boolean"
+						? args.ignore_case
+						: args.ignoreCase;
+
+	const literal =
+		typeof args.literal === "boolean"
+			? args.literal
+			: typeof args.IsRegex === "boolean"
+				? !args.IsRegex
+				: typeof args.is_regex === "boolean"
+					? !args.is_regex
+					: args.literal;
+
+	let glob = typeof args.glob === "string" ? args.glob : undefined;
+	if (!glob && Array.isArray(args.Includes) && args.Includes.length > 0 && typeof args.Includes[0] === "string") {
+		glob = args.Includes[0];
+	} else if (
+		!glob &&
+		Array.isArray(args.includes) &&
+		args.includes.length > 0 &&
+		typeof args.includes[0] === "string"
+	) {
+		glob = args.includes[0];
+	}
+
+	return {
+		...args,
+		pattern,
+		...(searchPath !== undefined ? { path: searchPath } : {}),
+		...(ignoreCase !== undefined ? { ignoreCase } : {}),
+		...(literal !== undefined ? { literal } : {}),
+		...(glob !== undefined ? { glob } : {}),
+	} as GrepToolInput;
+}
+
 export function createGrepToolDefinition(
 	cwd: string,
 	options?: GrepToolOptions,
@@ -133,6 +205,7 @@ export function createGrepToolDefinition(
 		description: `Search file contents for a pattern. Returns matching lines with file paths and line numbers. Respects .gitignore. Output is truncated to ${DEFAULT_LIMIT} matches or ${DEFAULT_MAX_BYTES / 1024}KB (whichever is hit first). Long lines are truncated to ${GREP_MAX_LINE_LENGTH} chars.`,
 		promptSnippet: "Search file contents for patterns (respects .gitignore)",
 		parameters: grepSchema,
+		prepareArguments: prepareGrepArguments,
 		async execute(
 			_toolCallId,
 			{

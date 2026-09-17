@@ -59,6 +59,10 @@ export interface ReadToolOptions {
 	autoResizeImages?: boolean;
 	/** Custom operations for file reading. Default: local filesystem */
 	operations?: ReadOperations;
+	/** Maximum number of lines to read before truncation. */
+	maxLines?: number;
+	/** Maximum number of bytes to read before truncation. */
+	maxBytes?: number;
 }
 
 type ReadRenderArgs = { path?: string; file_path?: string; offset?: number; limit?: number };
@@ -173,6 +177,59 @@ function formatReadResult(
 	return text;
 }
 
+function prepareReadArguments(input: unknown): ReadToolInput {
+	if (!input || typeof input !== "object") {
+		return input as ReadToolInput;
+	}
+
+	const args = input as Record<string, unknown>;
+	const path =
+		typeof args.path === "string"
+			? args.path
+			: typeof args.AbsolutePath === "string"
+				? args.AbsolutePath
+				: typeof args.absolute_path === "string"
+					? args.absolute_path
+					: typeof args.filePath === "string"
+						? args.filePath
+						: typeof args.file_path === "string"
+							? args.file_path
+							: typeof args.TargetFile === "string"
+								? args.TargetFile
+								: typeof args.target_file === "string"
+									? args.target_file
+									: args.path;
+
+	let offset = typeof args.offset === "number" ? args.offset : undefined;
+	let limit = typeof args.limit === "number" ? args.limit : undefined;
+
+	if (offset === undefined && typeof args.StartLine === "number") {
+		offset = args.StartLine;
+	} else if (offset === undefined && typeof args.start_line === "number") {
+		offset = args.start_line;
+	}
+
+	if (limit === undefined) {
+		const endLine =
+			typeof args.EndLine === "number"
+				? args.EndLine
+				: typeof args.end_line === "number"
+					? args.end_line
+					: undefined;
+		if (endLine !== undefined) {
+			const start = offset ?? 1;
+			limit = Math.max(1, endLine - start + 1);
+		}
+	}
+
+	return {
+		...args,
+		path,
+		...(offset !== undefined ? { offset } : {}),
+		...(limit !== undefined ? { limit } : {}),
+	} as ReadToolInput;
+}
+
 export function createReadToolDefinition(
 	cwd: string,
 	options?: ReadToolOptions,
@@ -182,17 +239,17 @@ export function createReadToolDefinition(
 	return {
 		name: "read",
 		label: "read",
-		description: `Read the contents of a file. Supports text files and images (jpg, png, gif, webp, bmp). Images are sent as attachments. For text files, output is truncated to ${DEFAULT_MAX_LINES} lines or ${DEFAULT_MAX_BYTES / 1024}KB (whichever is hit first). Use offset/limit for large files. When you need the full file, continue with offset until complete.`,
+		description:
+			"Read the contents of a file. Supports text files and images (jpg, png, gif, webp, bmp). Images are sent as attachments. For text files, output is truncated if it exceeds line or byte limits. Use offset/limit for large files. When you need the full file, continue with offset until complete.",
 		promptSnippet: "Read file contents",
-		promptGuidelines: ["Use read to examine files instead of cat or sed."],
+		promptGuidelines: [
+			"Use read to examine files instead of cat or sed.",
+			"You do not need to re-read files you have already inspected in this session unless they were modified.",
+		],
 		parameters: readSchema,
-		async execute(
-			_toolCallId,
-			{ path, offset, limit }: { path: string; offset?: number; limit?: number },
-			signal?: AbortSignal,
-			_onUpdate?,
-			ctx?,
-		) {
+		prepareArguments: prepareReadArguments,
+		async execute(_toolCallId, input: ReadToolInput, signal?: AbortSignal, _onUpdate?, ctx?) {
+			const { path, offset, limit } = input;
 			return new Promise<{ content: (TextContent | ImageContent)[]; details: ReadToolDetails | undefined }>(
 				(resolve, reject) => {
 					if (signal?.aborted) {
@@ -241,11 +298,23 @@ export function createReadToolDefinition(
 								const allLines = textContent.split("\n");
 								const totalFileLines = allLines.length;
 								// Apply offset if specified. Convert from 1-indexed input to 0-indexed array access.
-								const startLine = offset ? Math.max(0, offset - 1) : 0;
+								// Handle ContentOffset (byte offset) if offset (line offset) is not specified.
+								let startLine = offset ? Math.max(0, offset - 1) : 0;
+								if (
+									offset === undefined &&
+									typeof (input as Record<string, unknown>).ContentOffset === "number" &&
+									((input as Record<string, unknown>).ContentOffset as number) > 0
+								) {
+									const byteOffset = (input as Record<string, unknown>).ContentOffset as number;
+									const prefix = buffer.subarray(0, byteOffset).toString("utf-8");
+									startLine = Math.max(0, prefix.split("\n").length - 1);
+								}
 								const startLineDisplay = startLine + 1;
 								// Check if offset is out of bounds.
 								if (startLine >= allLines.length) {
-									throw new Error(`Offset ${offset} is beyond end of file (${allLines.length} lines total)`);
+									throw new Error(
+										`Offset ${offset ?? startLineDisplay} is beyond end of file (${allLines.length} lines total)`,
+									);
 								}
 								let selectedContent: string;
 								let userLimitedLines: number | undefined;
@@ -257,13 +326,23 @@ export function createReadToolDefinition(
 								} else {
 									selectedContent = allLines.slice(startLine).join("\n");
 								}
+								// Adaptive truncation limit: for models with large context windows (>= 100k, e.g. Gemini, Claude),
+								// use a higher byte limit (256KB) and line limit (5000 lines) so files are read in a single turn.
+								const isLargeContextModel = (ctx?.model?.contextWindow ?? 0) >= 100_000;
+								const effectiveMaxBytes =
+									options?.maxBytes ?? (isLargeContextModel ? 256 * 1024 : DEFAULT_MAX_BYTES);
+								const effectiveMaxLines = options?.maxLines ?? (isLargeContextModel ? 5000 : DEFAULT_MAX_LINES);
+
 								// Apply truncation, respecting both line and byte limits.
-								const truncation = truncateHead(selectedContent);
+								const truncation = truncateHead(selectedContent, {
+									maxBytes: effectiveMaxBytes,
+									maxLines: effectiveMaxLines,
+								});
 								let outputText: string;
 								if (truncation.firstLineExceedsLimit) {
 									// First line alone exceeds the byte limit. Point the model at a bash fallback.
 									const firstLineSize = formatSize(Buffer.byteLength(allLines[startLine], "utf-8"));
-									outputText = `[Line ${startLineDisplay} is ${firstLineSize}, exceeds ${formatSize(DEFAULT_MAX_BYTES)} limit. Use bash: sed -n '${startLineDisplay}p' ${path} | head -c ${DEFAULT_MAX_BYTES}]`;
+									outputText = `[Line ${startLineDisplay} is ${firstLineSize}, exceeds ${formatSize(effectiveMaxBytes)} limit. Use bash: sed -n '${startLineDisplay}p' ${path} | head -c ${effectiveMaxBytes}]`;
 									details = { truncation };
 								} else if (truncation.truncated) {
 									// Truncation occurred. Build an actionable continuation notice.
@@ -273,7 +352,7 @@ export function createReadToolDefinition(
 									if (truncation.truncatedBy === "lines") {
 										outputText += `\n\n[Showing lines ${startLineDisplay}-${endLineDisplay} of ${totalFileLines}. Use offset=${nextOffset} to continue.]`;
 									} else {
-										outputText += `\n\n[Showing lines ${startLineDisplay}-${endLineDisplay} of ${totalFileLines} (${formatSize(DEFAULT_MAX_BYTES)} limit). Use offset=${nextOffset} to continue.]`;
+										outputText += `\n\n[Showing lines ${startLineDisplay}-${endLineDisplay} of ${totalFileLines} (${formatSize(truncation.maxBytes)} limit). Use offset=${nextOffset} to continue.]`;
 									}
 									details = { truncation };
 								} else if (userLimitedLines !== undefined && startLine + userLimitedLines < allLines.length) {

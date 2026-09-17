@@ -198,6 +198,19 @@ export interface AppliedEditsResult {
 }
 
 /**
+ * Strip line number prefixes like "12: " or "12 | " from lines if all non-empty lines have them.
+ */
+export function stripLineNumberPrefixes(text: string): string {
+	const lines = text.split("\n");
+	const linePrefixRegex = /^\s*\d+[:|]\s?/;
+	const nonBlankLines = lines.filter((l) => l.trim().length > 0);
+	if (nonBlankLines.length > 0 && nonBlankLines.every((l) => linePrefixRegex.test(l))) {
+		return lines.map((l) => l.replace(linePrefixRegex, "")).join("\n");
+	}
+	return text;
+}
+
+/**
  * Find oldText in content, trying exact match first, then fuzzy match.
  * When fuzzy matching is used, the returned contentForReplacement is the
  * fuzzy-normalized version of the content (trailing whitespace stripped,
@@ -221,25 +234,48 @@ export function fuzzyFindText(content: string, oldText: string): FuzzyMatchResul
 	const fuzzyOldText = normalizeForFuzzyMatch(oldText);
 	const fuzzyIndex = fuzzyContent.indexOf(fuzzyOldText);
 
-	if (fuzzyIndex === -1) {
+	if (fuzzyIndex !== -1) {
 		return {
-			found: false,
-			index: -1,
-			matchLength: 0,
-			usedFuzzyMatch: false,
-			contentForReplacement: content,
+			found: true,
+			index: fuzzyIndex,
+			matchLength: fuzzyOldText.length,
+			usedFuzzyMatch: true,
+			contentForReplacement: fuzzyContent,
 		};
 	}
 
-	// When fuzzy matching, return offsets in normalized space. Callers can use
-	// the normalized content to compute replacements, then decide how much of
-	// that normalized output should be written back.
+	// Fallback: Check if oldText has line number prefixes like "12: " or "12 | "
+	const strippedOldText = stripLineNumberPrefixes(oldText);
+	if (strippedOldText !== oldText) {
+		const strippedExactIndex = content.indexOf(strippedOldText);
+		if (strippedExactIndex !== -1) {
+			return {
+				found: true,
+				index: strippedExactIndex,
+				matchLength: strippedOldText.length,
+				usedFuzzyMatch: false,
+				contentForReplacement: content,
+			};
+		}
+		const strippedFuzzyOldText = normalizeForFuzzyMatch(strippedOldText);
+		const strippedFuzzyIndex = fuzzyContent.indexOf(strippedFuzzyOldText);
+		if (strippedFuzzyIndex !== -1) {
+			return {
+				found: true,
+				index: strippedFuzzyIndex,
+				matchLength: strippedFuzzyOldText.length,
+				usedFuzzyMatch: true,
+				contentForReplacement: fuzzyContent,
+			};
+		}
+	}
+
 	return {
-		found: true,
-		index: fuzzyIndex,
-		matchLength: fuzzyOldText.length,
-		usedFuzzyMatch: true,
-		contentForReplacement: fuzzyContent,
+		found: false,
+		index: -1,
+		matchLength: 0,
+		usedFuzzyMatch: false,
+		contentForReplacement: content,
 	};
 }
 
@@ -305,11 +341,23 @@ export function applyEditsToNormalizedContent(
 	normalizedContent: string,
 	edits: Edit[],
 	path: string,
+	options?: { allowMultiple?: boolean },
 ): AppliedEditsResult {
-	const normalizedEdits = edits.map((edit) => ({
-		oldText: normalizeToLF(edit.oldText),
-		newText: normalizeToLF(edit.newText),
-	}));
+	const allowMultiple = options?.allowMultiple ?? false;
+	const normalizedEdits = edits.map((edit) => {
+		let oldText = normalizeToLF(edit.oldText);
+		let newText = normalizeToLF(edit.newText);
+		const strippedOld = stripLineNumberPrefixes(oldText);
+		if (
+			strippedOld !== oldText &&
+			(normalizedContent.includes(strippedOld) ||
+				normalizeForFuzzyMatch(normalizedContent).includes(normalizeForFuzzyMatch(strippedOld)))
+		) {
+			oldText = strippedOld;
+			newText = stripLineNumberPrefixes(newText);
+		}
+		return { oldText, newText };
+	});
 
 	for (let i = 0; i < normalizedEdits.length; i++) {
 		if (normalizedEdits[i].oldText.length === 0) {
@@ -331,6 +379,22 @@ export function applyEditsToNormalizedContent(
 
 		const occurrences = countOccurrences(replacementBaseContent, edit.oldText);
 		if (occurrences > 1) {
+			if (allowMultiple) {
+				const searchOld = usedFuzzyMatch ? normalizeForFuzzyMatch(edit.oldText) : edit.oldText;
+				let searchStart = 0;
+				while (searchStart < replacementBaseContent.length) {
+					const idx = replacementBaseContent.indexOf(searchOld, searchStart);
+					if (idx === -1) break;
+					matchedEdits.push({
+						editIndex: i,
+						matchIndex: idx,
+						matchLength: searchOld.length,
+						newText: edit.newText,
+					});
+					searchStart = idx + searchOld.length;
+				}
+				continue;
+			}
 			throw getDuplicateError(path, i, normalizedEdits.length, occurrences);
 		}
 

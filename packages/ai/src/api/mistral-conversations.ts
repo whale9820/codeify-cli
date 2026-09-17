@@ -556,11 +556,13 @@ function toChatMessages(messages: Message[], supportsImages: boolean): ChatCompl
 					}
 					continue;
 				}
-				toolCalls.push({
-					id: block.id,
-					type: "function",
-					function: { name: block.name, arguments: JSON.stringify(block.arguments || {}) },
-				});
+				if (block.type === "toolCall") {
+					toolCalls.push({
+						id: block.id,
+						type: "function",
+						function: { name: block.name, arguments: JSON.stringify(block.arguments || {}) },
+					});
+				}
 			}
 
 			const assistantMessage: ChatCompletionStreamRequestMessage = { role: "assistant" };

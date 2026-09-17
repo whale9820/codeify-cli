@@ -53,10 +53,6 @@ const editSchema = Type.Object(
 );
 
 export type EditToolInput = Static<typeof editSchema>;
-type LegacyEditToolInput = EditToolInput & {
-	oldText?: unknown;
-	newText?: unknown;
-};
 
 export interface EditToolDetails {
 	/** Display-oriented diff of the changes made */
@@ -98,23 +94,100 @@ function prepareEditArguments(input: unknown): EditToolInput {
 
 	const args = input as Record<string, unknown>;
 
+	const path =
+		typeof args.path === "string"
+			? args.path
+			: typeof args.TargetFile === "string"
+				? args.TargetFile
+				: typeof args.target_file === "string"
+					? args.target_file
+					: typeof args.filePath === "string"
+						? args.filePath
+						: typeof args.file_path === "string"
+							? args.file_path
+							: args.path;
+
 	// Some models (Opus 4.6, GLM-5.1) send edits as a JSON string instead of an array
-	if (typeof args.edits === "string") {
+	let rawEdits = args.edits;
+	if (typeof rawEdits === "string") {
 		try {
-			const parsed = JSON.parse(args.edits);
-			if (Array.isArray(parsed)) args.edits = parsed;
+			const parsed = JSON.parse(rawEdits);
+			if (Array.isArray(parsed)) rawEdits = parsed;
 		} catch {}
 	}
 
-	const legacy = args as LegacyEditToolInput;
-	if (typeof legacy.oldText !== "string" || typeof legacy.newText !== "string") {
-		return args as EditToolInput;
+	let edits: Edit[] = [];
+	if (Array.isArray(rawEdits)) {
+		edits = rawEdits.map((item) => {
+			if (!item || typeof item !== "object") return item as Edit;
+			const obj = item as Record<string, unknown>;
+			const oldText =
+				typeof obj.oldText === "string"
+					? obj.oldText
+					: typeof obj.TargetContent === "string"
+						? obj.TargetContent
+						: typeof obj.target_content === "string"
+							? obj.target_content
+							: typeof obj.old_string === "string"
+								? obj.old_string
+								: "";
+			const newText =
+				typeof obj.newText === "string"
+					? obj.newText
+					: typeof obj.ReplacementContent === "string"
+						? obj.ReplacementContent
+						: typeof obj.replacement_content === "string"
+							? obj.replacement_content
+							: typeof obj.new_string === "string"
+								? obj.new_string
+								: "";
+			return { ...obj, oldText, newText } as Edit;
+		});
 	}
 
-	const edits = Array.isArray(legacy.edits) ? [...legacy.edits] : [];
-	edits.push({ oldText: legacy.oldText, newText: legacy.newText });
-	const { oldText: _oldText, newText: _newText, ...rest } = legacy;
-	return { ...rest, edits } as EditToolInput;
+	// Support single replacement passed at top level (Antigravity, Claude Code, legacy Codeify)
+	const singleOld =
+		typeof args.oldText === "string"
+			? args.oldText
+			: typeof args.TargetContent === "string"
+				? args.TargetContent
+				: typeof args.target_content === "string"
+					? args.target_content
+					: typeof args.old_string === "string"
+						? args.old_string
+						: undefined;
+	const singleNew =
+		typeof args.newText === "string"
+			? args.newText
+			: typeof args.ReplacementContent === "string"
+				? args.ReplacementContent
+				: typeof args.replacement_content === "string"
+					? args.replacement_content
+					: typeof args.new_string === "string"
+						? args.new_string
+						: undefined;
+
+	if (singleOld !== undefined && singleNew !== undefined) {
+		edits = [...edits, { oldText: singleOld, newText: singleNew }];
+	}
+
+	const allowMultiple =
+		typeof args.AllowMultiple === "boolean"
+			? args.AllowMultiple
+			: typeof args.allowMultiple === "boolean"
+				? args.allowMultiple
+				: typeof args.replace_all === "boolean"
+					? args.replace_all
+					: typeof args.replaceAll === "boolean"
+						? args.replaceAll
+						: undefined;
+
+	return {
+		...args,
+		path,
+		edits,
+		...(allowMultiple !== undefined ? { allowMultiple } : {}),
+	} as EditToolInput;
 }
 
 function validateEditInput(input: EditToolInput): { path: string; edits: Edit[] } {
@@ -404,7 +477,10 @@ export function createEditToolDefinition(
 				const { bom, text: content } = stripBom(rawContent);
 				const originalEnding = detectLineEnding(content);
 				const normalizedContent = normalizeToLF(content);
-				const { baseContent, newContent } = applyEditsToNormalizedContent(normalizedContent, edits, path);
+				const allowMultiple = Boolean((input as Record<string, unknown>).allowMultiple);
+				const { baseContent, newContent } = applyEditsToNormalizedContent(normalizedContent, edits, path, {
+					allowMultiple,
+				});
 				throwIfAborted();
 
 				const finalContent = bom + restoreLineEndings(newContent, originalEnding);

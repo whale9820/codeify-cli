@@ -717,7 +717,31 @@ export class AgentSession {
 	}
 
 	getToolDefinition(name: string): ToolDefinition | undefined {
-		return this._toolDefinitions.get(name)?.definition;
+		const direct = this._toolDefinitions.get(name)?.definition;
+		if (direct) return direct;
+		const lower = name.toLowerCase();
+		const caseMatch = this._toolDefinitions.get(lower)?.definition;
+		if (caseMatch) return caseMatch;
+		const aliasMap: Record<string, string> = {
+			view_file: "read",
+			view: "read",
+			replace_file_content: "edit",
+			write_to_file: "write",
+			run_command: "bash",
+			execute_command: "bash",
+			grep_search: "grep",
+			find_by_name: "find",
+			list_dir: "ls",
+			read_url_content: "web_fetch",
+			fetch_web_page: "web_fetch",
+			search_web: "web_search",
+			websearch: "web_search",
+		};
+		const targetName = aliasMap[lower];
+		if (targetName) {
+			return this._toolDefinitions.get(targetName)?.definition;
+		}
+		return undefined;
 	}
 
 	/**
@@ -1775,8 +1799,20 @@ export class AgentSession {
 		const previousActiveToolNames = this.getActiveToolNames();
 		const allowedToolNames = this._allowedToolNames;
 		const excludedToolNames = this._excludedToolNames;
-		const isAllowedTool = (name: string): boolean =>
-			(!allowedToolNames || allowedToolNames.has(name)) && !excludedToolNames?.has(name);
+		const isAllowedTool = (name: string): boolean => {
+			const lower = name.toLowerCase();
+			const isAllowed =
+				!allowedToolNames ||
+				allowedToolNames.has(name) ||
+				allowedToolNames.has(lower) ||
+				Array.from(allowedToolNames).some((allowed) => allowed.toLowerCase() === lower);
+			const isExcluded =
+				!!excludedToolNames &&
+				(excludedToolNames.has(name) ||
+					excludedToolNames.has(lower) ||
+					Array.from(excludedToolNames).some((excluded) => excluded.toLowerCase() === lower));
+			return isAllowed && !isExcluded;
+		};
 
 		const allCustomTools = this._customTools
 			.map((definition) => ({
@@ -1836,7 +1872,12 @@ export class AgentSession {
 
 		if (allowedToolNames) {
 			for (const toolName of this._toolRegistry.keys()) {
-				if (allowedToolNames.has(toolName)) {
+				const lower = toolName.toLowerCase();
+				if (
+					allowedToolNames.has(toolName) ||
+					allowedToolNames.has(lower) ||
+					Array.from(allowedToolNames).some((allowed) => allowed.toLowerCase() === lower)
+				) {
 					nextActiveToolNames.push(toolName);
 				}
 			}
