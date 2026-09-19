@@ -134,16 +134,14 @@ describe("formatProviderError", () => {
 			}),
 		);
 
-		expect(formatProviderError(norm, "OpenAI API error")).toBe(
-			'OpenAI API error (403): {"error":"blocked by gateway WAF"}',
-		);
+		expect(formatProviderError(norm, "API Error")).toBe('API Error (403): {"error":"blocked by gateway WAF"}');
 	});
 
 	it("preserves the message (with prefix + status) when it already carries the body", () => {
 		const body = JSON.stringify({ error: { message: "Permission denied" } });
 		const norm = normalizeProviderError(Object.assign(new Error(body), { status: 403 }));
 
-		expect(formatProviderError(norm, "OpenAI API error")).toBe(`OpenAI API error (403): ${body}`);
+		expect(formatProviderError(norm, "API Error")).toBe(`API Error (403): ${body}`);
 	});
 
 	it("returns the bare message for a non-Error value", () => {

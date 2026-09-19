@@ -167,7 +167,7 @@ describe("provider error body passthrough (per-tier regression)", () => {
 		const output = await drainResult(streamOpenAIResponses(responsesModel, context, { apiKey: "test" }));
 
 		expect(output.stopReason).toBe("error");
-		expect(output.errorMessage).toContain("OpenAI API error (403)");
+		expect(output.errorMessage).toContain("API Error (403)");
 		expect(output.errorMessage).toContain("blocked by gateway WAF");
 	});
 

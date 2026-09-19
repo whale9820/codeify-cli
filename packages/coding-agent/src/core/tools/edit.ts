@@ -94,6 +94,74 @@ function prepareEditArguments(input: unknown): EditToolInput {
 
 	const args = input as Record<string, unknown>;
 
+	const singleOld =
+		typeof args.oldText === "string"
+			? args.oldText
+			: typeof args.TargetContent === "string"
+				? args.TargetContent
+				: typeof args.target_content === "string"
+					? args.target_content
+					: typeof args.old_string === "string"
+						? args.old_string
+						: undefined;
+	const singleNew =
+		typeof args.newText === "string"
+			? args.newText
+			: typeof args.ReplacementContent === "string"
+				? args.ReplacementContent
+				: typeof args.replacement_content === "string"
+					? args.replacement_content
+					: typeof args.new_string === "string"
+						? args.new_string
+						: undefined;
+
+	const hasAlternativePath =
+		args.TargetFile !== undefined ||
+		args.target_file !== undefined ||
+		args.filePath !== undefined ||
+		args.file_path !== undefined;
+
+	const hasAlternativeMultiple =
+		args.AllowMultiple !== undefined || args.replace_all !== undefined || args.replaceAll !== undefined;
+
+	let stringEditsParsed = false;
+	let rawEdits = args.edits;
+	if (typeof rawEdits === "string") {
+		try {
+			const parsed = JSON.parse(rawEdits);
+			if (Array.isArray(parsed)) {
+				rawEdits = parsed;
+				stringEditsParsed = true;
+			}
+		} catch {}
+	}
+
+	const hasSingleReplacement = singleOld !== undefined && singleNew !== undefined;
+	const needsEditsNormalization =
+		Array.isArray(rawEdits) &&
+		rawEdits.some((item) => {
+			if (!item || typeof item !== "object") return false;
+			const obj = item as Record<string, unknown>;
+			return (
+				obj.TargetContent !== undefined ||
+				obj.ReplacementContent !== undefined ||
+				obj.old_string !== undefined ||
+				obj.new_string !== undefined ||
+				obj.target_content !== undefined ||
+				obj.replacement_content !== undefined
+			);
+		});
+
+	if (
+		!hasAlternativePath &&
+		!hasAlternativeMultiple &&
+		!hasSingleReplacement &&
+		!stringEditsParsed &&
+		!needsEditsNormalization
+	) {
+		return input as EditToolInput;
+	}
+
 	const path =
 		typeof args.path === "string"
 			? args.path
@@ -105,18 +173,9 @@ function prepareEditArguments(input: unknown): EditToolInput {
 						? args.filePath
 						: typeof args.file_path === "string"
 							? args.file_path
-							: args.path;
+							: (args.path as string);
 
-	// Some models (Opus 4.6, GLM-5.1) send edits as a JSON string instead of an array
-	let rawEdits = args.edits;
-	if (typeof rawEdits === "string") {
-		try {
-			const parsed = JSON.parse(rawEdits);
-			if (Array.isArray(parsed)) rawEdits = parsed;
-		} catch {}
-	}
-
-	let edits: Edit[] = [];
+	let edits: unknown;
 	if (Array.isArray(rawEdits)) {
 		edits = rawEdits.map((item) => {
 			if (!item || typeof item !== "object") return item as Edit;
@@ -143,32 +202,15 @@ function prepareEditArguments(input: unknown): EditToolInput {
 								: "";
 			return { ...obj, oldText, newText } as Edit;
 		});
+	} else if (hasSingleReplacement) {
+		edits = [];
+	} else {
+		edits = rawEdits;
 	}
 
-	// Support single replacement passed at top level (Antigravity, Claude Code, legacy Codeify)
-	const singleOld =
-		typeof args.oldText === "string"
-			? args.oldText
-			: typeof args.TargetContent === "string"
-				? args.TargetContent
-				: typeof args.target_content === "string"
-					? args.target_content
-					: typeof args.old_string === "string"
-						? args.old_string
-						: undefined;
-	const singleNew =
-		typeof args.newText === "string"
-			? args.newText
-			: typeof args.ReplacementContent === "string"
-				? args.ReplacementContent
-				: typeof args.replacement_content === "string"
-					? args.replacement_content
-					: typeof args.new_string === "string"
-						? args.new_string
-						: undefined;
-
-	if (singleOld !== undefined && singleNew !== undefined) {
-		edits = [...edits, { oldText: singleOld, newText: singleNew }];
+	if (hasSingleReplacement) {
+		const list = Array.isArray(edits) ? edits : [];
+		edits = [...list, { oldText: singleOld, newText: singleNew }];
 	}
 
 	const allowMultiple =
@@ -182,8 +224,27 @@ function prepareEditArguments(input: unknown): EditToolInput {
 						? args.replaceAll
 						: undefined;
 
+	const {
+		oldText: _oldText,
+		newText: _newText,
+		TargetContent: _tc,
+		target_content: _tcl,
+		old_string: _os,
+		ReplacementContent: _rc,
+		replacement_content: _rcl,
+		new_string: _ns,
+		TargetFile: _tf,
+		target_file: _tfl,
+		filePath: _fp,
+		file_path: _fpl,
+		AllowMultiple: _am,
+		replace_all: _ra,
+		replaceAll: _ra2,
+		...rest
+	} = args;
+
 	return {
-		...args,
+		...rest,
 		path,
 		edits,
 		...(allowMultiple !== undefined ? { allowMultiple } : {}),

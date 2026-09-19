@@ -80,7 +80,7 @@ function getPromptCacheRetention(
 }
 
 function formatOpenAIResponsesError(error: unknown): string {
-	return formatProviderError(normalizeProviderError(error), "OpenAI API error");
+	return formatProviderError(normalizeProviderError(error), "API Error");
 }
 
 // OpenAI Responses-specific options
