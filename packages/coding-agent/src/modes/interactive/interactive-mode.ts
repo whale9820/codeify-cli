@@ -724,7 +724,14 @@ export class InteractiveMode {
 		if (!process.env.CODEIFY_OFFLINE) {
 			void this.session.modelRuntime
 				.refresh()
-				.then(() => this.updateAvailableProviderCount())
+				.then(() => {
+					this.updateAvailableProviderCount();
+					if (this.session.model) {
+						this.session.setThinkingLevel(this.session.thinkingLevel);
+						this.footer.invalidate();
+						this.updateEditorBorderColor();
+					}
+				})
 				.catch(() => {});
 			void checkForCodeifyUpdate().then((update) => {
 				if (update) {

@@ -273,7 +273,7 @@ try {
 			detectedMemoryBytes > 0
 				? `${(detectedMemoryBytes / (1024 * 1024 * 1024)).toFixed(1)} GB detected`
 				: "minimal mode";
-		step(3, `Building Codeify CLI (low-memory mode, ${memoryLabel})`);
+		step(3, "Building Codeify CLI");
 		run(
 			process.execPath,
 			[join(installHome, "scripts", "build-lowmem.mjs")],

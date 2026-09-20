@@ -160,7 +160,7 @@ const onInterrupt = (signal) => {
 	interruptedSignal = signal;
 };
 
-console.log("Building Codeify CLI in low-memory mode");
+console.log("Building Codeify CLI");
 
 for (const signal of interruptSignals) process.on(signal, onInterrupt);
 try {
@@ -229,4 +229,4 @@ try {
 	for (const signal of interruptSignals) process.off(signal, onInterrupt);
 }
 
-console.log("Low-memory build complete");
+console.log("Build complete");

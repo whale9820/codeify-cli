@@ -667,7 +667,9 @@ export class AgentSession {
 
 	/** Current model (may be undefined if not yet selected) */
 	get model(): Model<any> | undefined {
-		return this.agent.state.model;
+		const current = this.agent.state.model;
+		if (!current) return undefined;
+		return this._modelRuntime.getModel(current.provider, current.id) ?? current;
 	}
 
 	/** Current thinking level */

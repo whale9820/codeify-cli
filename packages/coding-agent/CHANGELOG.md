@@ -9,6 +9,8 @@
 
 ### Changed
 
+- Synchronized AgentSession.model and thinking levels with runtime catalog refreshes, ensuring the thinking and effort dropdowns always reflect the active model's declared reasoning capabilities.
+- Renamed build outputs and installer messages from low-memory mode to standard build and install.
 - Enforced model-supported thinking levels from endpoint metadata, restricting reasoning effort to only declared levels and disallowing unsupported effort levels.
 - Defaulted ModelRuntime to only the Codeify provider.
 - Display and search Codeify models by slug only, remove provider badges, and discover metadata exclusively through Codeify.

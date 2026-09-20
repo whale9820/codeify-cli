@@ -97,6 +97,11 @@ function buildFallbackModel(provider: string, modelId: string, availableModels: 
 		...baseModel,
 		id: modelId,
 		name: modelId,
+		...(provider === "codeify"
+			? {
+					thinkingLevelMap: { off: "none" },
+				}
+			: {}),
 	};
 }
 
