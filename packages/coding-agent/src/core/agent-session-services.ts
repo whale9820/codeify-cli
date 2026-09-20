@@ -42,6 +42,7 @@ export interface CreateAgentSessionServicesOptions {
 	modelRuntime?: ModelRuntime;
 	/** Register SDK built-in providers when explicitly requested. */
 	includeBuiltinProviders?: boolean;
+	allowNetwork?: boolean;
 	resourceLoaderOptions?: Omit<DefaultResourceLoaderOptions, "cwd" | "agentDir" | "settingsManager">;
 	resourceLoaderReloadOptions?: ResourceLoaderReloadOptions;
 }
@@ -110,7 +111,15 @@ export async function createAgentSessionServices(
 	await resourceLoader.reload(options.resourceLoaderReloadOptions);
 
 	const diagnostics: AgentSessionRuntimeDiagnostic[] = [];
-	await modelRuntime.refresh({ allowNetwork: false });
+	const allowNetwork = options.allowNetwork ?? !process.env.CODEIFY_OFFLINE;
+	try {
+		await modelRuntime.refresh({ allowNetwork });
+	} catch (error) {
+		diagnostics.push({
+			type: "warning",
+			message: `Could not load models from Codeify API: ${error instanceof Error ? error.message : String(error)}. Reopen Codeify to try again.`,
+		});
+	}
 
 	return {
 		cwd,

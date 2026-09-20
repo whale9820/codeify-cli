@@ -85,6 +85,7 @@ export interface ParsedModelResult {
 }
 
 function buildFallbackModel(provider: string, modelId: string, availableModels: Model<Api>[]): Model<Api> | undefined {
+	if (provider === "codeify") return undefined;
 	const providerModels = availableModels.filter((m) => m.provider === provider);
 	if (providerModels.length === 0) return undefined;
 
@@ -97,11 +98,6 @@ function buildFallbackModel(provider: string, modelId: string, availableModels: 
 		...baseModel,
 		id: modelId,
 		name: modelId,
-		...(provider === "codeify"
-			? {
-					thinkingLevelMap: { off: "none" },
-				}
-			: {}),
 	};
 }
 

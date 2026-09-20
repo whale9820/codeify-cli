@@ -350,12 +350,25 @@ async function fetchModels(
 		return cached;
 	}
 
-	const codeifyResponse = await fetch(`${CODEIFY_BASE_URL}/models`, {
-		headers: { Accept: "application/json", Authorization: `Bearer ${apiKey}` },
-		signal,
-	});
-	if (!codeifyResponse.ok) throw new Error(`Codeify CLI model discovery failed (${codeifyResponse.status})`);
-	const payload = (await codeifyResponse.json()) as { data?: CodeifyModel[] };
+	let payload: { data?: CodeifyModel[] };
+	try {
+		const codeifyResponse = await fetch(`${CODEIFY_BASE_URL}/models`, {
+			headers: { Accept: "application/json", Authorization: `Bearer ${apiKey}` },
+			signal,
+		});
+		if (!codeifyResponse.ok) {
+			if (cached?.length) return cached;
+			throw new Error(
+				`Codeify model discovery failed (${codeifyResponse.status}). Please check your connection or reopen Codeify.`,
+			);
+		}
+		payload = (await codeifyResponse.json()) as { data?: CodeifyModel[] };
+	} catch (error) {
+		if (cached?.length) return cached;
+		throw new Error(
+			`Could not reach Codeify API (${error instanceof Error ? error.message : String(error)}). Please check your connection or reopen Codeify.`,
+		);
+	}
 	const models = (payload.data ?? []).filter((model) => typeof model.id === "string" && model.id.length > 0);
 	const discovered: CodeifyModel[] = models.length > 0 ? models : [{ id: CODEIFY_DEFAULT_MODEL }];
 	const definitions: CodeifyModelDefinition[] = [];

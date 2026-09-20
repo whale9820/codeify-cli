@@ -9,6 +9,7 @@
 
 ### Changed
 
+- Removed synthetic fallback model generation for Codeify models and load the authoritative model catalog upfront during startup initialization.
 - Synchronized AgentSession.model and thinking levels with runtime catalog refreshes, ensuring the thinking and effort dropdowns always reflect the active model's declared reasoning capabilities.
 - Renamed build outputs and installer messages from low-memory mode to standard build and install.
 - Enforced model-supported thinking levels from endpoint metadata, restricting reasoning effort to only declared levels and disallowing unsupported effort levels.

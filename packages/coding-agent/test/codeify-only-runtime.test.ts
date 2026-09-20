@@ -50,6 +50,7 @@ describe("Codeify-only CLI runtime", () => {
 				cwd: agentDir,
 				agentDir,
 				includeBuiltinProviders: false,
+				allowNetwork: false,
 				resourceLoaderOptions: {
 					noSkills: true,
 					noPromptTemplates: true,
