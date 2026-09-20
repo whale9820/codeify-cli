@@ -8,6 +8,7 @@
 
 ### Fixed
 
+- Refuse passing reasoning effort levels in OpenAI responses streams when the model marks them unsupported in its thinking level map.
 - Classify malformed JSON property, unterminated-string, and double-quoted-property responses as retryable and cap their assistant-call retry budget at three. Capture OpenAI Responses parser dumps as diagnostics instead of printing them directly.
 
 ## [0.82.9] - 2026-08-13

@@ -4,7 +4,7 @@
 import values from "./data/openrouter.json" with { type: "json" };
 import type { Model } from "../types.ts";
 
-export const OPENROUTER_MODELS = values as {
+export const OPENROUTER_MODELS = values as unknown as {
 	"aion-labs/aion-2.0": Model<"openai-completions"> & {
 		id: "aion-labs/aion-2.0";
 		provider: "openrouter";

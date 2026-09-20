@@ -4,7 +4,7 @@
 import values from "./data/vercel-ai-gateway.json" with { type: "json" };
 import type { Model } from "../types.ts";
 
-export const VERCEL_AI_GATEWAY_MODELS = values as {
+export const VERCEL_AI_GATEWAY_MODELS = values as unknown as {
 	"alibaba/qwen-3-14b": Model<"anthropic-messages"> & {
 		id: "alibaba/qwen-3-14b";
 		provider: "vercel-ai-gateway";

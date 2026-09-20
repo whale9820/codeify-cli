@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import type { ModelsStoreEntry, OAuthLoginCallbacks } from "codeify-ai";
+import { getSupportedThinkingLevels, type ModelsStoreEntry, type OAuthLoginCallbacks } from "codeify-ai";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CODEIFY_BASE_URL, codeifyProvider, loginWithCodeifyOAuth } from "../src/core/codeify-provider.ts";
 import { openBrowser } from "../src/utils/open-browser.ts";
@@ -607,5 +607,160 @@ describe("Codeify provider", () => {
 		expect(callbackResponse.status).toBe(400);
 		await loginRejection;
 		expect(fetchSpy).not.toHaveBeenCalled();
+	});
+
+	it("supports step-5-preview with returned metadata", async () => {
+		vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+			if (String(input) === `${CODEIFY_BASE_URL}/models`) {
+				return new Response(
+					JSON.stringify({
+						data: [
+							{
+								id: "step-5-preview",
+								context: 1_000_000,
+								max_tokens: 1_000_000,
+								input_modalities: ["text", "images", "video"],
+								thinking_levels: ["low", "medium", "high"],
+							},
+						],
+					}),
+					{ status: 200 },
+				);
+			}
+			throw new Error("remote catalog unavailable");
+		});
+
+		const models = await codeifyProvider().refreshModels?.({
+			credential: { type: "api_key", key: "test-key" },
+			store: { read: async () => undefined, write: async () => {}, delete: async () => {} },
+			allowNetwork: true,
+			force: true,
+		});
+
+		const model = models?.[0];
+		expect(model).toBeDefined();
+		expect(model?.id).toBe("step-5-preview");
+		expect(model?.contextWindow).toBe(1_000_000);
+		expect(model?.maxTokens).toBe(1_000_000);
+		expect(model?.input).toEqual(["text", "image"]);
+		expect(model?.reasoning).toBe(true);
+		expect(model?.thinkingLevelMap).toEqual({
+			off: null,
+			minimal: null,
+			low: "low",
+			medium: "medium",
+			high: "high",
+			xhigh: null,
+			max: null,
+		});
+		expect(
+			getSupportedThinkingLevels({
+				...model!,
+				api: "openai-responses",
+				provider: "codeify",
+				baseUrl: CODEIFY_BASE_URL,
+			}),
+		).toEqual(["low", "medium", "high"]);
+	});
+
+	it("disallows effort levels not noted supported on that model", async () => {
+		vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+			if (String(input) === `${CODEIFY_BASE_URL}/models`) {
+				return new Response(
+					JSON.stringify({
+						data: [
+							{
+								id: "step-3.5-flash",
+								reasoning_options: [{ type: "effort", values: ["low", "high"] }],
+							},
+							{
+								id: "custom-reasoning-model",
+								capabilities: {
+									thinking_levels: ["none", "low", "medium"],
+								},
+							},
+						],
+					}),
+					{ status: 200 },
+				);
+			}
+			throw new Error("remote catalog unavailable");
+		});
+
+		let stored: ModelsStoreEntry | undefined;
+		const store = {
+			read: async () => stored,
+			write: async (entry: ModelsStoreEntry) => {
+				stored = entry;
+			},
+			delete: async () => {},
+		};
+
+		const live = await codeifyProvider().refreshModels?.({
+			credential: { type: "api_key", key: "test-key" },
+			store,
+			allowNetwork: true,
+			force: true,
+		});
+
+		const step35 = live?.find((m) => m.id === "step-3.5-flash");
+		expect(step35).toBeDefined();
+		expect(step35?.reasoning).toBe(true);
+		expect(step35?.thinkingLevelMap).toEqual({
+			off: null,
+			minimal: null,
+			low: "low",
+			medium: null,
+			high: "high",
+			xhigh: null,
+			max: null,
+		});
+		expect(
+			getSupportedThinkingLevels({
+				...step35!,
+				api: "openai-responses",
+				provider: "codeify",
+				baseUrl: CODEIFY_BASE_URL,
+			}),
+		).toEqual(["low", "high"]);
+
+		const custom = live?.find((m) => m.id === "custom-reasoning-model");
+		expect(custom).toBeDefined();
+		expect(custom?.reasoning).toBe(true);
+		expect(custom?.thinkingLevelMap).toEqual({
+			off: "none",
+			minimal: null,
+			low: "low",
+			medium: "medium",
+			high: null,
+			xhigh: null,
+			max: null,
+		});
+		expect(
+			getSupportedThinkingLevels({
+				...custom!,
+				api: "openai-responses",
+				provider: "codeify",
+				baseUrl: CODEIFY_BASE_URL,
+			}),
+		).toEqual(["off", "low", "medium"]);
+
+		// Test offline cache retention of declared thinking levels
+		const offline = await codeifyProvider().refreshModels?.({
+			credential: undefined,
+			store,
+			allowNetwork: false,
+		});
+
+		const offlineStep35 = offline?.find((m) => m.id === "step-3.5-flash");
+		expect(offlineStep35?.thinkingLevelMap).toEqual(step35?.thinkingLevelMap);
+		expect(
+			getSupportedThinkingLevels({
+				...offlineStep35!,
+				api: "openai-responses",
+				provider: "codeify",
+				baseUrl: CODEIFY_BASE_URL,
+			}),
+		).toEqual(["low", "high"]);
 	});
 });

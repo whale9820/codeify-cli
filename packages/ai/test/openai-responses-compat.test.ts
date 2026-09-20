@@ -469,4 +469,52 @@ describe("openai-responses provider defaults", () => {
 		expect(result.usage.cost.output).toBe(model.cost.output * multiplier * tokenScale);
 		expect(result.usage.cost.total).toBe((model.cost.input + model.cost.output) * multiplier * tokenScale);
 	});
+
+	it("rejects passing effort levels not noted supported on that model", async () => {
+		const model: Model<"openai-responses"> = {
+			id: "step-5-preview",
+			name: "step-5-preview",
+			api: "openai-responses",
+			provider: "codeify",
+			baseUrl: "https://codeify.cc/v1",
+			reasoning: true,
+			input: ["text", "image"],
+			cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+			contextWindow: 1_000_000,
+			maxTokens: 1_000_000,
+			thinkingLevelMap: {
+				off: null,
+				minimal: null,
+				low: "low",
+				medium: "medium",
+				high: "high",
+				xhigh: null,
+				max: null,
+			},
+		};
+
+		const s1 = streamOpenAIResponses(
+			model,
+			{
+				systemPrompt: "sys",
+				messages: [{ role: "user", content: "hi", timestamp: Date.now() }],
+			},
+			{ apiKey: "test-key", reasoningEffort: "xhigh" },
+		);
+		const r1 = await s1.result();
+		expect(r1.stopReason).toBe("error");
+		expect(r1.errorMessage).toBe('Reasoning effort "xhigh" is not supported by model "step-5-preview"');
+
+		const s2 = streamOpenAIResponses(
+			model,
+			{
+				systemPrompt: "sys",
+				messages: [{ role: "user", content: "hi", timestamp: Date.now() }],
+			},
+			{ apiKey: "test-key", reasoningEffort: "minimal" },
+		);
+		const r2 = await s2.result();
+		expect(r2.stopReason).toBe("error");
+		expect(r2.errorMessage).toBe('Reasoning effort "minimal" is not supported by model "step-5-preview"');
+	});
 });

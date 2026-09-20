@@ -4,10 +4,13 @@
 
 ### Added
 
+- Added model support for Step 5 Preview and dynamic metadata extraction from the Codeify models endpoint, including context windows, output limits, vision/video modalities, and thinking levels.
 - Added support for Antigravity and Claude Code tool names and schemas (`view_file`, `replace_file_content`, `write_to_file`, `run_command`, `grep_search`, `find_by_name`, `list_dir`, `read_url_content`, `search_web`).
 
 ### Changed
 
+- Enforced model-supported thinking levels from endpoint metadata, restricting reasoning effort to only declared levels and disallowing unsupported effort levels.
+- Defaulted ModelRuntime to only the Codeify provider.
 - Display and search Codeify models by slug only, remove provider badges, and discover metadata exclusively through Codeify.
 - Raise GPT-5.5 and all GPT-5.6 variants to at least 1,050,000 context tokens, including cached entries.
 

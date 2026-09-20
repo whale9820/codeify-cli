@@ -4,7 +4,7 @@
 import values from "./data/fireworks.json" with { type: "json" };
 import type { Model } from "../types.ts";
 
-export const FIREWORKS_MODELS = values as {
+export const FIREWORKS_MODELS = values as unknown as {
 	"accounts/fireworks/models/deepseek-v4-flash-0731": Model<"anthropic-messages"> & {
 		id: "accounts/fireworks/models/deepseek-v4-flash-0731";
 		provider: "fireworks";

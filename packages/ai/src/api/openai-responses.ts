@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 import type { ResponseCreateParamsStreaming } from "openai/resources/responses/responses.js";
-import { clampThinkingLevel } from "../models.ts";
+import { clampThinkingLevel, getSupportedThinkingLevels } from "../models.ts";
 import type {
 	Api,
 	AssistantMessage,
@@ -294,9 +294,14 @@ function buildParams(model: Model<"openai-responses">, context: Context, options
 
 	if (model.reasoning) {
 		if (options?.reasoningEffort || options?.reasoningSummary) {
-			const effort = options?.reasoningEffort
-				? (model.thinkingLevelMap?.[options.reasoningEffort] ?? options.reasoningEffort)
-				: "medium";
+			if (options?.reasoningEffort) {
+				const supported = getSupportedThinkingLevels(model);
+				if (!supported.includes(options.reasoningEffort)) {
+					throw new Error(`Reasoning effort "${options.reasoningEffort}" is not supported by model "${model.id}"`);
+				}
+			}
+			const mappedEffort = options?.reasoningEffort ? model.thinkingLevelMap?.[options.reasoningEffort] : undefined;
+			const effort = mappedEffort !== undefined ? mappedEffort : (options?.reasoningEffort ?? "medium");
 			params.reasoning = {
 				effort: effort as NonNullable<typeof params.reasoning>["effort"],
 				summary: options?.reasoningSummary || "auto",

@@ -12,14 +12,68 @@ export const CODEIFY_MODEL_REFRESH_INTERVAL_MS = 4 * 60 * 60 * 1000;
 
 type CodeifyModel = {
 	id: string;
+	name?: string;
+	display_name?: string;
 	context?: number;
+	context_window?: number;
+	contextWindow?: number;
+	context_length?: number;
+	max_context_tokens?: number;
+	max_input_tokens?: number;
 	max_tokens?: number;
+	maxTokens?: number;
 	max_output_tokens?: number;
+	maxOutputTokens?: number;
+	output_tokens?: number;
+	limit?: {
+		context?: number;
+		input?: number;
+		output?: number;
+	};
 	input?: string[];
 	input_modalities?: string[];
+	inputModalities?: string[];
+	input_types?: string[];
+	inputTypes?: string[];
+	output_types?: string[];
 	modalities?: { input?: string[]; output?: string[] };
-	capabilities?: { reasoning?: boolean; vision?: boolean };
+	reasoning?:
+		| boolean
+		| {
+				effort?: string[] | string;
+				efforts?: string[];
+				effort_levels?: string[];
+				levels?: string[];
+				values?: string[];
+		  };
+	capabilities?: {
+		reasoning?: boolean;
+		vision?: boolean;
+		thinking_levels?: string[];
+		thinkingLevels?: string[];
+		reasoning_efforts?: string[];
+		reasoningEfforts?: string[];
+		effort_levels?: string[];
+		effortLevels?: string[];
+		supported_thinking_levels?: string[];
+		supported_reasoning_efforts?: string[];
+		reasoning_options?: Array<{ type?: string; values?: string[] }> | { values?: string[] };
+		reasoningOptions?: Array<{ type?: string; values?: string[] }> | { values?: string[] };
+		thinkingLevelMap?: Model<"openai-responses">["thinkingLevelMap"];
+		thinking_level_map?: Model<"openai-responses">["thinkingLevelMap"];
+	};
+	thinking_levels?: string[];
+	thinkingLevels?: string[];
+	reasoning_efforts?: string[];
+	reasoningEfforts?: string[];
+	effort_levels?: string[];
+	effortLevels?: string[];
+	supported_thinking_levels?: string[];
+	supported_reasoning_efforts?: string[];
+	reasoning_options?: Array<{ type?: string; values?: string[] }> | { values?: string[] };
+	reasoningOptions?: Array<{ type?: string; values?: string[] }> | { values?: string[] };
 	thinkingLevelMap?: Model<"openai-responses">["thinkingLevelMap"];
+	thinking_level_map?: Model<"openai-responses">["thinkingLevelMap"];
 	cost?: ModelCost;
 	pricing?: {
 		input?: number;
@@ -35,6 +89,7 @@ type CodeifyModelDefinition = NonNullable<RuntimeProviderConfig["models"]>[numbe
 type StoredCodeifyModel = Model<"openai-responses"> & {
 	inputModalities?: string[];
 	declaredReasoning?: boolean;
+	declaredThinkingLevels?: string[];
 };
 
 function positiveNumber(value: number | undefined): number | undefined {
@@ -55,18 +110,123 @@ function pricingToCost(pricing: CodeifyModel["pricing"]): ModelCost | undefined 
 	};
 }
 
+function extractDeclaredThinkingLevels(model: CodeifyModel): string[] | undefined {
+	const candidates = [
+		model.thinking_levels,
+		model.thinkingLevels,
+		model.reasoning_efforts,
+		model.reasoningEfforts,
+		model.effort_levels,
+		model.effortLevels,
+		model.supported_thinking_levels,
+		model.supported_reasoning_efforts,
+		model.capabilities?.thinking_levels,
+		model.capabilities?.thinkingLevels,
+		model.capabilities?.reasoning_efforts,
+		model.capabilities?.reasoningEfforts,
+		model.capabilities?.effort_levels,
+		model.capabilities?.effortLevels,
+		model.capabilities?.supported_thinking_levels,
+		model.capabilities?.supported_reasoning_efforts,
+		typeof model.reasoning === "object" && model.reasoning !== null
+			? (model.reasoning.efforts ??
+				model.reasoning.effort_levels ??
+				model.reasoning.levels ??
+				model.reasoning.values ??
+				(Array.isArray(model.reasoning.effort) ? model.reasoning.effort : undefined))
+			: undefined,
+	];
+
+	for (const candidate of candidates) {
+		if (Array.isArray(candidate) && candidate.some((entry) => typeof entry === "string")) {
+			return candidate.filter((entry): entry is string => typeof entry === "string");
+		}
+	}
+
+	const reasoningOptions =
+		model.reasoning_options ??
+		model.reasoningOptions ??
+		model.capabilities?.reasoning_options ??
+		model.capabilities?.reasoningOptions;
+
+	if (Array.isArray(reasoningOptions)) {
+		const effortOption =
+			reasoningOptions.find((opt) => opt?.type === "effort" && Array.isArray(opt.values)) ??
+			reasoningOptions.find((opt) => Array.isArray(opt?.values));
+		if (effortOption?.values?.some((entry) => typeof entry === "string")) {
+			return effortOption.values.filter((entry): entry is string => typeof entry === "string");
+		}
+	} else if (reasoningOptions && typeof reasoningOptions === "object" && Array.isArray(reasoningOptions.values)) {
+		return reasoningOptions.values.filter((entry): entry is string => typeof entry === "string");
+	}
+
+	return undefined;
+}
+
+function extractDeclaredThinkingMap(model: CodeifyModel): Model<"openai-responses">["thinkingLevelMap"] | undefined {
+	const map =
+		model.thinkingLevelMap ??
+		model.thinking_level_map ??
+		model.capabilities?.thinkingLevelMap ??
+		model.capabilities?.thinking_level_map;
+	if (map && typeof map === "object" && !Array.isArray(map)) {
+		return map;
+	}
+	return undefined;
+}
+
+function resolveThinkingLevelMap(
+	model: CodeifyModel,
+	reasoning: boolean,
+): Model<"openai-responses">["thinkingLevelMap"] {
+	if (!reasoning) {
+		return { off: null };
+	}
+
+	const declaredLevels = extractDeclaredThinkingLevels(model);
+	if (declaredLevels) {
+		const normalized = new Set(declaredLevels.map((l) => l.trim().toLowerCase()));
+		const hasNone = normalized.has("none");
+		const hasOff = normalized.has("off") || normalized.has("disabled");
+		const offValue: string | null = hasNone ? "none" : hasOff ? "off" : null;
+
+		return {
+			off: offValue,
+			minimal: normalized.has("minimal") ? "minimal" : null,
+			low: normalized.has("low") ? "low" : null,
+			medium: normalized.has("medium") ? "medium" : null,
+			high: normalized.has("high") ? "high" : null,
+			xhigh:
+				normalized.has("xhigh") || normalized.has("extra-high") || normalized.has("extra_high") ? "xhigh" : null,
+			max: normalized.has("max") || normalized.has("maximum") ? "max" : null,
+		};
+	}
+
+	const declaredMap = extractDeclaredThinkingMap(model);
+	if (declaredMap) {
+		return declaredMap;
+	}
+
+	return { off: "none", xhigh: "xhigh", max: "max" };
+}
+
 function supportsReasoning(id: string, model: CodeifyModel): boolean {
+	if (typeof model.reasoning === "boolean") return model.reasoning;
 	if (model.capabilities?.reasoning !== undefined) return model.capabilities.reasoning;
-	return /^(gpt-[56]|o[134]|claude|deepseek|gemini|glm|grok|kimi|mimo|minimax|qwen|nemotron|hy3|krenn|laguna)/i.test(
+	if (extractDeclaredThinkingLevels(model) !== undefined) return true;
+	return /^(gpt-[56]|o[134]|claude|deepseek|gemini|glm|grok|kimi|mimo|minimax|qwen|nemotron|hy3|krenn|laguna|step)/i.test(
 		id,
 	);
 }
 
-const VISION_MODEL_FAMILIES = /^(claude|gpt-[5-9]|o[134]|gemini|grok-\d)/i;
+const VISION_MODEL_FAMILIES = /^(claude|gpt-[5-9]|o[134]|gemini|grok-\d|step)/i;
 
 function toInput(input: readonly string[] | undefined): ("text" | "image")[] | undefined {
 	if (!input?.length) return undefined;
-	return input.includes("image") ? ["text", "image"] : ["text"];
+	const lower = input.map((val) => (typeof val === "string" ? val.toLowerCase() : ""));
+	const hasVision =
+		lower.includes("image") || lower.includes("images") || lower.includes("video") || lower.includes("videos");
+	return hasVision ? ["text", "image"] : ["text"];
 }
 
 /**
@@ -75,7 +235,15 @@ function toInput(input: readonly string[] | undefined): ("text" | "image")[] | u
  * pi.dev overlay, id heuristics) is a stale guess, so this wins whenever it is present.
  */
 function declaredModalities(model: CodeifyModel): string[] | undefined {
-	const declared = [model.input_modalities, model.modalities?.input].find(
+	const candidates = [
+		model.input_modalities,
+		model.inputModalities,
+		model.modalities?.input,
+		model.input_types,
+		model.inputTypes,
+		Array.isArray(model.input) ? model.input : undefined,
+	];
+	const declared = candidates.find(
 		(value): value is string[] => Array.isArray(value) && value.some((entry) => typeof entry === "string"),
 	);
 	return declared?.filter((entry): entry is string => typeof entry === "string");
@@ -88,19 +256,44 @@ function resolveInput(model: CodeifyModel): ("text" | "image")[] {
 	return toInput(model.input) ?? (VISION_MODEL_FAMILIES.test(model.id) ? ["text", "image"] : ["text"]);
 }
 
+function resolveContextWindow(model: CodeifyModel): number {
+	const raw =
+		model.context ??
+		model.context_window ??
+		model.contextWindow ??
+		model.context_length ??
+		model.max_context_tokens ??
+		model.max_input_tokens ??
+		model.limit?.context ??
+		model.limit?.input;
+	const parsed = positiveNumber(raw);
+	if (/^gpt-5\.[56](?:-|$)/i.test(model.id)) {
+		return Math.max(parsed ?? 0, 1_050_000);
+	}
+	return parsed ?? 272_000;
+}
+
+function resolveMaxTokens(model: CodeifyModel): number {
+	const raw =
+		model.max_tokens ??
+		model.maxTokens ??
+		model.max_output_tokens ??
+		model.maxOutputTokens ??
+		model.output_tokens ??
+		model.limit?.output;
+	return positiveNumber(raw) ?? 32_768;
+}
+
 function toModelDefinition(model: CodeifyModel): CodeifyModelDefinition {
-	const reasoning = model.capabilities?.reasoning ?? supportsReasoning(model.id, model);
-	const contextWindow = /^gpt-5\.[56](?:-|$)/i.test(model.id)
-		? Math.max(positiveNumber(model.context) ?? 0, 1_050_000)
-		: (positiveNumber(model.context) ?? 272_000);
-	const maxTokens = positiveNumber(model.max_tokens ?? model.max_output_tokens) ?? 32_768;
+	const reasoning = supportsReasoning(model.id, model);
+	const contextWindow = resolveContextWindow(model);
+	const maxTokens = resolveMaxTokens(model);
 	return {
 		id: model.id,
 		name: model.id,
 		api: "openai-responses",
 		reasoning,
-		thinkingLevelMap:
-			model.thinkingLevelMap ?? (reasoning ? { off: "none", xhigh: "xhigh", max: "max" } : { off: null }),
+		thinkingLevelMap: resolveThinkingLevelMap(model, reasoning),
 		input: resolveInput(model),
 		cost: pricingToCost(model.pricing) ?? model.cost ?? { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
 		contextWindow,
@@ -125,6 +318,7 @@ function cachedCodeifyModel(model: StoredCodeifyModel): CodeifyModel {
 		max_tokens: model.maxTokens,
 		cost: model.cost,
 		input_modalities: input,
+		...(model.declaredThinkingLevels?.length ? { thinking_levels: model.declaredThinkingLevels } : {}),
 		...(model.declaredReasoning === undefined && /^gpt-6/i.test(model.id) && !model.reasoning
 			? {}
 			: {
@@ -169,12 +363,15 @@ async function fetchModels(
 	for (const model of discovered) {
 		const definition = toModelDefinition(model);
 		const inputModalities = declaredModalities(model);
-		const declaredReasoning = model.capabilities?.reasoning;
+		const declaredReasoning =
+			model.capabilities?.reasoning ?? (typeof model.reasoning === "boolean" ? model.reasoning : undefined);
+		const declaredThinkingLevels = extractDeclaredThinkingLevels(model);
 		definitions.push(definition);
 		storedModels.push({
 			...definition,
 			...(inputModalities?.length ? { inputModalities } : {}),
 			...(declaredReasoning !== undefined ? { declaredReasoning } : {}),
+			...(declaredThinkingLevels?.length ? { declaredThinkingLevels } : {}),
 			api: "openai-responses",
 			provider: CODEIFY_PROVIDER_ID,
 			baseUrl: CODEIFY_BASE_URL,

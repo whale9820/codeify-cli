@@ -32,6 +32,7 @@ import {
 import * as builtinProviderCatalog from "codeify-ai/providers/all";
 import { getAgentDir } from "../config.ts";
 import { AuthStorage as DefaultAuthStorage } from "./auth-storage.ts";
+import { codeifyProvider } from "./codeify-provider.ts";
 import { ModelConfig } from "./model-config.ts";
 import { FileModelsStore, InMemoryCodingAgentModelsStore } from "./models-store.ts";
 import {
@@ -145,9 +146,8 @@ export class ModelRuntime implements Models {
 					? new FileModelsStore(join(dirname(modelsPath), "models-store.json"))
 					: new InMemoryCodingAgentModelsStore());
 		const providers =
-			options.includeBuiltinProviders === false
-				? []
-				: builtinProviderCatalog
+			options.includeBuiltinProviders === true
+				? builtinProviderCatalog
 						.builtinProviders()
 						.map((provider) =>
 							provider.id === "radius"
@@ -159,7 +159,8 @@ export class ModelRuntime implements Models {
 											provider.id as builtinProviderCatalog.BuiltinProvider,
 										),
 									),
-						);
+						)
+				: [];
 		const runtime = new ModelRuntime(
 			credentials,
 			config,
@@ -168,6 +169,9 @@ export class ModelRuntime implements Models {
 			providers,
 			process.env.CODEIFY_OFFLINE === undefined,
 		);
+		if (!runtime.getProvider("codeify")) {
+			runtime.registerProvider("codeify", codeifyProvider());
+		}
 		runtime.configureRadiusProviders();
 		runtime.rebuildProviders();
 		const refreshFromNetwork = runtime.modelNetworkEnabled && options.allowModelNetwork === true;
