@@ -19,6 +19,7 @@
 
 - Default new sessions without saved preferences to `gpt-6-astra` with `xhigh` reasoning effort.
 - Restricted the shipped CLI to the Codeify provider. Custom providers in `models.json` are ignored, non-Codeify `--provider` values are rejected, and legacy provider-specific authentication UI and documentation have been removed.
+- Removed isolated browser work reference from the smart model usage announcement.
 
 ### Fixed
 

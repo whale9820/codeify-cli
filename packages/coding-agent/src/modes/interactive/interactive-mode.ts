@@ -623,7 +623,7 @@ export class InteractiveMode {
 			const smartModelsAnnouncement = (): string => {
 				const enabled = this.session.smartModelUsageEnabled;
 				const state = theme.fg(enabled ? "success" : "warning", enabled ? "on" : "off");
-				return `${theme.bold(theme.fg("accent", "NEW"))} Smart model usage: ${state}${theme.fg("dim", " — delegate full agents to cheaper or specialized models, including isolated browser work. /smart on · /settings")}`;
+				return `${theme.bold(theme.fg("accent", "NEW"))} Smart model usage: ${state}${theme.fg("dim", " — delegate full agents to cheaper or specialized models. /smart on · /settings")}`;
 			};
 
 			// Build startup instructions using keybinding hint helpers
