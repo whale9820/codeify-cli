@@ -2,12 +2,15 @@ import type { AssistantMessage } from "codeify-ai";
 import { describe, expect, test } from "vitest";
 import { AssistantMessageComponent } from "../src/modes/interactive/components/assistant-message.ts";
 import { UserMessageComponent } from "../src/modes/interactive/components/user-message.ts";
-import { initTheme } from "../src/modes/interactive/theme/theme.ts";
+import { initTheme, theme } from "../src/modes/interactive/theme/theme.ts";
 import { stripAnsi } from "../src/utils/ansi.ts";
 
 const OSC133_ZONE_START = "\x1b]133;A\x07";
 const OSC133_ZONE_END = "\x1b]133;B\x07";
 const OSC133_ZONE_FINAL = "\x1b]133;C\x07";
+
+const THINKING_OPEN = "<think>";
+const THINKING_CLOSE = "</think>";
 
 function createAssistantMessage(
 	content: AssistantMessage["content"],
@@ -154,5 +157,80 @@ describe("AssistantMessageComponent", () => {
 		const unpaddedComponent = new UserMessageComponent("hello", undefined, 0);
 		const unpaddedLines = unpaddedComponent.render(40).map((line) => stripAnsi(line));
 		expect(unpaddedLines.some((line) => line.startsWith("hello"))).toBe(true);
+	});
+
+	test("renders model text wrapped in thinking tags as thinking", () => {
+		initTheme("dark");
+
+		const component = new AssistantMessageComponent(
+			createAssistantMessage([
+				{
+					type: "text",
+					text: `Here is prose.\n\n${THINKING_OPEN}hidden reasoning here${THINKING_CLOSE}\n\nAnd the answer.`,
+				},
+			]),
+		);
+		const rendered = component.render(80).join("\n");
+		const stripped = stripAnsi(rendered);
+
+		expect(rendered).toContain(theme.fg("thinkingText", "hidden reasoning here"));
+		expect(stripped).not.toContain(THINKING_OPEN);
+		expect(stripped).not.toContain(THINKING_CLOSE);
+		expect(stripped).toContain("Here is prose.");
+		expect(stripped).toContain("And the answer.");
+	});
+
+	test("renders model text wrapped in <thinking> tags as thinking", () => {
+		initTheme("dark");
+
+		const component = new AssistantMessageComponent(
+			createAssistantMessage([
+				{
+					type: "text",
+					text: "Here is prose.\n\n<thinking>hidden reasoning here</thinking>\n\nAnd the answer.",
+				},
+			]),
+		);
+		const rendered = component.render(80).join("\n");
+		const stripped = stripAnsi(rendered);
+
+		expect(rendered).toContain(theme.fg("thinkingText", "hidden reasoning here"));
+		expect(stripped).not.toContain("<thinking>");
+		expect(stripped).not.toContain("</thinking>");
+		expect(stripped).toContain("Here is prose.");
+		expect(stripped).toContain("And the answer.");
+	});
+
+	test("renders an unclosed thinking tag as thinking while streaming", () => {
+		initTheme("dark");
+
+		const component = new AssistantMessageComponent(
+			createAssistantMessage([
+				{
+					type: "text",
+					text: `Answer so far.\n\n${THINKING_OPEN}partial reasoning still arriving`,
+				},
+			]),
+		);
+		const rendered = component.render(80).join("\n");
+		const stripped = stripAnsi(rendered);
+
+		expect(rendered).toContain(theme.fg("thinkingText", "partial reasoning still arriving"));
+		expect(stripped).toContain("Answer so far.");
+		expect(stripped).not.toContain(THINKING_OPEN);
+	});
+
+	test("styles wrapped thinking like a real thinking block", () => {
+		initTheme("dark");
+
+		const wrapped = new AssistantMessageComponent(
+			createAssistantMessage([{ type: "text", text: `${THINKING_OPEN}same styling${THINKING_CLOSE}` }]),
+		);
+		const real = new AssistantMessageComponent(
+			createAssistantMessage([{ type: "thinking", thinking: "same styling" }]),
+		);
+
+		expect(wrapped.render(80).join("\n")).toContain(theme.fg("thinkingText", "same styling"));
+		expect(real.render(80).join("\n")).toContain(theme.fg("thinkingText", "same styling"));
 	});
 });

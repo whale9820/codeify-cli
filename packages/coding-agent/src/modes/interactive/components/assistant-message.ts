@@ -1,11 +1,54 @@
-import { type AssistantMessage, isMalformedJsonError, NETWORK_UNSTABLE_ERROR_MESSAGE } from "codeify-ai";
+import {
+	type AssistantMessage,
+	isMalformedJsonError,
+	NETWORK_UNSTABLE_ERROR_MESSAGE,
+	type ServerToolUse,
+} from "codeify-ai";
 import { Container, Markdown, type MarkdownTheme, Spacer, Text } from "codeify-tui";
+import { splitWrappedThinking } from "../../../utils/thinking-text.ts";
 import { getMarkdownTheme, theme } from "../theme/theme.ts";
 import { ErrorDetailsComponent } from "./error-details.ts";
 
 const OSC133_ZONE_START = "\x1b]133;A\x07";
 const OSC133_ZONE_END = "\x1b]133;B\x07";
 const OSC133_ZONE_FINAL = "\x1b]133;C\x07";
+
+type ContentRenderItem =
+	| { kind: "text"; text: string }
+	| { kind: "thinking"; text: string }
+	| { kind: "serverToolUse"; block: ServerToolUse };
+
+/**
+ * Flatten message content into ordered render items, splitting text blocks that
+ * wrap reasoning in `<think>`/`<thinking>` tags into separate thinking items.
+ * Consecutive thinking items are merged so they render as one block.
+ */
+function buildContentRenderItems(content: AssistantMessage["content"]): ContentRenderItem[] {
+	const items: ContentRenderItem[] = [];
+
+	for (const block of content) {
+		if (block.type === "text") {
+			for (const segment of splitWrappedThinking(block.text)) {
+				items.push({ kind: segment.type, text: segment.text });
+			}
+		} else if (block.type === "thinking") {
+			items.push({ kind: "thinking", text: block.thinking });
+		} else if (block.type === "serverToolUse") {
+			items.push({ kind: "serverToolUse", block });
+		}
+	}
+
+	const merged: ContentRenderItem[] = [];
+	for (const item of items) {
+		const previous = merged[merged.length - 1];
+		if (item.kind === "thinking" && previous?.kind === "thinking") {
+			previous.text += `\n\n${item.text}`;
+			continue;
+		}
+		merged.push({ ...item });
+	}
+	return merged;
+}
 
 /**
  * Component that renders a complete assistant message
@@ -85,11 +128,13 @@ export class AssistantMessageComponent extends Container {
 		// Clear content container
 		this.contentContainer.clear();
 
-		const hasVisibleContent = message.content.some(
-			(c) =>
-				(c.type === "text" && c.text.trim()) ||
-				(c.type === "thinking" && c.thinking.trim()) ||
-				c.type === "serverToolUse",
+		const items = buildContentRenderItems(message.content);
+
+		const hasVisibleContent = items.some(
+			(item) =>
+				(item.kind === "text" && item.text.trim()) ||
+				(item.kind === "thinking" && item.text.trim()) ||
+				item.kind === "serverToolUse",
 		);
 
 		if (hasVisibleContent) {
@@ -97,41 +142,27 @@ export class AssistantMessageComponent extends Container {
 		}
 
 		// Render content in order
-		for (let i = 0; i < message.content.length; i++) {
-			const content = message.content[i];
-			if (content.type === "text" && content.text.trim()) {
+		for (let i = 0; i < items.length; i++) {
+			const item = items[i];
+			if (item.kind === "text") {
 				// Assistant text messages with no background - trim the text
 				// Set paddingY=0 to avoid extra spacing before tool executions
-				this.contentContainer.addChild(new Markdown(content.text.trim(), this.outputPad, 0, this.markdownTheme));
-			} else if (content.type === "thinking") {
-				const thinkingBlocks: string[] = [];
-				for (; i < message.content.length; i++) {
-					const thinkingContent = message.content[i];
-					if (thinkingContent.type !== "thinking") {
-						break;
-					}
-					thinkingBlocks.push(thinkingContent.thinking);
-				}
-				i--;
-
-				if (thinkingBlocks.length === 0) {
-					continue;
-				}
-
+				this.contentContainer.addChild(new Markdown(item.text.trim(), this.outputPad, 0, this.markdownTheme));
+			} else if (item.kind === "thinking") {
 				// Add spacing only when another visible assistant content block follows.
 				// This avoids a superfluous blank line before separately-rendered tool execution blocks.
-				const hasVisibleContentAfter = message.content
+				const hasVisibleContentAfter = items
 					.slice(i + 1)
 					.some(
-						(c) =>
-							(c.type === "text" && c.text.trim()) ||
-							(c.type === "thinking" && c.thinking.trim()) ||
-							c.type === "serverToolUse",
+						(next) =>
+							(next.kind === "text" && next.text.trim()) ||
+							(next.kind === "thinking" && next.text.trim()) ||
+							next.kind === "serverToolUse",
 					);
 
-				// Always render thinking blocks as Markdown.
+				// Reasoning blocks, including model text wrapped in thinking tags.
 				this.contentContainer.addChild(
-					new Markdown(thinkingBlocks.join("\n\n"), this.outputPad, 0, this.markdownTheme, {
+					new Markdown(item.text, this.outputPad, 0, this.markdownTheme, {
 						color: (text: string) => theme.fg("thinkingText", text),
 						italic: true,
 					}),
@@ -139,15 +170,16 @@ export class AssistantMessageComponent extends Container {
 				if (hasVisibleContentAfter) {
 					this.contentContainer.addChild(new Spacer(1));
 				}
-			} else if (content.type === "serverToolUse") {
+			} else {
+				const content = item.block;
 				const query = (content.input as { query?: string })?.query;
 				const toolLabel = content.name === "web_search" ? "Web search" : content.name;
 				const label = query ? `${toolLabel}: "${query}"` : toolLabel;
 				this.contentContainer.addChild(new Text(theme.fg("muted", label), this.outputPad));
 
-				const nextBlock = message.content[i + 1];
+				const contentIndex = message.content.indexOf(content);
+				const nextBlock = message.content[contentIndex + 1];
 				if (nextBlock && nextBlock.type === "serverToolResult" && nextBlock.toolUseId === content.id) {
-					i++;
 					const resultCount = Array.isArray(nextBlock.content) ? nextBlock.content.length : 0;
 					if (resultCount > 0) {
 						this.contentContainer.addChild(
