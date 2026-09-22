@@ -33,6 +33,27 @@ export function isMalformedJsonError(errorMessage: string): boolean {
 	return MALFORMED_JSON_ERROR_PATTERN.test(errorMessage);
 }
 
+export const RECONNECT_MAX_RETRIES = 5;
+
+const HTTP_5XX_STATUS_PATTERN = /\b5\d{2}\b/;
+const REQUEST_TIMED_OUT_PATTERN = /request timed out/i;
+
+export function isReconnectableProviderError(errorMessage: string): boolean {
+	if (NON_RETRYABLE_PROVIDER_LIMIT_ERROR_PATTERN.test(errorMessage)) return false;
+	return HTTP_5XX_STATUS_PATTERN.test(errorMessage) || REQUEST_TIMED_OUT_PATTERN.test(errorMessage);
+}
+
+export function resolveAssistantRetryLimit(errorMessage: string | undefined, configuredMaxRetries: number): number {
+	const message = errorMessage ?? "";
+	if (isMalformedJsonError(message)) {
+		return Math.min(configuredMaxRetries, MALFORMED_JSON_MAX_RETRIES);
+	}
+	if (configuredMaxRetries > 0 && isReconnectableProviderError(message)) {
+		return Math.max(configuredMaxRetries, RECONNECT_MAX_RETRIES);
+	}
+	return configuredMaxRetries;
+}
+
 const RETRYABLE_PROVIDER_ERROR_PATTERN = buildProviderErrorPattern([
 	// Generic provider load, HTTP status, and server-side transient failures.
 	"overloaded",
@@ -167,6 +188,8 @@ function sleep(ms: number, signal?: AbortSignal): Promise<void> {
  *   `onRetryScheduled` before each sleep, `onRetryAttemptStart` after each sleep before
  *   the retried call starts, and `onRetryFinished` once at the end (whether the loop
  *   ends in success, exhausted retries, or an aborted backoff).
+ * - HTTP 5xx responses and `Request timed out.` use at least {@link RECONNECT_MAX_RETRIES}
+ *   attempts when the policy is enabled with a non-zero budget.
  *
  * When `policy` is undefined or disabled, the first response is returned unchanged
  * (equivalent to calling `produce()` directly).
@@ -197,9 +220,7 @@ export async function retryAssistantCall(
 		}
 
 		// Non-retryable, or budget exhausted: return the final error message.
-		const retryLimit = isMalformedJsonError(response.errorMessage ?? "")
-			? Math.min(maxAttempts, MALFORMED_JSON_MAX_RETRIES)
-			: maxAttempts;
+		const retryLimit = resolveAssistantRetryLimit(response.errorMessage, maxAttempts);
 		if (attempt >= retryLimit || !isRetryableAssistantError(response)) {
 			if (lastRetry && isMalformedJsonError(response.errorMessage ?? "")) {
 				response.diagnostics = [
@@ -245,5 +266,9 @@ export function isRetryableAssistantError(message: AssistantMessage): boolean {
 	if (message.stopReason !== "error" || !message.errorMessage) return false;
 	const errorMessage = message.errorMessage;
 	if (NON_RETRYABLE_PROVIDER_LIMIT_ERROR_PATTERN.test(errorMessage)) return false;
-	return isMalformedJsonError(errorMessage) || RETRYABLE_PROVIDER_ERROR_PATTERN.test(errorMessage);
+	return (
+		isMalformedJsonError(errorMessage) ||
+		isReconnectableProviderError(errorMessage) ||
+		RETRYABLE_PROVIDER_ERROR_PATTERN.test(errorMessage)
+	);
 }

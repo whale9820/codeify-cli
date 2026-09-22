@@ -27,8 +27,10 @@ import type {
 import {
 	contentText,
 	isMalformedJsonError,
+	isReconnectableProviderError,
 	MALFORMED_JSON_MAX_RETRIES,
 	NETWORK_UNSTABLE_ERROR_MESSAGE,
+	resolveAssistantRetryLimit,
 } from "codeify-ai";
 import type {
 	AssistantMessage,
@@ -569,18 +571,30 @@ export class AgentSession {
 		}
 	};
 
-	private _willRetryAfterAgentEnd(event: Extract<AgentEvent, { type: "agent_end" }>): boolean {
+	willRetryAssistantMessage(message: AssistantMessage): boolean {
 		const settings = this.settingsManager.getRetrySettings();
 		if (!settings.enabled) return false;
+		const maxRetries = resolveAssistantRetryLimit(message.errorMessage, settings.maxRetries);
+		return this._retryAttempt < maxRetries && this._isRetryableError(message);
+	}
 
+	getReconnectAttempt(message: AssistantMessage): { attempt: number; maxAttempts: number } | undefined {
+		if (message.stopReason !== "error" || !isReconnectableProviderError(message.errorMessage ?? "")) {
+			return undefined;
+		}
+		if (!this.willRetryAssistantMessage(message)) return undefined;
+		const settings = this.settingsManager.getRetrySettings();
+		return {
+			attempt: this._retryAttempt + 1,
+			maxAttempts: resolveAssistantRetryLimit(message.errorMessage, settings.maxRetries),
+		};
+	}
+
+	private _willRetryAfterAgentEnd(event: Extract<AgentEvent, { type: "agent_end" }>): boolean {
 		for (let i = event.messages.length - 1; i >= 0; i--) {
 			const message = event.messages[i];
 			if (message.role === "assistant") {
-				const assistantMessage = message as AssistantMessage;
-				const maxRetries = isMalformedJsonError(assistantMessage.errorMessage ?? "")
-					? Math.min(settings.maxRetries, MALFORMED_JSON_MAX_RETRIES)
-					: settings.maxRetries;
-				return this._retryAttempt < maxRetries && this._isRetryableError(assistantMessage);
+				return this.willRetryAssistantMessage(message as AssistantMessage);
 			}
 		}
 		return false;
@@ -2015,9 +2029,7 @@ export class AgentSession {
 			return false;
 		}
 
-		const maxRetries = isMalformedJsonError(message.errorMessage ?? "")
-			? Math.min(settings.maxRetries, MALFORMED_JSON_MAX_RETRIES)
-			: settings.maxRetries;
+		const maxRetries = resolveAssistantRetryLimit(message.errorMessage, settings.maxRetries);
 		this._retryAttempt++;
 
 		if (this._retryAttempt > maxRetries) {

@@ -1,4 +1,11 @@
-import { type Component, Loader, type LoaderIndicatorOptions, type TUI } from "codeify-tui";
+import {
+	type Component,
+	Loader,
+	type LoaderIndicatorOptions,
+	Markdown,
+	type MarkdownTheme,
+	type TUI,
+} from "codeify-tui";
 import { theme } from "../theme/theme.ts";
 import { CountdownTimer } from "./countdown-timer.ts";
 import { keyText } from "./keybinding-hints.ts";
@@ -36,6 +43,18 @@ export class WorkingStatusIndicator extends StatusIndicator {
 			indicator,
 		);
 	}
+}
+
+export function reconnectStatusLabel(attempt: number, maxAttempts: number): string {
+	return `Reconnecting... (${attempt}/${maxAttempts})`;
+}
+
+export function createReconnectStatusLine(label: string, paddingX: number, markdownTheme: MarkdownTheme): Markdown {
+	return new Markdown(label, paddingX, 0, markdownTheme, {
+		color: (text: string) => theme.fg("thinkingText", text),
+		italic: true,
+		bold: true,
+	});
 }
 
 export class RetryStatusIndicator extends StatusIndicator {

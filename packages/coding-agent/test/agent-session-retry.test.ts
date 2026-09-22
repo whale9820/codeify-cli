@@ -64,9 +64,10 @@ describe("AgentSession retry", () => {
 		}
 	});
 
-	async function createSession(options?: { failCount?: number; maxRetries?: number }) {
+	async function createSession(options?: { failCount?: number; maxRetries?: number; errorMessage?: string }) {
 		const failCount = options?.failCount ?? 1;
 		const maxRetries = options?.maxRetries ?? 3;
+		const errorMessage = options?.errorMessage ?? "overloaded_error";
 		let callCount = 0;
 
 		const model = getModel("anthropic", "claude-sonnet-4-5")!;
@@ -80,7 +81,7 @@ describe("AgentSession retry", () => {
 					if (callCount <= failCount) {
 						const msg = createAssistantMessage("", {
 							stopReason: "error",
-							errorMessage: "overloaded_error",
+							errorMessage,
 						});
 						stream.push({ type: "start", partial: msg });
 						stream.push({ type: "error", reason: "error", error: msg });
@@ -144,6 +145,24 @@ describe("AgentSession retry", () => {
 		expect(events).toContain("end:success=false");
 		expect(created.session.isRetrying).toBe(false);
 	});
+
+	it.each(["API Error (522): 522 status code (no body)", "Request timed out."])(
+		"retries %s five times before stopping",
+		async (errorMessage) => {
+			const created = await createSession({ failCount: 99, maxRetries: 1, errorMessage });
+			const events: string[] = [];
+			created.session.subscribe((event) => {
+				if (event.type === "auto_retry_start") events.push(`start:${event.attempt}/${event.maxAttempts}`);
+				if (event.type === "auto_retry_end") events.push(`end:success=${event.success}`);
+			});
+
+			await created.session.prompt("Test");
+
+			expect(created.getCallCount()).toBe(6);
+			expect(events).toEqual(["start:1/5", "start:2/5", "start:3/5", "start:4/5", "start:5/5", "end:success=false"]);
+			expect(created.session.isRetrying).toBe(false);
+		},
+	);
 
 	it("retries provider network_error failures", async () => {
 		const created = await createSession({ failCount: 0 });

@@ -1,6 +1,12 @@
 import { describe, expect, it, vi } from "vitest";
 import { fauxAssistantMessage } from "../src/providers/faux.ts";
-import { isRetryableAssistantError, type RetryPolicy, retryAssistantCall } from "../src/utils/retry.ts";
+import {
+	isReconnectableProviderError,
+	isRetryableAssistantError,
+	type RetryPolicy,
+	resolveAssistantRetryLimit,
+	retryAssistantCall,
+} from "../src/utils/retry.ts";
 
 const openAIExplicitRetryMessage =
 	"An error occurred while processing your request. You can retry your request, or contact us through our help center at help.openai.com if the error persists. Please include the request ID req_******** in your message.";
@@ -71,6 +77,28 @@ describe("provider retry classification", () => {
 				fauxAssistantMessage("", { stopReason: "error", errorMessage: "429 quota exceeded" }),
 			),
 		).toBe(false);
+	});
+
+	it.each([
+		"API Error (522): 522 status code (no body)",
+		"522 status code (no body)",
+		"521 status code (no body)",
+		"500 status code (no body)",
+		"Request timed out.",
+		"Error: Request timed out.",
+	])("reconnects on %s", (errorMessage) => {
+		expect(isReconnectableProviderError(errorMessage)).toBe(true);
+		expect(isRetryableAssistantError(fauxAssistantMessage("", { stopReason: "error", errorMessage }))).toBe(true);
+		expect(resolveAssistantRetryLimit(errorMessage, 3)).toBe(5);
+		expect(resolveAssistantRetryLimit(errorMessage, 8)).toBe(8);
+		expect(resolveAssistantRetryLimit(errorMessage, 0)).toBe(0);
+	});
+
+	it("does not treat client errors or unrelated timeouts as reconnects", () => {
+		expect(isReconnectableProviderError("API Error (403): 403 status code (no body)")).toBe(false);
+		expect(isReconnectableProviderError("context window 1500 tokens exceeded")).toBe(false);
+		expect(isReconnectableProviderError("Codex SSE response headers timed out after 1000ms")).toBe(false);
+		expect(resolveAssistantRetryLimit("API Error (403): 403 status code (no body)", 3)).toBe(3);
 	});
 
 	it("classifies assistant error messages", () => {
@@ -173,6 +201,27 @@ describe("retryAssistantCall", () => {
 		expect(res.stopReason).toBe("aborted");
 		expect(produce).toHaveBeenCalledTimes(2);
 		expect(onRetryFinished).toHaveBeenCalledWith(false, 1);
+	});
+
+	it("retries HTTP 522 and request timeouts at least five times", async () => {
+		for (const errorMessage of ["API Error (522): 522 status code (no body)", "Request timed out."]) {
+			const produce = vi.fn(async () => fauxAssistantMessage("", { stopReason: "error", errorMessage }));
+			const onRetryScheduled = vi.fn();
+			const res = await retryAssistantCall(produce, enabled, undefined, { onRetryScheduled });
+			expect(res.stopReason).toBe("error");
+			expect(produce).toHaveBeenCalledTimes(6);
+			expect(onRetryScheduled).toHaveBeenCalledTimes(5);
+			expect(onRetryScheduled).toHaveBeenLastCalledWith(5, 5, 0, errorMessage);
+		}
+	});
+
+	it("does not retry a 522 when policy is disabled", async () => {
+		const produce = vi.fn(async () =>
+			fauxAssistantMessage("", { stopReason: "error", errorMessage: "API Error (522): 522 status code (no body)" }),
+		);
+		const res = await retryAssistantCall(produce, disabled, undefined);
+		expect(res.stopReason).toBe("error");
+		expect(produce).toHaveBeenCalledTimes(1);
 	});
 
 	it("does not retry when policy is disabled", async () => {

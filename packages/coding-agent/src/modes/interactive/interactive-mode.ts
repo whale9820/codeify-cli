@@ -10,7 +10,13 @@ import * as path from "node:path";
 import chalk from "chalk";
 import { spawn, spawnSync } from "child_process";
 import type { AgentMessage, ThinkingLevel } from "codeify-agent-core";
-import { type AuthEvent, type AuthPrompt, isMalformedJsonError, NETWORK_UNSTABLE_ERROR_MESSAGE } from "codeify-ai";
+import {
+	type AuthEvent,
+	type AuthPrompt,
+	isMalformedJsonError,
+	isReconnectableProviderError,
+	NETWORK_UNSTABLE_ERROR_MESSAGE,
+} from "codeify-ai";
 import type { AssistantMessage, ImageContent, Message, Model } from "codeify-ai/compat";
 import type {
 	AutocompleteItem,
@@ -104,8 +110,10 @@ import { SkillInvocationMessageComponent } from "./components/skill-invocation-m
 import {
 	BranchSummaryStatusIndicator,
 	CompactionStatusIndicator,
+	createReconnectStatusLine,
 	IdleStatus,
 	RetryStatusIndicator,
+	reconnectStatusLabel,
 	type StatusIndicator,
 	WorkingStatusIndicator,
 } from "./components/status-indicator.ts";
@@ -357,6 +365,7 @@ export class InteractiveMode {
 
 	// Auto-retry state
 	private retryEscapeHandler?: () => void;
+	private reconnectingLine?: Markdown;
 
 	// Messages queued while compaction is running
 	private compactionQueuedMessages: CompactionQueuedMessage[] = [];
@@ -1263,6 +1272,7 @@ export class InteractiveMode {
 		this.compactionQueuedMessages = [];
 		this.streamingComponent = undefined;
 		this.streamingMessage = undefined;
+		this.reconnectingLine = undefined;
 		this.pendingTools.clear();
 		this.renderInitialMessages();
 	}
@@ -1272,6 +1282,22 @@ export class InteractiveMode {
 	 */
 	private getRegisteredToolDefinition(toolName: string) {
 		return this.session.getToolDefinition(toolName);
+	}
+
+	private showReconnectingLine(attempt: number, maxAttempts: number): void {
+		this.clearReconnectingLine();
+		this.reconnectingLine = createReconnectStatusLine(
+			reconnectStatusLabel(attempt, maxAttempts),
+			this.outputPad,
+			this.getMarkdownThemeWithSettings(),
+		);
+		this.chatContainer.addChild(this.reconnectingLine);
+	}
+
+	private clearReconnectingLine(): void {
+		if (!this.reconnectingLine) return;
+		this.chatContainer.removeChild(this.reconnectingLine);
+		this.reconnectingLine = undefined;
 	}
 
 	private showStatusIndicator(indicator: StatusIndicator): void {
@@ -1761,6 +1787,7 @@ export class InteractiveMode {
 		switch (event.type) {
 			case "agent_start":
 				this.pendingTools.clear();
+				this.clearReconnectingLine();
 				if (this.settingsManager.getShowTerminalProgress()) {
 					this.ui.terminal.setProgress(true);
 				}
@@ -1892,6 +1919,12 @@ export class InteractiveMode {
 							component.setArgsComplete();
 						}
 						this.maybeShowCacheMissNotice(this.streamingMessage);
+					}
+					const finishedMessage = this.streamingMessage;
+					const reconnectAttempt = finishedMessage ? this.session.getReconnectAttempt(finishedMessage) : undefined;
+					if (reconnectAttempt && this.streamingComponent) {
+						this.chatContainer.removeChild(this.streamingComponent);
+						this.showReconnectingLine(reconnectAttempt.attempt, reconnectAttempt.maxAttempts);
 					}
 					this.streamingComponent = undefined;
 					this.streamingMessage = undefined;
@@ -2026,9 +2059,15 @@ export class InteractiveMode {
 				this.defaultEditor.onEscape = () => {
 					this.session.abortRetry();
 				};
-				this.showStatusIndicator(
-					new RetryStatusIndicator(this.ui, event.attempt, event.maxAttempts, event.delayMs),
-				);
+				if (isReconnectableProviderError(event.errorMessage)) {
+					this.clearStatusIndicator("retry");
+					this.showReconnectingLine(event.attempt, event.maxAttempts);
+				} else {
+					this.clearReconnectingLine();
+					this.showStatusIndicator(
+						new RetryStatusIndicator(this.ui, event.attempt, event.maxAttempts, event.delayMs),
+					);
+				}
 				this.ui.requestRender();
 				break;
 			}
@@ -2039,6 +2078,7 @@ export class InteractiveMode {
 					this.defaultEditor.onEscape = this.retryEscapeHandler;
 					this.retryEscapeHandler = undefined;
 				}
+				this.clearReconnectingLine();
 				this.clearStatusIndicator("retry");
 				// Show error only on final failure (success shows normal response)
 				if (!event.success) {
@@ -2049,15 +2089,22 @@ export class InteractiveMode {
 			}
 
 			case "summarization_retry_scheduled": {
-				this.showError(event.errorMessage);
-				this.showStatusIndicator(
-					new RetryStatusIndicator(this.ui, event.attempt, event.maxAttempts, event.delayMs),
-				);
+				if (isReconnectableProviderError(event.errorMessage)) {
+					this.clearStatusIndicator("retry");
+					this.showReconnectingLine(event.attempt, event.maxAttempts);
+				} else {
+					this.clearReconnectingLine();
+					this.showError(event.errorMessage);
+					this.showStatusIndicator(
+						new RetryStatusIndicator(this.ui, event.attempt, event.maxAttempts, event.delayMs),
+					);
+				}
 				this.ui.requestRender();
 				break;
 			}
 
 			case "summarization_retry_attempt_start": {
+				this.clearReconnectingLine();
 				this.clearStatusIndicator("retry");
 				if (event.source === "branchSummary") {
 					this.showStatusIndicator(new BranchSummaryStatusIndicator(this.ui));
@@ -2069,6 +2116,7 @@ export class InteractiveMode {
 			}
 
 			case "summarization_retry_finished": {
+				this.clearReconnectingLine();
 				this.clearStatusIndicator("retry");
 				this.ui.requestRender();
 				break;
