@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { splitWrappedThinking } from "../src/utils/thinking-text.ts";
+import { separateAdjacentBold, splitWrappedThinking } from "../src/utils/thinking-text.ts";
 
 describe("splitWrappedThinking", () => {
 	test("returns plain text as a single text segment", () => {
@@ -66,5 +66,21 @@ describe("splitWrappedThinking", () => {
 	test("returns no segments for whitespace-only text", () => {
 		expect(splitWrappedThinking("  \n ")).toEqual([]);
 		expect(splitWrappedThinking("")).toEqual([]);
+	});
+});
+
+describe("separateAdjacentBold", () => {
+	test("splits back-to-back bold spans onto separate paragraphs", () => {
+		expect(separateAdjacentBold("**First step****Second step**")).toBe("**First step**\n\n**Second step**");
+	});
+
+	test("handles more than two adjacent spans", () => {
+		expect(separateAdjacentBold("**a****b****c**")).toBe("**a**\n\n**b**\n\n**c**");
+	});
+
+	test("leaves normal bold and standalone asterisk runs unchanged", () => {
+		expect(separateAdjacentBold("**a** and **b**")).toBe("**a** and **b**");
+		expect(separateAdjacentBold("****")).toBe("****");
+		expect(separateAdjacentBold("a **** b")).toBe("a **** b");
 	});
 });

@@ -5,7 +5,7 @@ import {
 	type ServerToolUse,
 } from "codeify-ai";
 import { Container, Markdown, type MarkdownTheme, Spacer, Text } from "codeify-tui";
-import { splitWrappedThinking } from "../../../utils/thinking-text.ts";
+import { separateAdjacentBold, splitWrappedThinking } from "../../../utils/thinking-text.ts";
 import { getMarkdownTheme, theme } from "../theme/theme.ts";
 import { ErrorDetailsComponent } from "./error-details.ts";
 
@@ -147,7 +147,9 @@ export class AssistantMessageComponent extends Container {
 			if (item.kind === "text") {
 				// Assistant text messages with no background - trim the text
 				// Set paddingY=0 to avoid extra spacing before tool executions
-				this.contentContainer.addChild(new Markdown(item.text.trim(), this.outputPad, 0, this.markdownTheme));
+				this.contentContainer.addChild(
+					new Markdown(separateAdjacentBold(item.text.trim()), this.outputPad, 0, this.markdownTheme),
+				);
 			} else if (item.kind === "thinking") {
 				// Add spacing only when another visible assistant content block follows.
 				// This avoids a superfluous blank line before separately-rendered tool execution blocks.
@@ -162,7 +164,7 @@ export class AssistantMessageComponent extends Container {
 
 				// Reasoning blocks, including model text wrapped in thinking tags.
 				this.contentContainer.addChild(
-					new Markdown(item.text, this.outputPad, 0, this.markdownTheme, {
+					new Markdown(separateAdjacentBold(item.text), this.outputPad, 0, this.markdownTheme, {
 						color: (text: string) => theme.fg("thinkingText", text),
 						italic: true,
 					}),

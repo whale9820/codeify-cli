@@ -4,6 +4,15 @@ export interface WrappedThinkingSegment {
 }
 
 const WRAPPED_THINKING_PATTERN = /<think>([\s\S]*?)(?:<\/think>|$)|<thinking>([\s\S]*?)(?:<\/thinking>|$)/gi;
+const ADJACENT_BOLD_PATTERN = /(?<=[^\s*])\*{4}(?=[^\s*])/g;
+
+/**
+ * Split back-to-back bold spans (`**a****b**`) onto separate lines so markdown
+ * renders them as two bold spans instead of one run containing literal asterisks.
+ */
+export function separateAdjacentBold(text: string): string {
+	return text.replace(ADJACENT_BOLD_PATTERN, "**\n\n**");
+}
 
 /**
  * Split assistant text into plain-text and thinking segments.

@@ -28,6 +28,7 @@
 - Stripped line-number prefixes in edit diff matching to prevent target string mismatches when copying code from numbered views.
 - Retry malformed JSON property, unterminated-string, and double-quoted-property responses up to three times, collapse raw diagnostics, and report `network unstable please try again` on exhaustion.
 - Retry HTTP 5xx errors and request timeouts up to five times, and show `Reconnecting... (1/5)` in bold thinking text while reconnecting.
+- Render back-to-back bold spans (`**a****b**`) in thinking and assistant text as separate lines instead of one bold run containing literal asterisks.
 
 - Reduced installer disk usage by installing production dependencies for the low-memory build, cleaned up failed fresh checkouts, reclaimed Unix dependencies before Git updates, and made Git updates fetch the `main` branch explicitly.
 - Fixed newly discovered GPT-6 models being treated as non-reasoning when model catalogs have not published capability metadata yet.

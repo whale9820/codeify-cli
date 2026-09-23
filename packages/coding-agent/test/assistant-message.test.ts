@@ -220,6 +220,39 @@ describe("AssistantMessageComponent", () => {
 		expect(stripped).not.toContain(THINKING_OPEN);
 	});
 
+	test("renders adjacent bold spans in thinking on separate lines", () => {
+		initTheme("dark");
+
+		const thinking = new AssistantMessageComponent(
+			createAssistantMessage([{ type: "thinking", thinking: "**First step****Second step**" }]),
+		);
+		const lines = thinking.render(80).map((line) => stripAnsi(line).trimEnd());
+		const first = lines.findIndex((line) => line.includes("First step"));
+		const second = lines.findIndex((line) => line.includes("Second step"));
+
+		expect(first).toBeGreaterThanOrEqual(0);
+		expect(second).toBeGreaterThan(first);
+		expect(lines.slice(first, second).some((line) => line.trim() === "")).toBe(true);
+		for (const line of lines) {
+			expect(line).not.toContain("****");
+		}
+	});
+
+	test("renders adjacent bold spans in plain assistant text on separate lines", () => {
+		initTheme("dark");
+
+		const component = new AssistantMessageComponent(
+			createAssistantMessage([{ type: "text", text: "**First step****Second step**" }]),
+		);
+		const lines = component.render(80).map((line) => stripAnsi(line).trimEnd());
+		const first = lines.findIndex((line) => line.includes("First step"));
+		const second = lines.findIndex((line) => line.includes("Second step"));
+
+		expect(first).toBeGreaterThanOrEqual(0);
+		expect(second).toBeGreaterThan(first);
+		expect(lines.slice(first, second).some((line) => line.trim() === "")).toBe(true);
+	});
+
 	test("styles wrapped thinking like a real thinking block", () => {
 		initTheme("dark");
 
