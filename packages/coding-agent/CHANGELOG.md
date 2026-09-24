@@ -25,6 +25,7 @@
 
 ### Fixed
 
+- Matched web search transcript spacing to thinking blocks: one blank line above and one below.
 - Increased default read tool limits to 256KB and 5,000 lines for large-context models (>=100k tokens) to eliminate multi-turn file chunk pagination loops.
 - Stripped line-number prefixes in edit diff matching to prevent target string mismatches when copying code from numbered views.
 - Retry malformed JSON property, unterminated-string, and double-quoted-property responses up to three times, collapse raw diagnostics, and report `network unstable please try again` on exhaustion.

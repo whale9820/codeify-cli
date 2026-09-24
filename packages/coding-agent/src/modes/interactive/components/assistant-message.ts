@@ -144,6 +144,14 @@ export class AssistantMessageComponent extends Container {
 		// Render content in order
 		for (let i = 0; i < items.length; i++) {
 			const item = items[i];
+			const hasVisibleContentAfter = items
+				.slice(i + 1)
+				.some(
+					(next) =>
+						(next.kind === "text" && next.text.trim()) ||
+						(next.kind === "thinking" && next.text.trim()) ||
+						next.kind === "serverToolUse",
+				);
 			if (item.kind === "text") {
 				// Assistant text messages with no background - trim the text
 				// Set paddingY=0 to avoid extra spacing before tool executions
@@ -153,15 +161,6 @@ export class AssistantMessageComponent extends Container {
 			} else if (item.kind === "thinking") {
 				// Add spacing only when another visible assistant content block follows.
 				// This avoids a superfluous blank line before separately-rendered tool execution blocks.
-				const hasVisibleContentAfter = items
-					.slice(i + 1)
-					.some(
-						(next) =>
-							(next.kind === "text" && next.text.trim()) ||
-							(next.kind === "thinking" && next.text.trim()) ||
-							next.kind === "serverToolUse",
-					);
-
 				// Reasoning blocks, including model text wrapped in thinking tags.
 				this.contentContainer.addChild(
 					new Markdown(separateAdjacentBold(item.text), this.outputPad, 0, this.markdownTheme, {
@@ -169,7 +168,7 @@ export class AssistantMessageComponent extends Container {
 						italic: true,
 					}),
 				);
-				if (hasVisibleContentAfter) {
+				if (item.text.trim() && hasVisibleContentAfter) {
 					this.contentContainer.addChild(new Spacer(1));
 				}
 			} else {
@@ -177,7 +176,7 @@ export class AssistantMessageComponent extends Container {
 				const query = (content.input as { query?: string })?.query;
 				const toolLabel = content.name === "web_search" ? "Web search" : content.name;
 				const label = query ? `${toolLabel}: "${query}"` : toolLabel;
-				this.contentContainer.addChild(new Text(theme.fg("muted", label), this.outputPad));
+				this.contentContainer.addChild(new Text(theme.fg("muted", label), this.outputPad, 0));
 
 				const contentIndex = message.content.indexOf(content);
 				const nextBlock = message.content[contentIndex + 1];
@@ -188,11 +187,14 @@ export class AssistantMessageComponent extends Container {
 							new Text(
 								theme.fg("dim", `  -> ${resultCount} result${resultCount === 1 ? "" : "s"}`),
 								this.outputPad,
+								0,
 							),
 						);
 					}
 				}
-				this.contentContainer.addChild(new Spacer(1));
+				if (hasVisibleContentAfter) {
+					this.contentContainer.addChild(new Spacer(1));
+				}
 			}
 		}
 

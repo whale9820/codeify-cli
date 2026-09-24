@@ -220,6 +220,46 @@ describe("AssistantMessageComponent", () => {
 		expect(stripped).not.toContain(THINKING_OPEN);
 	});
 
+	test("spaces web search like thinking, one blank line above and below", () => {
+		initTheme("dark");
+
+		const thinking = new AssistantMessageComponent(
+			createAssistantMessage([
+				{ type: "thinking", thinking: "**Planning the search**" },
+				{ type: "text", text: "answer" },
+			]),
+		);
+		const search = new AssistantMessageComponent(
+			createAssistantMessage([
+				{
+					type: "serverToolUse",
+					id: "ws_1",
+					name: "web_search",
+					input: { query: "bbc headlines" },
+				},
+				{ type: "text", text: "answer" },
+			]),
+		);
+
+		const blankGap = (lines: string[], marker: string): { above: number; below: number } => {
+			const index = lines.findIndex((line) => line.includes(marker));
+			let above = 0;
+			for (let i = index - 1; i >= 0 && lines[i].trim() === ""; i--) above++;
+			let below = 0;
+			for (let i = index + 1; i < lines.length && lines[i].trim() === ""; i++) below++;
+			return { above, below };
+		};
+
+		const thinkingLines = thinking.render(80).map((line) => stripAnsi(line).trimEnd());
+		const searchLines = search.render(80).map((line) => stripAnsi(line).trimEnd());
+		const thinkingGap = blankGap(thinkingLines, "Planning the search");
+		const searchGap = blankGap(searchLines, "Web search");
+
+		expect(thinkingGap).toEqual({ above: 1, below: 1 });
+		expect(searchGap).toEqual(thinkingGap);
+		expect(searchLines.some((line) => line.includes('Web search: "bbc headlines"'))).toBe(true);
+	});
+
 	test("renders adjacent bold spans in thinking on separate lines", () => {
 		initTheme("dark");
 
