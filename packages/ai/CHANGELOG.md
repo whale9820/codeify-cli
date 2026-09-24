@@ -4,6 +4,7 @@
 
 ### Added
 
+- Keep OpenAI Responses `url_citation` annotations and request `web_search_call.action.sources` so search citation markers can be resolved to URLs.
 - Added support for Anthropic server_tool_use and web_search tool mappings.
 - Included the hosted `web_search` tool on Codeify OpenAI Responses requests and mapped `web_search_call` items to server tool events.
 

@@ -1,7 +1,9 @@
 import {
 	type AssistantMessage,
+	type CitationSource,
 	isMalformedJsonError,
 	NETWORK_UNSTABLE_ERROR_MESSAGE,
+	renderInlineCitations,
 	type ServerToolUse,
 } from "codeify-ai";
 import { Container, Markdown, type MarkdownTheme, Spacer, Text } from "codeify-tui";
@@ -23,12 +25,16 @@ type ContentRenderItem =
  * wrap reasoning in `<think>`/`<thinking>` tags into separate thinking items.
  * Consecutive thinking items are merged so they render as one block.
  */
-function buildContentRenderItems(content: AssistantMessage["content"]): ContentRenderItem[] {
+function buildContentRenderItems(
+	content: AssistantMessage["content"],
+	sources: ReadonlyMap<string, CitationSource>,
+): ContentRenderItem[] {
 	const items: ContentRenderItem[] = [];
 
 	for (const block of content) {
 		if (block.type === "text") {
-			for (const segment of splitWrappedThinking(block.text)) {
+			const text = renderInlineCitations(block.text, sources, block.citations);
+			for (const segment of splitWrappedThinking(text)) {
 				items.push({ kind: segment.type, text: segment.text });
 			}
 		} else if (block.type === "thinking") {
@@ -61,6 +67,7 @@ export class AssistantMessageComponent extends Container {
 	private hasToolCalls = false;
 	private expanded = false;
 	private errorDetails?: ErrorDetailsComponent;
+	private citationSources: ReadonlyMap<string, CitationSource> = new Map();
 
 	constructor(
 		message?: AssistantMessage,
@@ -111,6 +118,11 @@ export class AssistantMessageComponent extends Container {
 		this.errorDetails?.setExpanded(expanded);
 	}
 
+	setCitationSources(sources: ReadonlyMap<string, CitationSource>): void {
+		this.citationSources = sources;
+		if (this.lastMessage) this.updateContent(this.lastMessage);
+	}
+
 	override render(width: number): string[] {
 		const lines = super.render(width);
 		if (this.hasToolCalls || lines.length === 0) {
@@ -128,7 +140,7 @@ export class AssistantMessageComponent extends Container {
 		// Clear content container
 		this.contentContainer.clear();
 
-		const items = buildContentRenderItems(message.content);
+		const items = buildContentRenderItems(message.content, this.citationSources);
 
 		const hasVisibleContent = items.some(
 			(item) =>
@@ -153,8 +165,6 @@ export class AssistantMessageComponent extends Container {
 						next.kind === "serverToolUse",
 				);
 			if (item.kind === "text") {
-				// Assistant text messages with no background - trim the text
-				// Set paddingY=0 to avoid extra spacing before tool executions
 				this.contentContainer.addChild(
 					new Markdown(separateAdjacentBold(item.text.trim()), this.outputPad, 0, this.markdownTheme),
 				);

@@ -25,6 +25,7 @@
 
 ### Fixed
 
+- Render OpenAI web search citation markers as source links, using the same `([domain](url))` form as a same-turn citation.
 - Matched web search transcript spacing to thinking blocks: one blank line above and one below.
 - Increased default read tool limits to 256KB and 5,000 lines for large-context models (>=100k tokens) to eliminate multi-turn file chunk pagination loops.
 - Stripped line-number prefixes in edit diff matching to prevent target string mismatches when copying code from numbered views.

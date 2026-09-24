@@ -25,6 +25,7 @@ import type {
 	ServerToolResult,
 	ServerToolUse,
 	StopReason,
+	TextCitation,
 	TextContent,
 	TextSignatureV1,
 	ThinkingContent,
@@ -41,6 +42,39 @@ import { transformMessages } from "./transform-messages.ts";
 // =============================================================================
 // Utilities
 // =============================================================================
+
+function readResponseMessageText(content: ResponseOutputMessage["content"] | undefined): {
+	text: string;
+	citations: TextCitation[];
+} {
+	let text = "";
+	const citations: TextCitation[] = [];
+	for (const part of content ?? []) {
+		if (part.type !== "output_text") {
+			text += part.refusal;
+			continue;
+		}
+		for (const annotation of part.annotations ?? []) {
+			if (annotation.type !== "url_citation") continue;
+			citations.push({
+				type: "url_citation",
+				url: annotation.url,
+				title: annotation.title,
+				startIndex: annotation.start_index + text.length,
+				endIndex: annotation.end_index + text.length,
+			});
+		}
+		text += part.text;
+	}
+	return { text, citations };
+}
+
+function assignOutputText(block: TextContent, content: ResponseOutputMessage["content"] | undefined): void {
+	const parsed = readResponseMessageText(content);
+	block.text = parsed.text;
+	if (parsed.citations.length > 0) block.citations = parsed.citations;
+	else delete block.citations;
+}
 
 function encodeTextSignatureV1(id: string, phase?: TextSignatureV1["phase"]): string {
 	const payload: TextSignatureV1 = { v: 1, id };
@@ -543,8 +577,12 @@ export async function processResponsesStream<TApi extends Api>(
 		if (output.content.length === 0) {
 			for (const item of response.output ?? []) {
 				if (item.type !== "message") continue;
-				const text = item.content?.map((part) => (part.type === "output_text" ? part.text : part.refusal)).join("");
-				if (text) output.content.push({ type: "text", text });
+				const parsed = readResponseMessageText(item.content);
+				if (parsed.text) {
+					const block: TextContent = { type: "text", text: parsed.text };
+					if (parsed.citations.length > 0) block.citations = parsed.citations;
+					output.content.push(block);
+				}
 			}
 		}
 		backfillWebSearchCalls(response.output);
@@ -663,7 +701,7 @@ export async function processResponsesStream<TApi extends Api>(
 				});
 				outputSlots.delete(event.output_index);
 			} else if (item.type === "message" && slot?.type === "text") {
-				slot.block.text = item.content?.map((c) => (c.type === "output_text" ? c.text : c.refusal)).join("") || "";
+				assignOutputText(slot.block, item.content);
 				slot.block.textSignature = encodeTextSignatureV1(item.id, item.phase ?? undefined);
 				stream.push({
 					type: "text_end",

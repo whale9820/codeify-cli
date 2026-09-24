@@ -319,6 +319,12 @@ function buildParams(model: Model<"openai-responses">, context: Context, options
 		if (model.provider === "xai") params.include = ["reasoning.encrypted_content"];
 	}
 
+	if (params.tools?.some((tool) => tool.type === "web_search" || tool.type === "web_search_preview")) {
+		const include = new Set(params.include ?? []);
+		include.add("web_search_call.action.sources");
+		params.include = [...include];
+	}
+
 	return params;
 }
 

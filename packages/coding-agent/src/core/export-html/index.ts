@@ -1,4 +1,5 @@
 import type { AgentState } from "codeify-agent-core";
+import { buildCitationSources, renderInlineCitations } from "codeify-ai";
 import { existsSync, readFileSync, writeFileSync } from "fs";
 import { basename, join } from "path";
 import { APP_NAME, getExportTemplateDir } from "../../config.ts";
@@ -174,6 +175,31 @@ function generateHtml(sessionData: SessionData, themeName?: string): string {
 		.replace("{{HIGHLIGHT_JS}}", hljsJs);
 }
 
+function renderEntryCitations(entries: SessionEntry[]): SessionEntry[] {
+	const messages = [];
+	for (const entry of entries) {
+		if (entry.type === "message") messages.push(entry.message);
+	}
+	const sources = buildCitationSources(messages);
+	return entries.map((entry) => {
+		if (entry.type !== "message" || entry.message.role !== "assistant" || !Array.isArray(entry.message.content)) {
+			return entry;
+		}
+		let changed = false;
+		const content = entry.message.content.map((block) => {
+			if (block.type !== "text") return block;
+			if (!block.text.includes("\uE200") && !block.text.includes("\uE203") && !block.text.includes("\uE204"))
+				return block;
+			const text = renderInlineCitations(block.text, sources, block.citations);
+			if (text === block.text) return block;
+			changed = true;
+			return { ...block, text };
+		});
+		if (!changed) return entry;
+		return { ...entry, message: { ...entry.message, content } };
+	});
+}
+
 /** Tools rendered directly by the HTML template (not pre-rendered via TUI→ANSI→HTML pipeline) */
 const TEMPLATE_RENDERED_TOOLS = new Set(["bash", "read", "write", "edit", "ls"]);
 
@@ -262,7 +288,7 @@ export async function exportSessionToHtml(
 
 	const sessionData: SessionData = {
 		header: sm.getHeader(),
-		entries,
+		entries: renderEntryCitations(entries),
 		leafId: sm.getLeafId(),
 		systemPrompt: state?.systemPrompt,
 		tools: state?.tools?.map((t) => ({ name: t.name, description: t.description, parameters: t.parameters })),
@@ -297,7 +323,7 @@ export async function exportFromFile(inputPath: string, options?: ExportOptions 
 
 	const sessionData: SessionData = {
 		header: sm.getHeader(),
-		entries: sm.getEntries(),
+		entries: renderEntryCitations(sm.getEntries()),
 		leafId: sm.getLeafId(),
 		systemPrompt: undefined,
 		tools: undefined,

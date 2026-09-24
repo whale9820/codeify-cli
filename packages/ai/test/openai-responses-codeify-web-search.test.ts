@@ -57,8 +57,9 @@ describe("Codeify Responses web_search tool", () => {
 	});
 
 	it("includes hosted web_search when the request has no other tools", async () => {
-		const body = (await captureRequestBody(codeifyModel)) as { tools?: unknown[] };
+		const body = (await captureRequestBody(codeifyModel)) as { tools?: unknown[]; include?: unknown[] };
 		expect(body.tools).toEqual([{ type: "web_search" }]);
+		expect(body.include).toEqual(["web_search_call.action.sources"]);
 	});
 
 	it("appends hosted web_search alongside function tools", async () => {
@@ -175,5 +176,79 @@ describe("Codeify Responses web_search tool", () => {
 			{ type: "text", text: "Found it." },
 		]);
 		expect(output.stopReason).toBe("stop");
+	});
+
+	it("keeps url citation annotations on the assistant text", async () => {
+		const output: AssistantMessage = {
+			role: "assistant",
+			content: [],
+			api: codeifyModel.api,
+			provider: codeifyModel.provider,
+			model: codeifyModel.id,
+			usage: {
+				input: 0,
+				output: 0,
+				cacheRead: 0,
+				cacheWrite: 0,
+				totalTokens: 0,
+				cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+			},
+			stopReason: "stop",
+			timestamp: Date.now(),
+		};
+		const marker = "\uE200cite\uE202turn0search0\uE201";
+		const text = `Opened in 1889. ${marker}`;
+		const start = text.indexOf(marker);
+
+		async function* events(): AsyncIterable<ResponseStreamEvent> {
+			yield {
+				type: "response.output_item.done",
+				output_index: 0,
+				item: {
+					type: "message",
+					id: "msg_1",
+					role: "assistant",
+					status: "completed",
+					content: [
+						{
+							type: "output_text",
+							text,
+							annotations: [
+								{
+									type: "url_citation",
+									start_index: start,
+									end_index: start + marker.length,
+									url: "https://www.toureiffel.paris/a",
+									title: "Opening",
+								},
+							],
+						},
+					],
+				},
+			} as ResponseStreamEvent;
+			yield {
+				type: "response.completed",
+				response: {
+					id: "resp_1",
+					status: "completed",
+					output: [],
+				},
+			} as unknown as ResponseStreamEvent;
+		}
+
+		await processResponsesStream(events(), output, new AssistantMessageEventStream(), codeifyModel);
+		expect(output.content[0]).toMatchObject({
+			type: "text",
+			text,
+			citations: [
+				{
+					type: "url_citation",
+					url: "https://www.toureiffel.paris/a",
+					title: "Opening",
+					startIndex: start,
+					endIndex: start + marker.length,
+				},
+			],
+		});
 	});
 });

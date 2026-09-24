@@ -13,6 +13,7 @@ import type { AgentMessage, ThinkingLevel } from "codeify-agent-core";
 import {
 	type AuthEvent,
 	type AuthPrompt,
+	buildCitationSources,
 	isMalformedJsonError,
 	isReconnectableProviderError,
 	NETWORK_UNSTABLE_ERROR_MESSAGE,
@@ -1842,6 +1843,7 @@ export class InteractiveMode {
 					);
 					this.streamingMessage = event.message;
 					this.chatContainer.addChild(this.streamingComponent);
+					this.applyCitationSources(this.streamingComponent, this.streamingMessage);
 					this.streamingComponent.updateContent(this.streamingMessage);
 					this.ui.requestRender();
 				}
@@ -1850,6 +1852,7 @@ export class InteractiveMode {
 			case "message_update":
 				if (this.streamingComponent && event.message.role === "assistant") {
 					this.streamingMessage = event.message;
+					this.applyCitationSources(this.streamingComponent, this.streamingMessage);
 					this.streamingComponent.updateContent(this.streamingMessage);
 
 					for (const content of this.streamingMessage.content) {
@@ -1895,6 +1898,7 @@ export class InteractiveMode {
 								: "Operation aborted";
 						this.streamingMessage.errorMessage = errorMessage;
 					}
+					this.applyCitationSources(this.streamingComponent, this.streamingMessage);
 					this.streamingComponent.updateContent(this.streamingMessage);
 
 					if (this.streamingMessage.stopReason === "aborted" || this.streamingMessage.stopReason === "error") {
@@ -2164,6 +2168,13 @@ export class InteractiveMode {
 		void entry;
 	}
 
+	private applyCitationSources(component: AssistantMessageComponent, message: AssistantMessage): void {
+		const messages = this.session.messages;
+		const index = messages.indexOf(message);
+		const prefix = index === -1 ? [...messages, message] : messages.slice(0, index + 1);
+		component.setCitationSources(buildCitationSources(prefix));
+	}
+
 	private addMessageToChat(message: AgentMessage, options?: { populateHistory?: boolean }): void {
 		switch (message.role) {
 			case "bashExecution": {
@@ -2249,6 +2260,7 @@ export class InteractiveMode {
 					this.hiddenThinkingLabel,
 					this.outputPad,
 				);
+				this.applyCitationSources(assistantComponent, message);
 				assistantComponent.setExpanded(this.toolOutputExpanded);
 				this.chatContainer.addChild(assistantComponent);
 				break;

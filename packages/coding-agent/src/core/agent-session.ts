@@ -25,11 +25,13 @@ import type {
 	ThinkingLevel,
 } from "codeify-agent-core";
 import {
+	buildCitationSources,
 	contentText,
 	isMalformedJsonError,
 	isReconnectableProviderError,
 	MALFORMED_JSON_MAX_RETRIES,
 	NETWORK_UNSTABLE_ERROR_MESSAGE,
+	renderInlineCitations,
 	resolveAssistantRetryLimit,
 } from "codeify-ai";
 import type {
@@ -2597,10 +2599,11 @@ export class AgentSession {
 
 		if (!lastAssistant) return undefined;
 
+		const sources = buildCitationSources(this.messages);
 		let text = "";
 		for (const content of (lastAssistant as AssistantMessage).content) {
 			if (content.type === "text") {
-				text += content.text;
+				text += renderInlineCitations(content.text, sources, content.citations);
 			}
 		}
 

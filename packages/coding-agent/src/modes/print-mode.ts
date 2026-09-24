@@ -6,7 +6,7 @@
  * - `codeify --mode json "prompt"` - JSON event stream
  */
 
-import type { AssistantMessage, ImageContent } from "codeify-ai";
+import { type AssistantMessage, buildCitationSources, type ImageContent, renderInlineCitations } from "codeify-ai";
 import type { AgentSessionRuntime } from "../core/agent-session-runtime.ts";
 import { flushRawStdout, writeRawStdout } from "../core/output-guard.ts";
 import { killTrackedDetachedChildren } from "../utils/shell.ts";
@@ -106,9 +106,10 @@ export async function runPrintMode(runtimeHost: AgentSessionRuntime, options: Pr
 					console.error(assistantMsg.errorMessage || `Request ${assistantMsg.stopReason}`);
 					exitCode = 1;
 				} else {
+					const sources = buildCitationSources(state.messages);
 					for (const content of assistantMsg.content) {
 						if (content.type === "text") {
-							writeRawStdout(`${content.text}\n`);
+							writeRawStdout(`${renderInlineCitations(content.text, sources, content.citations)}\n`);
 						}
 					}
 				}

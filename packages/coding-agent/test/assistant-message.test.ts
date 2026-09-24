@@ -220,6 +220,30 @@ describe("AssistantMessageComponent", () => {
 		expect(stripped).not.toContain(THINKING_OPEN);
 	});
 
+	test("renders search citation markers as source links", () => {
+		initTheme("dark");
+
+		const marker = "\uE200cite\uE202turn4search9\uE202turn4search10\uE201";
+		const component = new AssistantMessageComponent(
+			createAssistantMessage([{ type: "text", text: `A charity raffle won a Picasso. ${marker}` }]),
+		);
+		component.setCitationSources(
+			new Map([
+				["turn4search9", { url: "https://www.apnews.com/picasso" }],
+				["turn4search10", { url: "https://www.bbc.com/raffle" }],
+			]),
+		);
+		const rendered = component.render(120).join("\n");
+		const visible = stripAnsi(rendered);
+
+		expect(visible).toContain("apnews.com");
+		expect(visible).toContain("bbc.com");
+		expect(visible).not.toContain("turn4search9");
+		expect(visible).not.toContain("\uE200");
+		expect(rendered).toContain("https://www.apnews.com/picasso");
+		expect(rendered).toContain("https://www.bbc.com/raffle");
+	});
+
 	test("spaces web search like thinking, one blank line above and below", () => {
 		initTheme("dark");
 

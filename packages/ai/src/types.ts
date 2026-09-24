@@ -326,10 +326,19 @@ export interface TextSignatureV1 {
 	phase?: "commentary" | "final_answer";
 }
 
+export interface TextCitation {
+	type: "url_citation";
+	url: string;
+	title: string;
+	startIndex: number;
+	endIndex: number;
+}
+
 export interface TextContent {
 	type: "text";
 	text: string;
 	textSignature?: string; // e.g., for OpenAI responses, message metadata (legacy id string or TextSignatureV1 JSON)
+	citations?: TextCitation[];
 }
 
 export interface ThinkingContent {
