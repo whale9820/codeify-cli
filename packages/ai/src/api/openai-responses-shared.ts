@@ -22,6 +22,8 @@ import type {
 	ImageContent,
 	Model,
 	OpenAIResponsesCompat,
+	ServerToolResult,
+	ServerToolUse,
 	StopReason,
 	TextContent,
 	TextSignatureV1,
@@ -352,7 +354,19 @@ type StreamingToolCall = ToolCall & { partialJson: string };
 type ResponsesOutputSlot =
 	| { type: "thinking"; block: ThinkingContent; contentIndex: number }
 	| { type: "text"; block: TextContent; contentIndex: number }
-	| { type: "toolCall"; block: StreamingToolCall; contentIndex: number };
+	| { type: "toolCall"; block: StreamingToolCall; contentIndex: number }
+	| { type: "serverTool"; block: ServerToolUse; contentIndex: number };
+
+function webSearchToolInput(item: Extract<ResponseOutputItem, { type: "web_search_call" }>): Record<string, unknown> {
+	const action = item.action;
+	if (action?.type === "search") {
+		const query = action.query || action.queries?.find((entry) => entry.length > 0);
+		return query ? { query } : {};
+	}
+	if (action?.type === "open_page" && action.url) return { query: action.url };
+	if (action?.type === "find_in_page" && action.pattern) return { query: action.pattern };
+	return {};
+}
 
 export async function processResponsesStream<TApi extends Api>(
 	openaiStream: AsyncIterable<ResponseStreamEvent>,
@@ -410,6 +424,28 @@ export async function processResponsesStream<TApi extends Api>(
 			stream.push({ type: "toolcall_start", contentIndex: slot.contentIndex, partial: output });
 			return slot;
 		}
+		if (item.type === "web_search_call") {
+			const block: ServerToolUse = {
+				type: "serverToolUse",
+				id: item.id,
+				name: "web_search",
+				input: webSearchToolInput(item),
+			};
+			output.content.push(block);
+			const slot = {
+				type: "serverTool",
+				block,
+				contentIndex: output.content.length - 1,
+			} satisfies ResponsesOutputSlot;
+			outputSlots.set(outputIndex, slot);
+			stream.push({
+				type: "server_tool_use_start",
+				contentIndex: slot.contentIndex,
+				serverToolUse: block,
+				partial: output,
+			});
+			return slot;
+		}
 		return undefined;
 	};
 	const getOrCreateSlot = (outputIndex: number, item: ResponseOutputItem): ResponsesOutputSlot | undefined => {
@@ -441,6 +477,39 @@ export async function processResponsesStream<TApi extends Api>(
 				...storedItem,
 				encrypted_content: item.encrypted_content,
 			});
+		}
+	};
+	const backfillWebSearchCalls = (responseOutput: ResponseOutputItem[] | undefined): void => {
+		if (!responseOutput) return;
+		for (const item of responseOutput) {
+			if (item.type !== "web_search_call") continue;
+			const input = webSearchToolInput(item);
+			let useBlock = output.content.find(
+				(block): block is ServerToolUse => block.type === "serverToolUse" && block.id === item.id,
+			);
+			if (!useBlock) {
+				useBlock = {
+					type: "serverToolUse",
+					id: item.id,
+					name: "web_search",
+					input,
+				};
+				const insertAt = output.content.findIndex((block) => block.type === "text" || block.type === "toolCall");
+				if (insertAt === -1) output.content.push(useBlock);
+				else output.content.splice(insertAt, 0, useBlock);
+			} else if (typeof input.query === "string" && useBlock.input.query === undefined) {
+				useBlock.input = input;
+			}
+			if (item.action?.type !== "search" || !item.action.sources?.length) continue;
+			if (output.content.some((block) => block.type === "serverToolResult" && block.toolUseId === item.id)) continue;
+			const result: ServerToolResult = {
+				type: "serverToolResult",
+				toolUseId: item.id,
+				resultType: "web_search_call",
+				content: item.action.sources,
+			};
+			const useIndex = output.content.indexOf(useBlock);
+			output.content.splice(useIndex + 1, 0, result);
 		}
 	};
 	const finalizeResponse = (
@@ -478,6 +547,7 @@ export async function processResponsesStream<TApi extends Api>(
 				if (text) output.content.push({ type: "text", text });
 			}
 		}
+		backfillWebSearchCalls(response.output);
 		if (options?.applyServiceTierPricing) {
 			const serviceTier = options.resolveServiceTier
 				? options.resolveServiceTier(response?.service_tier, options.serviceTier)
@@ -611,6 +681,16 @@ export async function processResponsesStream<TApi extends Api>(
 					type: "toolcall_end",
 					contentIndex: slot.contentIndex,
 					toolCall: slot.block,
+					partial: output,
+				});
+				outputSlots.delete(event.output_index);
+			} else if (item.type === "web_search_call" && slot?.type === "serverTool") {
+				const input = webSearchToolInput(item);
+				if (typeof input.query === "string") slot.block.input = input;
+				stream.push({
+					type: "server_tool_use_end",
+					contentIndex: slot.contentIndex,
+					serverToolUse: slot.block,
 					partial: output,
 				});
 				outputSlots.delete(event.output_index);

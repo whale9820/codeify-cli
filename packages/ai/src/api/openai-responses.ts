@@ -288,6 +288,10 @@ function buildParams(model: Model<"openai-responses">, context: Context, options
 		params.tools = convertResponsesTools(toolPlacement.immediate);
 	}
 
+	if (model.provider === "codeify") {
+		params.tools = withCodeifyWebSearch(params.tools);
+	}
+
 	if (options?.toolChoice !== undefined) {
 		params.tool_choice = options.toolChoice;
 	}
@@ -316,6 +320,20 @@ function buildParams(model: Model<"openai-responses">, context: Context, options
 	}
 
 	return params;
+}
+
+const CLIENT_WEB_SEARCH_TOOL_NAMES = new Set(["web_search", "websearch", "search_web"]);
+
+function withCodeifyWebSearch(
+	tools: ResponseCreateParamsStreaming["tools"],
+): NonNullable<ResponseCreateParamsStreaming["tools"]> {
+	const next = (tools ?? []).filter(
+		(tool) => tool.type !== "function" || !CLIENT_WEB_SEARCH_TOOL_NAMES.has(tool.name.toLowerCase()),
+	);
+	if (!next.some((tool) => tool.type === "web_search")) {
+		next.push({ type: "web_search" });
+	}
+	return next;
 }
 
 function getServiceTierCostMultiplier(

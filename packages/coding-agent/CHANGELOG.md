@@ -4,6 +4,7 @@
 
 ### Added
 
+- Send the hosted Responses `web_search` tool on Codeify requests so the model can search the web, and show those searches in the transcript.
 - Render assistant text wrapped in thinking tags (`<think>`, `<thinking>`) as thinking blocks in interactive mode, styled like structured reasoning blocks.
 - Added model support for Step 5 Preview and dynamic metadata extraction from the Codeify models endpoint, including context windows, output limits, vision/video modalities, and thinking levels.
 - Added support for Antigravity and Claude Code tool names and schemas (`view_file`, `replace_file_content`, `write_to_file`, `run_command`, `grep_search`, `find_by_name`, `list_dir`, `read_url_content`, `search_web`).
