@@ -545,8 +545,9 @@ export class AgentSession {
 				event.message.role === "assistant" ||
 				event.message.role === "toolResult"
 			) {
-				// Regular LLM message - persist as SessionMessageEntry
-				this.sessionManager.appendMessage(event.message);
+				if (event.message.role !== "assistant" || !this.hidesRetryingAssistantError(event.message)) {
+					this.sessionManager.appendMessage(event.message);
+				}
 			}
 			// Other message types (bashExecution, compactionSummary, branchSummary) are persisted elsewhere
 
@@ -578,6 +579,10 @@ export class AgentSession {
 		if (!settings.enabled) return false;
 		const maxRetries = resolveAssistantRetryLimit(message.errorMessage, settings.maxRetries);
 		return this._retryAttempt < maxRetries && this._isRetryableError(message);
+	}
+
+	hidesRetryingAssistantError(message: AssistantMessage): boolean {
+		return isMalformedJsonError(message.errorMessage ?? "") && this.willRetryAssistantMessage(message);
 	}
 
 	getReconnectAttempt(message: AssistantMessage): { attempt: number; maxAttempts: number } | undefined {

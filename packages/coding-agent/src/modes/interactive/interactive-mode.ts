@@ -1889,6 +1889,22 @@ export class InteractiveMode {
 				if (event.message.role === "user") break;
 				if (this.streamingComponent && event.message.role === "assistant") {
 					this.streamingMessage = event.message;
+					if (
+						this.streamingMessage.stopReason === "error" &&
+						isMalformedJsonError(this.streamingMessage.errorMessage ?? "") &&
+						this.session.hidesRetryingAssistantError(this.streamingMessage)
+					) {
+						this.chatContainer.removeChild(this.streamingComponent);
+						for (const component of this.pendingTools.values()) {
+							this.chatContainer.removeChild(component);
+						}
+						this.pendingTools.clear();
+						this.streamingComponent = undefined;
+						this.streamingMessage = undefined;
+						this.footer.invalidate();
+						this.ui.requestRender();
+						break;
+					}
 					let errorMessage: string | undefined;
 					if (this.streamingMessage.stopReason === "aborted") {
 						const retryAttempt = this.session.retryAttempt;
@@ -2086,7 +2102,10 @@ export class InteractiveMode {
 				this.clearStatusIndicator("retry");
 				// Show error only on final failure (success shows normal response)
 				if (!event.success) {
-					this.showError(`Retry failed after ${event.attempt} attempts: ${event.finalError || "Unknown error"}`);
+					const finalError = event.finalError || "Unknown error";
+					if (!isMalformedJsonError(finalError) && finalError !== NETWORK_UNSTABLE_ERROR_MESSAGE) {
+						this.showError(`Retry failed after ${event.attempt} attempts: ${finalError}`);
+					}
 				}
 				this.ui.requestRender();
 				break;
@@ -2098,7 +2117,9 @@ export class InteractiveMode {
 					this.showReconnectingLine(event.attempt, event.maxAttempts);
 				} else {
 					this.clearReconnectingLine();
-					this.showError(event.errorMessage);
+					if (!isMalformedJsonError(event.errorMessage)) {
+						this.showError(event.errorMessage);
+					}
 					this.showStatusIndicator(
 						new RetryStatusIndicator(this.ui, event.attempt, event.maxAttempts, event.delayMs),
 					);

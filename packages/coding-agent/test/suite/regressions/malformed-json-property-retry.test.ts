@@ -9,6 +9,10 @@ const malformedJsonErrors = [
 	"Error: Expected ',' or ']' after array element in JSON at position 4083 (line 1 column 4084)",
 	"Error: Unterminated string in JSON at position 2621 (line 1 column 2622)",
 	"Expected double-quoted property name in JSON at position 21751 (line 1 column 21752)",
+	"server_tool_stream_failed: JSONDecodeError: Illegal trailing comma before end of array: line 1 column 1705 (char 1704)",
+	"server_tool_stream_failed: JSONDecodeError: Expecting ',' delimiter: line 1 column 12 (char 11)",
+	"JSONDecodeError: Unterminated string starting at: line 1 column 4 (char 3)",
+	"server_tool_stream_failed: upstream tool stream closed",
 ];
 const networkUnstableMessage = "network unstable please try again";
 
@@ -23,6 +27,9 @@ describe("malformed JSON parse retry", () => {
 			await harness.session.prompt("test");
 			expect(harness.faux.state.callCount).toBe(2);
 			expect(harness.eventsOfType("auto_retry_end")).toMatchObject([{ success: true, attempt: 1 }]);
+			const persisted = JSON.stringify(harness.sessionManager.getEntries());
+			expect(persisted).not.toContain(errorMessage);
+			expect(persisted).toContain("recovered");
 		} finally {
 			harness.cleanup();
 		}

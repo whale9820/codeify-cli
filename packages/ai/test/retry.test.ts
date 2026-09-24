@@ -67,6 +67,11 @@ describe("provider retry classification", () => {
 		"Error: Expected ',' or ']' after array element in JSON at position 4083 (line 1 column 4084)",
 		"Error: Unterminated string in JSON at position 2621 (line 1 column 2622)",
 		"Expected double-quoted property name in JSON at position 21751 (line 1 column 21752)",
+		"server_tool_stream_failed: JSONDecodeError: Illegal trailing comma before end of array: line 1 column 1705 (char 1704)",
+		"server_tool_stream_failed: JSONDecodeError: Expecting ',' delimiter: line 1 column 12 (char 11)",
+		"JSONDecodeError: Unterminated string starting at: line 1 column 4 (char 3)",
+		"JSONDecodeError: Expecting value: line 1 column 1 (char 0)",
+		"server_tool_stream_failed: upstream tool stream closed",
 	])("matches malformed JSON error %s", (errorMessage) => {
 		expect(isRetryableAssistantError(fauxAssistantMessage("", { stopReason: "error", errorMessage }))).toBe(true);
 	});
@@ -123,6 +128,8 @@ describe("retryAssistantCall", () => {
 		"Error: Expected ',' or '}' after property value in JSON at position 4077 (line 1 column 4078)",
 		"Expected ',' or '}' after property value in JSON at position 8184 (line 1 column 8185)",
 		"Error: Expected ',' or ']' after array element in JSON at position 4083 (line 1 column 4084)",
+		"server_tool_stream_failed: JSONDecodeError: Illegal trailing comma before end of array: line 1 column 1705 (char 1704)",
+		"server_tool_stream_failed: upstream tool stream closed",
 	])("caps malformed JSON retries at three and retains the final diagnostic for %s", async (errorMessage) => {
 		const produce = vi.fn(async () => fauxAssistantMessage("", { stopReason: "error", errorMessage }));
 		const onRetryFinished = vi.fn();

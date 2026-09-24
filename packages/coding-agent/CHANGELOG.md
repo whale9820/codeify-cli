@@ -30,6 +30,7 @@
 - Increased default read tool limits to 256KB and 5,000 lines for large-context models (>=100k tokens) to eliminate multi-turn file chunk pagination loops.
 - Stripped line-number prefixes in edit diff matching to prevent target string mismatches when copying code from numbered views.
 - Retry malformed JSON property, unterminated-string, and double-quoted-property responses up to three times, collapse raw diagnostics, and report `network unstable please try again` on exhaustion.
+- Retry `server_tool_stream_failed` JSON decode errors, including trailing commas, without showing the raw error. Exhausted retries still report `network unstable please try again`.
 - Retry HTTP 5xx errors and request timeouts up to five times, and show `Reconnecting... (1/5)` in bold thinking text while reconnecting.
 - Render back-to-back bold spans (`**a****b**`) in thinking and assistant text as separate lines instead of one bold run containing literal asterisks.
 

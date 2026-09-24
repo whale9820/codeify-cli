@@ -103,6 +103,9 @@ describe("AssistantMessageComponent", () => {
 		"Expected ',' or '}' after property value in JSON at position 8184 (line 1 column 8185)",
 		"Unterminated string in JSON at position 2621",
 		"Expected double-quoted property name in JSON at position 21751",
+		"server_tool_stream_failed: JSONDecodeError: Illegal trailing comma before end of array: line 1 column 1705 (char 1704)",
+		"JSONDecodeError: Expecting ',' delimiter: line 1 column 12 (char 11)",
+		"server_tool_stream_failed: upstream tool stream closed",
 	])("collapses %s diagnostics until expanded", (parseError) => {
 		initTheme("dark");
 
