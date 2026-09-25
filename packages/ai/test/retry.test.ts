@@ -91,6 +91,8 @@ describe("provider retry classification", () => {
 		"500 status code (no body)",
 		"Request timed out.",
 		"Error: Request timed out.",
+		"no output within 30s",
+		"Error: no output within 30s",
 	])("reconnects on %s", (errorMessage) => {
 		expect(isReconnectableProviderError(errorMessage)).toBe(true);
 		expect(isRetryableAssistantError(fauxAssistantMessage("", { stopReason: "error", errorMessage }))).toBe(true);
@@ -211,7 +213,11 @@ describe("retryAssistantCall", () => {
 	});
 
 	it("retries HTTP 522 and request timeouts at least five times", async () => {
-		for (const errorMessage of ["API Error (522): 522 status code (no body)", "Request timed out."]) {
+		for (const errorMessage of [
+			"API Error (522): 522 status code (no body)",
+			"Request timed out.",
+			"no output within 30s",
+		]) {
 			const produce = vi.fn(async () => fauxAssistantMessage("", { stopReason: "error", errorMessage }));
 			const onRetryScheduled = vi.fn();
 			const res = await retryAssistantCall(produce, enabled, undefined, { onRetryScheduled });

@@ -146,7 +146,7 @@ describe("AgentSession retry", () => {
 		expect(created.session.isRetrying).toBe(false);
 	});
 
-	it.each(["API Error (522): 522 status code (no body)", "Request timed out."])(
+	it.each(["API Error (522): 522 status code (no body)", "Request timed out.", "no output within 30s"])(
 		"retries %s five times before stopping",
 		async (errorMessage) => {
 			const created = await createSession({ failCount: 99, maxRetries: 1, errorMessage });
