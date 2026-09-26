@@ -19,6 +19,7 @@ describe("InteractiveMode reconnect status", () => {
 				getReconnectAttempt: vi.fn(() => ({ attempt: 1, maxAttempts: 5 })),
 			},
 			showReconnectingLine: vi.fn(),
+			applyCitationSources: vi.fn(),
 			ui: { requestRender: vi.fn() },
 		};
 
@@ -54,6 +55,7 @@ describe("InteractiveMode reconnect status", () => {
 				getReconnectAttempt: vi.fn(() => undefined),
 			},
 			showReconnectingLine: vi.fn(),
+			applyCitationSources: vi.fn(),
 			ui: { requestRender: vi.fn() },
 		};
 
@@ -119,6 +121,22 @@ describe("InteractiveMode reconnect status", () => {
 		});
 		expect(timeoutHost.showReconnectingLine).toHaveBeenCalledWith(2, 5);
 		expect(timeoutHost.showStatusIndicator).not.toHaveBeenCalled();
+
+		const upstreamHost = {
+			...timeoutHost,
+			clearReconnectingLine: vi.fn(),
+			showReconnectingLine: vi.fn(),
+			showStatusIndicator: vi.fn(),
+		};
+		await handleEvent.call(upstreamHost, {
+			type: "auto_retry_start",
+			attempt: 1,
+			maxAttempts: 5,
+			delayMs: 2000,
+			errorMessage: "upstream_error: connection reset",
+		});
+		expect(upstreamHost.showReconnectingLine).toHaveBeenCalledWith(1, 5);
+		expect(upstreamHost.showStatusIndicator).not.toHaveBeenCalled();
 
 		const retryHost = {
 			...timeoutHost,

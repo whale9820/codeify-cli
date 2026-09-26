@@ -146,23 +146,26 @@ describe("AgentSession retry", () => {
 		expect(created.session.isRetrying).toBe(false);
 	});
 
-	it.each(["API Error (522): 522 status code (no body)", "Request timed out.", "no output within 30s"])(
-		"retries %s five times before stopping",
-		async (errorMessage) => {
-			const created = await createSession({ failCount: 99, maxRetries: 1, errorMessage });
-			const events: string[] = [];
-			created.session.subscribe((event) => {
-				if (event.type === "auto_retry_start") events.push(`start:${event.attempt}/${event.maxAttempts}`);
-				if (event.type === "auto_retry_end") events.push(`end:success=${event.success}`);
-			});
+	it.each([
+		"API Error (522): 522 status code (no body)",
+		"Request timed out.",
+		"no output within 30s",
+		"upstream_error: connection reset",
+		"upstream_error: ANYTHING_HERE",
+	])("retries %s five times before stopping", async (errorMessage) => {
+		const created = await createSession({ failCount: 99, maxRetries: 1, errorMessage });
+		const events: string[] = [];
+		created.session.subscribe((event) => {
+			if (event.type === "auto_retry_start") events.push(`start:${event.attempt}/${event.maxAttempts}`);
+			if (event.type === "auto_retry_end") events.push(`end:success=${event.success}`);
+		});
 
-			await created.session.prompt("Test");
+		await created.session.prompt("Test");
 
-			expect(created.getCallCount()).toBe(6);
-			expect(events).toEqual(["start:1/5", "start:2/5", "start:3/5", "start:4/5", "start:5/5", "end:success=false"]);
-			expect(created.session.isRetrying).toBe(false);
-		},
-	);
+		expect(created.getCallCount()).toBe(6);
+		expect(events).toEqual(["start:1/5", "start:2/5", "start:3/5", "start:4/5", "start:5/5", "end:success=false"]);
+		expect(created.session.isRetrying).toBe(false);
+	});
 
 	it("retries provider network_error failures", async () => {
 		const created = await createSession({ failCount: 0 });

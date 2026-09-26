@@ -93,6 +93,9 @@ describe("provider retry classification", () => {
 		"Error: Request timed out.",
 		"no output within 30s",
 		"Error: no output within 30s",
+		"upstream_error: connection reset",
+		"upstream_error: ANYTHING_HERE",
+		"Error: upstream_error: timeout",
 	])("reconnects on %s", (errorMessage) => {
 		expect(isReconnectableProviderError(errorMessage)).toBe(true);
 		expect(isRetryableAssistantError(fauxAssistantMessage("", { stopReason: "error", errorMessage }))).toBe(true);
@@ -217,6 +220,7 @@ describe("retryAssistantCall", () => {
 			"API Error (522): 522 status code (no body)",
 			"Request timed out.",
 			"no output within 30s",
+			"upstream_error: connection reset",
 		]) {
 			const produce = vi.fn(async () => fauxAssistantMessage("", { stopReason: "error", errorMessage }));
 			const onRetryScheduled = vi.fn();

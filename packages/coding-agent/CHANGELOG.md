@@ -33,6 +33,7 @@
 - Retry `server_tool_stream_failed` JSON decode errors, including trailing commas, without showing the raw error. Exhausted retries still report `network unstable please try again`.
 - Retry HTTP 5xx errors and request timeouts up to five times, and show `Reconnecting... (1/5)` in bold thinking text while reconnecting.
 - Retry errors containing `no output within 30s` up to five times and show `Reconnecting... (1/5)` while reconnecting.
+- Retry transport cuts of the form `upstream_error: ...` up to five times and show `Reconnecting... (1/5)` while reconnecting.
 - Render back-to-back bold spans (`**a****b**`) in thinking and assistant text as separate lines instead of one bold run containing literal asterisks.
 
 - Reduced installer disk usage by installing production dependencies for the low-memory build, cleaned up failed fresh checkouts, reclaimed Unix dependencies before Git updates, and made Git updates fetch the `main` branch explicitly.
