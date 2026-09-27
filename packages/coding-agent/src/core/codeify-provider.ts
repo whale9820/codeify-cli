@@ -128,8 +128,17 @@ function extractSupportsThinkingToggle(model: CodeifyModel): boolean {
 	);
 }
 
+function firstDeclaredStringList(candidates: unknown[]): string[] | undefined {
+	for (const candidate of candidates) {
+		if (Array.isArray(candidate)) {
+			return candidate.filter((entry): entry is string => typeof entry === "string");
+		}
+	}
+	return undefined;
+}
+
 function extractDeclaredThinkingLevels(model: CodeifyModel): string[] | undefined {
-	const primary = [
+	const declared = firstDeclaredStringList([
 		model.thinking_levels,
 		model.thinkingLevels,
 		model.thinking_modalities,
@@ -138,14 +147,6 @@ function extractDeclaredThinkingLevels(model: CodeifyModel): string[] | undefine
 		model.capabilities?.thinkingLevels,
 		model.capabilities?.thinking_modalities,
 		model.capabilities?.thinkingModalities,
-	];
-	for (const candidate of primary) {
-		if (Array.isArray(candidate)) {
-			return candidate.filter((entry): entry is string => typeof entry === "string");
-		}
-	}
-
-	const candidates = [
 		model.reasoning_efforts,
 		model.reasoningEfforts,
 		model.effort_levels,
@@ -165,13 +166,8 @@ function extractDeclaredThinkingLevels(model: CodeifyModel): string[] | undefine
 				model.reasoning.values ??
 				(Array.isArray(model.reasoning.effort) ? model.reasoning.effort : undefined))
 			: undefined,
-	];
-
-	for (const candidate of candidates) {
-		if (Array.isArray(candidate) && candidate.some((entry) => typeof entry === "string")) {
-			return candidate.filter((entry): entry is string => typeof entry === "string");
-		}
-	}
+	]);
+	if (declared !== undefined) return declared;
 
 	const reasoningOptions =
 		model.reasoning_options ??
@@ -183,7 +179,7 @@ function extractDeclaredThinkingLevels(model: CodeifyModel): string[] | undefine
 		const effortOption =
 			reasoningOptions.find((opt) => opt?.type === "effort" && Array.isArray(opt.values)) ??
 			reasoningOptions.find((opt) => Array.isArray(opt?.values));
-		if (effortOption?.values?.some((entry) => typeof entry === "string")) {
+		if (Array.isArray(effortOption?.values)) {
 			return effortOption.values.filter((entry): entry is string => typeof entry === "string");
 		}
 	} else if (reasoningOptions && typeof reasoningOptions === "object" && Array.isArray(reasoningOptions.values)) {

@@ -26,6 +26,7 @@
 
 ### Fixed
 
+- Treat empty Codeify thinking modality lists (`supported_reasoning_efforts`, `thinking_levels`, and the other catalog aliases) as empty instead of inventing low-through-max effort options.
 - Render OpenAI web search citation markers as source links, using the same `([domain](url))` form as a same-turn citation.
 - Matched web search transcript spacing to thinking blocks: one blank line above and one below.
 - Increased default read tool limits to 256KB and 5,000 lines for large-context models (>=100k tokens) to eliminate multi-turn file chunk pagination loops.

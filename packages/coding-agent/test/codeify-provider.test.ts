@@ -912,4 +912,76 @@ describe("Codeify provider", () => {
 			}),
 		).toEqual(["off", "low", "medium", "high"]);
 	});
+
+	it("does not invent effort levels when supported_reasoning_efforts is empty", async () => {
+		vi.spyOn(globalThis, "fetch").mockResolvedValue(
+			new Response(
+				JSON.stringify({
+					data: [
+						{
+							id: "minimax-m2.7",
+							supported_reasoning_efforts: [],
+							supports_thinking_toggle: true,
+						},
+						{
+							id: "minimax-m2.7-on-only",
+							supported_reasoning_efforts: [],
+						},
+					],
+				}),
+				{ status: 200 },
+			),
+		);
+
+		let stored: ModelsStoreEntry | undefined;
+		const store = {
+			read: async () => stored,
+			write: async (entry: ModelsStoreEntry) => {
+				stored = entry;
+			},
+			delete: async () => {},
+		};
+
+		const live = await codeifyProvider().refreshModels?.({
+			credential: { type: "api_key", key: "test-key" },
+			store,
+			allowNetwork: true,
+			force: true,
+		});
+
+		const toggleModel = live?.find((m) => m.id === "minimax-m2.7");
+		expect(toggleModel?.reasoning).toBe(true);
+		expect(
+			getSupportedThinkingLevels({
+				...toggleModel!,
+				api: "openai-responses",
+				provider: "codeify",
+				baseUrl: CODEIFY_BASE_URL,
+			}),
+		).toEqual(["off", "on"]);
+
+		const onOnly = live?.find((m) => m.id === "minimax-m2.7-on-only");
+		expect(
+			getSupportedThinkingLevels({
+				...onOnly!,
+				api: "openai-responses",
+				provider: "codeify",
+				baseUrl: CODEIFY_BASE_URL,
+			}),
+		).toEqual(["on"]);
+
+		const offline = await codeifyProvider().refreshModels?.({
+			credential: undefined,
+			store,
+			allowNetwork: false,
+		});
+		expect(
+			getSupportedThinkingLevels({
+				...offline!.find((m) => m.id === "minimax-m2.7")!,
+				api: "openai-responses",
+				provider: "codeify",
+				baseUrl: CODEIFY_BASE_URL,
+			}),
+		).toEqual(["off", "on"]);
+	});
 });
