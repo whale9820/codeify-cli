@@ -763,4 +763,153 @@ describe("Codeify provider", () => {
 			}),
 		).toEqual(["low", "high"]);
 	});
+
+	it("exposes off/on only when thinking modalities are empty and the toggle is on", async () => {
+		vi.spyOn(globalThis, "fetch").mockResolvedValue(
+			new Response(
+				JSON.stringify({
+					data: [
+						{
+							id: "toggle-empty",
+							thinking_levels: [],
+							supports_thinking_toggle: true,
+						},
+						{
+							id: "on-only",
+							thinking_levels: [],
+						},
+						{
+							id: "toggle-efforts",
+							thinking_levels: ["low", "medium", "high"],
+							supports_thinking_toggle: true,
+						},
+						{
+							id: "toggle-in-capabilities",
+							capabilities: {
+								thinking_levels: [],
+								supports_thinking_toggle: true,
+							},
+						},
+					],
+				}),
+				{ status: 200 },
+			),
+		);
+
+		let stored: ModelsStoreEntry | undefined;
+		const store = {
+			read: async () => stored,
+			write: async (entry: ModelsStoreEntry) => {
+				stored = entry;
+			},
+			delete: async () => {},
+		};
+
+		const live = await codeifyProvider().refreshModels?.({
+			credential: { type: "api_key", key: "test-key" },
+			store,
+			allowNetwork: true,
+			force: true,
+		});
+
+		const toggleEmpty = live?.find((m) => m.id === "toggle-empty");
+		expect(toggleEmpty?.reasoning).toBe(true);
+		expect(toggleEmpty?.thinkingLevelMap).toEqual({
+			off: "disabled",
+			on: "adaptive",
+			minimal: null,
+			low: null,
+			medium: null,
+			high: null,
+			xhigh: null,
+			max: null,
+		});
+		expect(
+			getSupportedThinkingLevels({
+				...toggleEmpty!,
+				api: "openai-responses",
+				provider: "codeify",
+				baseUrl: CODEIFY_BASE_URL,
+			}),
+		).toEqual(["off", "on"]);
+
+		const onOnly = live?.find((m) => m.id === "on-only");
+		expect(onOnly?.thinkingLevelMap).toEqual({
+			off: null,
+			on: "adaptive",
+			minimal: null,
+			low: null,
+			medium: null,
+			high: null,
+			xhigh: null,
+			max: null,
+		});
+		expect(
+			getSupportedThinkingLevels({
+				...onOnly!,
+				api: "openai-responses",
+				provider: "codeify",
+				baseUrl: CODEIFY_BASE_URL,
+			}),
+		).toEqual(["on"]);
+
+		const toggleEfforts = live?.find((m) => m.id === "toggle-efforts");
+		expect(toggleEfforts?.thinkingLevelMap).toEqual({
+			off: "disabled",
+			minimal: null,
+			low: "low",
+			medium: "medium",
+			high: "high",
+			xhigh: null,
+			max: null,
+		});
+		expect(
+			getSupportedThinkingLevels({
+				...toggleEfforts!,
+				api: "openai-responses",
+				provider: "codeify",
+				baseUrl: CODEIFY_BASE_URL,
+			}),
+		).toEqual(["off", "low", "medium", "high"]);
+
+		const fromCapabilities = live?.find((m) => m.id === "toggle-in-capabilities");
+		expect(
+			getSupportedThinkingLevels({
+				...fromCapabilities!,
+				api: "openai-responses",
+				provider: "codeify",
+				baseUrl: CODEIFY_BASE_URL,
+			}),
+		).toEqual(["off", "on"]);
+
+		const offline = await codeifyProvider().refreshModels?.({
+			credential: undefined,
+			store,
+			allowNetwork: false,
+		});
+		expect(
+			getSupportedThinkingLevels({
+				...offline!.find((m) => m.id === "toggle-empty")!,
+				api: "openai-responses",
+				provider: "codeify",
+				baseUrl: CODEIFY_BASE_URL,
+			}),
+		).toEqual(["off", "on"]);
+		expect(
+			getSupportedThinkingLevels({
+				...offline!.find((m) => m.id === "on-only")!,
+				api: "openai-responses",
+				provider: "codeify",
+				baseUrl: CODEIFY_BASE_URL,
+			}),
+		).toEqual(["on"]);
+		expect(
+			getSupportedThinkingLevels({
+				...offline!.find((m) => m.id === "toggle-efforts")!,
+				api: "openai-responses",
+				provider: "codeify",
+				baseUrl: CODEIFY_BASE_URL,
+			}),
+		).toEqual(["off", "low", "medium", "high"]);
+	});
 });

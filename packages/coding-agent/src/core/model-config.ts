@@ -54,6 +54,7 @@ const VercelGatewayRoutingSchema = Type.Object({
 const ThinkingLevelMapValueSchema = Type.Union([Type.String(), Type.Null()]);
 const ThinkingLevelMapSchema = Type.Object({
 	off: Type.Optional(ThinkingLevelMapValueSchema),
+	on: Type.Optional(ThinkingLevelMapValueSchema),
 	minimal: Type.Optional(ThinkingLevelMapValueSchema),
 	low: Type.Optional(ThinkingLevelMapValueSchema),
 	medium: Type.Optional(ThinkingLevelMapValueSchema),

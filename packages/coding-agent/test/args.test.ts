@@ -173,6 +173,11 @@ describe("parseArgs", () => {
 			expect(result.thinking).toBe("high");
 		});
 
+		test("parses --thinking on", () => {
+			const result = parseArgs(["--thinking", "on"]);
+			expect(result.thinking).toBe("on");
+		});
+
 		test("parses --models as comma-separated list", () => {
 			const result = parseArgs(["--models", "gpt-5.6-sol,claude-opus-5,gemini-3.6-flash"]);
 			expect(result.models).toEqual(["gpt-5.6-sol", "claude-opus-5", "gemini-3.6-flash"]);

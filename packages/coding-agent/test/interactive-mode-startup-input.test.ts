@@ -215,4 +215,14 @@ describe("InteractiveMode startup input", () => {
 		);
 		expect(context.session.setThinkingLevel).not.toHaveBeenCalled();
 	});
+
+	it("sets on through /thinking when it is available", () => {
+		const context = createThinkingCommandContext(["off", "on"]);
+
+		interactiveModePrototype.handleThinkingCommand.call(context, "/thinking on");
+
+		expect(context.session.setThinkingLevel).toHaveBeenCalledWith("on");
+		expect(context.showStatus).toHaveBeenCalledWith("Thinking level: on");
+		expect(context.showError).not.toHaveBeenCalled();
+	});
 });

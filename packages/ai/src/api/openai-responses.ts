@@ -85,7 +85,7 @@ function formatOpenAIResponsesError(error: unknown): string {
 
 // OpenAI Responses-specific options
 export interface OpenAIResponsesOptions extends StreamOptions {
-	reasoningEffort?: "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
+	reasoningEffort?: "on" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
 	reasoningSummary?: "auto" | "detailed" | "concise" | null;
 	serviceTier?: ResponseCreateParamsStreaming["service_tier"];
 	toolChoice?: ResponseCreateParamsStreaming["tool_choice"];
@@ -297,6 +297,9 @@ function buildParams(model: Model<"openai-responses">, context: Context, options
 	}
 
 	if (model.reasoning) {
+		const thinkingParams = params as ResponseCreateParamsStreaming & {
+			thinking?: { type: "adaptive" | "disabled" };
+		};
 		if (options?.reasoningEffort || options?.reasoningSummary) {
 			if (options?.reasoningEffort) {
 				const supported = getSupportedThinkingLevels(model);
@@ -305,16 +308,28 @@ function buildParams(model: Model<"openai-responses">, context: Context, options
 				}
 			}
 			const mappedEffort = options?.reasoningEffort ? model.thinkingLevelMap?.[options.reasoningEffort] : undefined;
-			const effort = mappedEffort !== undefined ? mappedEffort : (options?.reasoningEffort ?? "medium");
-			params.reasoning = {
-				effort: effort as NonNullable<typeof params.reasoning>["effort"],
-				summary: options?.reasoningSummary || "auto",
-			};
-			params.include = ["reasoning.encrypted_content"];
+			if (mappedEffort === "adaptive" || options?.reasoningEffort === "on") {
+				thinkingParams.thinking = { type: "adaptive" };
+				params.include = ["reasoning.encrypted_content"];
+			} else if (mappedEffort === "disabled") {
+				thinkingParams.thinking = { type: "disabled" };
+			} else {
+				const effort = mappedEffort !== undefined ? mappedEffort : (options?.reasoningEffort ?? "medium");
+				params.reasoning = {
+					effort: effort as NonNullable<typeof params.reasoning>["effort"],
+					summary: options?.reasoningSummary || "auto",
+				};
+				params.include = ["reasoning.encrypted_content"];
+			}
 		} else if (model.provider !== "github-copilot" && model.thinkingLevelMap?.off !== null) {
-			params.reasoning = {
-				effort: (model.thinkingLevelMap?.off ?? "none") as NonNullable<typeof params.reasoning>["effort"],
-			};
+			const mappedOff = model.thinkingLevelMap?.off ?? "none";
+			if (mappedOff === "disabled") {
+				thinkingParams.thinking = { type: "disabled" };
+			} else {
+				params.reasoning = {
+					effort: mappedOff as NonNullable<typeof params.reasoning>["effort"],
+				};
+			}
 		}
 		if (model.provider === "xai") params.include = ["reasoning.encrypted_content"];
 	}

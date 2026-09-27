@@ -409,6 +409,8 @@ export class Theme {
 		switch (level) {
 			case "off":
 				return (str: string) => this.fg("thinkingOff", str);
+			case "on":
+				return (str: string) => this.fg("thinkingHigh", str);
 			case "minimal":
 				return (str: string) => this.fg("thinkingMinimal", str);
 			case "low":

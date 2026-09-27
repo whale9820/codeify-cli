@@ -4,6 +4,7 @@
 
 ### Added
 
+- Honor Codeify `/v1/models` `supports_thinking_toggle`: `/thinking` prepends `off`, and empty thinking modality lists expose `on` instead of invented effort levels. Off sends `thinking: { type: "disabled" }`; on sends `thinking: { type: "adaptive" }`.
 - Send the hosted Responses `web_search` tool on Codeify requests so the model can search the web, and show those searches in the transcript.
 - Render assistant text wrapped in thinking tags (`<think>`, `<thinking>`) as thinking blocks in interactive mode, styled like structured reasoning blocks.
 - Added model support for Step 5 Preview and dynamic metadata extraction from the Codeify models endpoint, including context windows, output limits, vision/video modalities, and thinking levels.

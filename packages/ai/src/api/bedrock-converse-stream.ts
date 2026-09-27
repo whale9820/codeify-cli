@@ -1030,6 +1030,7 @@ function buildAdditionalModelRequestFields(
 				}
 			: (() => {
 					const defaultBudgets: Record<ThinkingLevel, number> = {
+						on: 16384,
 						minimal: 1024,
 						low: 2048,
 						medium: 8192,
@@ -1039,7 +1040,10 @@ function buildAdditionalModelRequestFields(
 					};
 
 					// Custom budgets only cover token-based levels through high.
-					const level = options.reasoning === "xhigh" || options.reasoning === "max" ? "high" : options.reasoning;
+					const level =
+						options.reasoning === "on" || options.reasoning === "xhigh" || options.reasoning === "max"
+							? "high"
+							: options.reasoning;
 					const budget = options.thinkingBudgets?.[level] ?? defaultBudgets[options.reasoning];
 
 					return {

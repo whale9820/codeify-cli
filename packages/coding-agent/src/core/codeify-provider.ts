@@ -51,6 +51,8 @@ type CodeifyModel = {
 		vision?: boolean;
 		thinking_levels?: string[];
 		thinkingLevels?: string[];
+		thinking_modalities?: string[];
+		thinkingModalities?: string[];
 		reasoning_efforts?: string[];
 		reasoningEfforts?: string[];
 		effort_levels?: string[];
@@ -61,9 +63,15 @@ type CodeifyModel = {
 		reasoningOptions?: Array<{ type?: string; values?: string[] }> | { values?: string[] };
 		thinkingLevelMap?: Model<"openai-responses">["thinkingLevelMap"];
 		thinking_level_map?: Model<"openai-responses">["thinkingLevelMap"];
+		supports_thinking_toggle?: boolean;
+		supportsThinkingToggle?: boolean;
 	};
 	thinking_levels?: string[];
 	thinkingLevels?: string[];
+	thinking_modalities?: string[];
+	thinkingModalities?: string[];
+	supports_thinking_toggle?: boolean;
+	supportsThinkingToggle?: boolean;
 	reasoning_efforts?: string[];
 	reasoningEfforts?: string[];
 	effort_levels?: string[];
@@ -90,6 +98,7 @@ type StoredCodeifyModel = Model<"openai-responses"> & {
 	inputModalities?: string[];
 	declaredReasoning?: boolean;
 	declaredThinkingLevels?: string[];
+	supportsThinkingToggle?: boolean;
 };
 
 function positiveNumber(value: number | undefined): number | undefined {
@@ -110,18 +119,39 @@ function pricingToCost(pricing: CodeifyModel["pricing"]): ModelCost | undefined 
 	};
 }
 
+function extractSupportsThinkingToggle(model: CodeifyModel): boolean {
+	return (
+		model.supports_thinking_toggle === true ||
+		model.supportsThinkingToggle === true ||
+		model.capabilities?.supports_thinking_toggle === true ||
+		model.capabilities?.supportsThinkingToggle === true
+	);
+}
+
 function extractDeclaredThinkingLevels(model: CodeifyModel): string[] | undefined {
-	const candidates = [
+	const primary = [
 		model.thinking_levels,
 		model.thinkingLevels,
+		model.thinking_modalities,
+		model.thinkingModalities,
+		model.capabilities?.thinking_levels,
+		model.capabilities?.thinkingLevels,
+		model.capabilities?.thinking_modalities,
+		model.capabilities?.thinkingModalities,
+	];
+	for (const candidate of primary) {
+		if (Array.isArray(candidate)) {
+			return candidate.filter((entry): entry is string => typeof entry === "string");
+		}
+	}
+
+	const candidates = [
 		model.reasoning_efforts,
 		model.reasoningEfforts,
 		model.effort_levels,
 		model.effortLevels,
 		model.supported_thinking_levels,
 		model.supported_reasoning_efforts,
-		model.capabilities?.thinking_levels,
-		model.capabilities?.thinkingLevels,
 		model.capabilities?.reasoning_efforts,
 		model.capabilities?.reasoningEfforts,
 		model.capabilities?.effort_levels,
@@ -175,6 +205,19 @@ function extractDeclaredThinkingMap(model: CodeifyModel): Model<"openai-response
 	return undefined;
 }
 
+function emptyThinkingModalitiesMap(offValue: string | null): Model<"openai-responses">["thinkingLevelMap"] {
+	return {
+		off: offValue,
+		on: "adaptive",
+		minimal: null,
+		low: null,
+		medium: null,
+		high: null,
+		xhigh: null,
+		max: null,
+	};
+}
+
 function resolveThinkingLevelMap(
 	model: CodeifyModel,
 	reasoning: boolean,
@@ -183,15 +226,22 @@ function resolveThinkingLevelMap(
 		return { off: null };
 	}
 
+	const supportsToggle = extractSupportsThinkingToggle(model);
 	const declaredLevels = extractDeclaredThinkingLevels(model);
 	if (declaredLevels) {
+		if (declaredLevels.length === 0) {
+			return emptyThinkingModalitiesMap(supportsToggle ? "disabled" : null);
+		}
+
 		const normalized = new Set(declaredLevels.map((l) => l.trim().toLowerCase()));
 		const hasNone = normalized.has("none");
 		const hasOff = normalized.has("off") || normalized.has("disabled");
-		const offValue: string | null = hasNone ? "none" : hasOff ? "off" : null;
+		const hasOn = normalized.has("on") || normalized.has("adaptive");
+		const offValue: string | null = supportsToggle ? "disabled" : hasNone ? "none" : hasOff ? "off" : null;
 
 		return {
 			off: offValue,
+			...(hasOn ? { on: "adaptive" } : {}),
 			minimal: normalized.has("minimal") ? "minimal" : null,
 			low: normalized.has("low") ? "low" : null,
 			medium: normalized.has("medium") ? "medium" : null,
@@ -204,10 +254,10 @@ function resolveThinkingLevelMap(
 
 	const declaredMap = extractDeclaredThinkingMap(model);
 	if (declaredMap) {
-		return declaredMap;
+		return supportsToggle ? { ...declaredMap, off: "disabled" } : declaredMap;
 	}
 
-	return { off: "none", xhigh: "xhigh", max: "max" };
+	return { off: supportsToggle ? "disabled" : "none", xhigh: "xhigh", max: "max" };
 }
 
 function supportsReasoning(id: string, model: CodeifyModel): boolean {
@@ -318,7 +368,8 @@ function cachedCodeifyModel(model: StoredCodeifyModel): CodeifyModel {
 		max_tokens: model.maxTokens,
 		cost: model.cost,
 		input_modalities: input,
-		...(model.declaredThinkingLevels?.length ? { thinking_levels: model.declaredThinkingLevels } : {}),
+		...(model.declaredThinkingLevels !== undefined ? { thinking_levels: model.declaredThinkingLevels } : {}),
+		...(model.supportsThinkingToggle ? { supports_thinking_toggle: true } : {}),
 		...(model.declaredReasoning === undefined && /^gpt-6/i.test(model.id) && !model.reasoning
 			? {}
 			: {
@@ -379,12 +430,14 @@ async function fetchModels(
 		const declaredReasoning =
 			model.capabilities?.reasoning ?? (typeof model.reasoning === "boolean" ? model.reasoning : undefined);
 		const declaredThinkingLevels = extractDeclaredThinkingLevels(model);
+		const supportsThinkingToggle = extractSupportsThinkingToggle(model);
 		definitions.push(definition);
 		storedModels.push({
 			...definition,
 			...(inputModalities?.length ? { inputModalities } : {}),
 			...(declaredReasoning !== undefined ? { declaredReasoning } : {}),
-			...(declaredThinkingLevels?.length ? { declaredThinkingLevels } : {}),
+			...(declaredThinkingLevels !== undefined ? { declaredThinkingLevels } : {}),
+			...(supportsThinkingToggle ? { supportsThinkingToggle: true } : {}),
 			api: "openai-responses",
 			provider: CODEIFY_PROVIDER_ID,
 			baseUrl: CODEIFY_BASE_URL,
