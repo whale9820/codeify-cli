@@ -6,9 +6,14 @@
  */
 
 import type { AgentMessage, StreamFn } from "codeify-agent-core";
-import type { RetryCallbacks, RetryPolicy } from "codeify-ai";
-import { contentText } from "codeify-ai";
-import type { Model, SimpleStreamOptions, Usage } from "codeify-ai/compat";
+import {
+	contentText,
+	type Model,
+	type RetryCallbacks,
+	type RetryPolicy,
+	type SimpleStreamOptions,
+	type Usage,
+} from "codeify-ai";
 import {
 	convertToLlm,
 	createBranchSummaryMessage,

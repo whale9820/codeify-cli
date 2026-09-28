@@ -480,12 +480,6 @@ export async function main(args: string[]) {
 		process.env.CODEIFY_OFFLINE = "1";
 	}
 
-	const cwd = process.cwd();
-	const agentDir = getAgentDir();
-	const bootstrapSettingsManager = SettingsManager.create(cwd, agentDir, { projectTrusted: false });
-	applyHttpProxySettings(bootstrapSettingsManager.getGlobalSettings().httpProxy);
-	configureHttpDispatcher();
-
 	const parsed = parseArgs(args);
 	if (parsed.diagnostics.length > 0) {
 		for (const d of parsed.diagnostics) {
@@ -502,6 +496,17 @@ export async function main(args: string[]) {
 		console.log(VERSION);
 		process.exit(0);
 	}
+
+	if (parsed.help) {
+		printHelp();
+		process.exit(0);
+	}
+
+	const cwd = process.cwd();
+	const agentDir = getAgentDir();
+	const bootstrapSettingsManager = SettingsManager.create(cwd, agentDir, { projectTrusted: false });
+	applyHttpProxySettings(bootstrapSettingsManager.getGlobalSettings().httpProxy);
+	configureHttpDispatcher();
 
 	if (parsed.export) {
 		let result: string;
@@ -623,6 +628,13 @@ export async function main(args: string[]) {
 			agentDir,
 			settingsManager: runtimeSettingsManager,
 			includeBuiltinProviders: false,
+			allowNetwork:
+				!offlineMode &&
+				(appMode === "print" ||
+					appMode === "json" ||
+					parsed.listModels !== undefined ||
+					parsed.model !== undefined ||
+					parsed.models !== undefined),
 			resourceLoaderReloadOptions: shouldResolveProjectTrust
 				? {
 						resolveProjectTrust: async () => {
@@ -735,13 +747,9 @@ export async function main(args: string[]) {
 	applyHttpProxySettings(settingsManager.getGlobalSettings().httpProxy);
 	configureHttpDispatcher(settingsManager.getHttpIdleTimeoutMs());
 
-	if (parsed.help) {
-		printHelp();
-		process.exit(0);
-	}
-
 	if (parsed.listModels !== undefined) {
 		const searchPattern = typeof parsed.listModels === "string" ? parsed.listModels : undefined;
+		reportDiagnostics(runtime.diagnostics);
 		await listModels(modelRuntime, searchPattern);
 		process.exit(0);
 	}
@@ -804,6 +812,7 @@ export async function main(args: string[]) {
 		if (startupBenchmark) {
 			await interactiveMode.init();
 			time("interactiveMode.init");
+			console.error(`CODEIFY_STARTUP_READY_MS=${(process.uptime() * 1000).toFixed(1)}`);
 			// Give the TUI's stdin handler a brief chance to consume terminal query replies
 			// (Kitty keyboard protocol, device attributes, cell size) before restoring the terminal.
 			await new Promise((resolve) => setTimeout(resolve, 150));

@@ -34,32 +34,30 @@ export function radiusProvider(options: RadiusProviderOptions = {}): Provider<"p
 		},
 		getModels: () => models,
 		refreshModels: (context) => {
-			inflightRefresh ??= (async () => {
-				try {
-					const stored = await context.store.read();
-					if (stored) models = stored.models.filter((model) => model.provider === id) as typeof models;
+			const run = async () => {
+				const stored = await context.store.read();
+				if (stored) models = stored.models.filter((model) => model.provider === id) as typeof models;
 
-					// Import catalogs cached by the pre-ModelsStore Radius implementation.
-					if (!stored && context.credential?.type === "oauth") {
-						const legacy = getRadiusModels(id, context.credential);
-						if (legacy.length > 0) {
-							models = legacy;
-							await context.store.write({ models: legacy, checkedAt: Date.now() });
-						}
+				if (!stored && context.credential?.type === "oauth") {
+					const legacy = getRadiusModels(id, context.credential);
+					if (legacy.length > 0) {
+						models = legacy;
+						await context.store.write({ models: legacy, checkedAt: Date.now() });
 					}
-
-					if (!context.allowNetwork || context.signal?.aborted) return;
-					const apiKey =
-						context.credential?.type === "oauth" ? context.credential.access : context.credential?.key;
-					const config = await loadRadiusGatewayConfig(gateway, apiKey, context.signal);
-					if (context.signal?.aborted) return;
-					models = getRadiusModelsFromConfig(id, config);
-					await context.store.write({ models, checkedAt: Date.now() });
-				} finally {
-					inflightRefresh = undefined;
 				}
-			})();
-			return inflightRefresh;
+
+				if (!context.allowNetwork || context.signal?.aborted) return;
+				const apiKey = context.credential?.type === "oauth" ? context.credential.access : context.credential?.key;
+				const config = await loadRadiusGatewayConfig(gateway, apiKey, context.signal);
+				if (context.signal?.aborted) return;
+				models = getRadiusModelsFromConfig(id, config);
+				await context.store.write({ models, checkedAt: Date.now() });
+			};
+			const current = (inflightRefresh ?? Promise.resolve()).then(run, run).finally(() => {
+				if (inflightRefresh === current) inflightRefresh = undefined;
+			});
+			inflightRefresh = current;
+			return current;
 		},
 		stream: (model, context, streamOptions) => streams.stream(model, context, streamOptions),
 		streamSimple: (model, context, streamOptions) => streams.streamSimple(model, context, streamOptions),

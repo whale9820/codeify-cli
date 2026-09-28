@@ -221,7 +221,7 @@ function parseStartupTimings(stderr) {
 	let inBlock = false;
 
 	for (const line of lines) {
-		if (line.includes("--- Startup Timings ---")) {
+		if (line.includes("--- Startup Timings")) {
 			inBlock = true;
 			continue;
 		}
@@ -358,7 +358,7 @@ function getRuntimeCommand(runtime, mode, profileDir, profileName, cpuProfile) {
 }
 
 function createBenchmarkEnv(options, isolatedAgentDir) {
-	const env = { ...process.env };
+	const env = { ...process.env, CODEIFY_TIMING: "1" };
 	if (options.agentDir) {
 		env[agentDirEnvName] = options.agentDir;
 	} else if (isolatedAgentDir) {
@@ -384,26 +384,31 @@ async function runTuiBenchmarkRun({ runtime, runIndex, measuredIndex, options, p
 	}
 
 	const command = getRuntimeCommand(runtime, "tui", profileDir, profileName, options.cpuProfile);
+	const startedAt = performance.now();
 	const child = spawn(command.executable, command.args, {
 		cwd: packageDir,
 		env: createBenchmarkEnv(options, isolatedAgentDir),
-		stdio: ["inherit", "ignore", "pipe"],
+		stdio: ["inherit", "inherit", "pipe"],
 		shell: process.platform === "win32" && runtime === "bun",
 	});
 
 	let stderr = "";
+	let readyElapsedMs;
 	child.stderr.setEncoding("utf8");
 	child.stderr.on("data", (chunk) => {
 		stderr += chunk;
+		if (readyElapsedMs === undefined && /CODEIFY_STARTUP_READY_MS=\d+(?:\.\d+)?/.test(stderr)) {
+			readyElapsedMs = performance.now() - startedAt;
+		}
 	});
 
-	const startedAt = performance.now();
 	const exitCode = await waitForExit(child, `Benchmark ${measuredIndex === undefined ? `warmup ${runNumber}` : `run ${measuredIndex}`}`);
-	const elapsedMs = performance.now() - startedAt;
-
 	try {
 		if (exitCode !== 0) {
 			throw new Error(stderr.trim() || `Benchmark child exited with code ${exitCode}`);
+		}
+		if (readyElapsedMs === undefined) {
+			throw new Error(stderr.trim() || "TUI benchmark did not reach UI-ready state; rebuild the CLI before profiling.");
 		}
 
 		const profilePath = options.cpuProfile ? join(profileDir, profileName) : undefined;
@@ -411,7 +416,7 @@ async function runTuiBenchmarkRun({ runtime, runIndex, measuredIndex, options, p
 			throw new Error(`CPU profile was not written: ${profilePath}`);
 		}
 
-		return { elapsedMs, profilePath, timings: parseStartupTimings(stderr) };
+		return { elapsedMs: readyElapsedMs, profilePath, timings: parseStartupTimings(stderr) };
 	} finally {
 		if (tempRoot) {
 			rmSync(tempRoot, { recursive: true, force: true });
@@ -443,6 +448,7 @@ async function runRpcBenchmarkRun({ runtime, runIndex, measuredIndex, options, p
 	}
 
 	const command = getRuntimeCommand(runtime, "rpc", profileDir, profileName, options.cpuProfile);
+	const startedAt = performance.now();
 	const child = spawn(command.executable, command.args, {
 		cwd: packageDir,
 		env: createBenchmarkEnv(options, isolatedAgentDir),
@@ -455,7 +461,6 @@ async function runRpcBenchmarkRun({ runtime, runIndex, measuredIndex, options, p
 	let readyElapsedMs;
 	let responseError;
 	const requestId = `startup-benchmark-${runNumber}`;
-	const startedAt = performance.now();
 
 	child.stdout.setEncoding("utf8");
 	child.stdout.on("data", (chunk) => {

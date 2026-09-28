@@ -12,7 +12,9 @@
 
 ### Changed
 
-- Removed synthetic fallback model generation for Codeify models and load the authoritative model catalog upfront during startup initialization.
+- Show `--help` and `--version` before loading settings or creating a session runtime.
+- Start interactive and RPC sessions from the cached model catalog instead of blocking on API discovery. Refresh in the background while preserving synchronous discovery for print mode, model listing, and explicit model selection.
+- Measure startup until the UI is ready rather than including terminal cleanup, and restore per-phase timing output in the profiling script.
 - Synchronized AgentSession.model and thinking levels with runtime catalog refreshes, ensuring the thinking and effort dropdowns always reflect the active model's declared reasoning capabilities.
 - Renamed build outputs and installer messages from low-memory mode to standard build and install.
 - Enforced model-supported thinking levels from endpoint metadata, restricting reasoning effort to only declared levels and disallowing unsupported effort levels.
@@ -26,6 +28,7 @@
 
 ### Fixed
 
+- Make Copilot availability tests independent of catalog changes and isolate the faux-provider test harness from real providers and ambient API keys.
 - Treat empty Codeify thinking modality lists (`supported_reasoning_efforts`, `thinking_levels`, and the other catalog aliases) as empty instead of inventing low-through-max effort options.
 - Render OpenAI web search citation markers as source links, using the same `([domain](url))` form as a same-turn citation.
 - Matched web search transcript spacing to thinking blocks: one blank line above and one below.

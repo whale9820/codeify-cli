@@ -111,14 +111,22 @@ export async function createAgentSessionServices(
 	await resourceLoader.reload(options.resourceLoaderReloadOptions);
 
 	const diagnostics: AgentSessionRuntimeDiagnostic[] = [];
-	const allowNetwork = options.allowNetwork ?? !process.env.CODEIFY_OFFLINE;
-	try {
-		await modelRuntime.refresh({ allowNetwork });
-	} catch (error) {
-		diagnostics.push({
-			type: "warning",
-			message: `Could not load models from Codeify API: ${error instanceof Error ? error.message : String(error)}. Reopen Codeify to try again.`,
-		});
+	const allowNetwork = (options.allowNetwork ?? true) && !process.env.CODEIFY_OFFLINE;
+	if (allowNetwork) {
+		try {
+			const result = await modelRuntime.refresh({ allowNetwork: true, force: true });
+			for (const [providerId, error] of result.errors) {
+				diagnostics.push({
+					type: "warning",
+					message: `Could not refresh models for ${providerId}: ${error.message}. Using the cached catalog.`,
+				});
+			}
+		} catch (error) {
+			diagnostics.push({
+				type: "warning",
+				message: `Could not load models from Codeify API: ${error instanceof Error ? error.message : String(error)}. Reopen Codeify to try again.`,
+			});
+		}
 	}
 
 	return {

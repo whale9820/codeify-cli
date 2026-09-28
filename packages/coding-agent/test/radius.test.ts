@@ -34,21 +34,31 @@ function radiusConfig(baseUrl: string) {
 	};
 }
 
+function createRadiusRuntime(options: Parameters<typeof ModelRuntime.create>[0] = {}) {
+	return ModelRuntime.create({
+		includeBuiltinProviders: true,
+		...options,
+	});
+}
+
 let tempDir: string;
 
 beforeEach(() => {
+	vi.stubEnv("CODEIFY_API_KEY", undefined);
+	vi.stubEnv("CODEIFY_OFFLINE", undefined);
 	tempDir = join(tmpdir(), `pi-test-radius-${Date.now()}-${Math.random().toString(36).slice(2)}`);
 	mkdirSync(tempDir, { recursive: true });
 });
 
 afterEach(() => {
 	vi.restoreAllMocks();
+	vi.unstubAllEnvs();
 	if (tempDir && existsSync(tempDir)) rmSync(tempDir, { recursive: true });
 });
 
 describe("Radius provider", () => {
 	it("restores the legacy credential catalog without network access", async () => {
-		const runtime = await ModelRuntime.create({
+		const runtime = await createRadiusRuntime({
 			credentials: AuthStorage.inMemory({
 				[RADIUS_PROVIDER_ID]: radiusOAuthCredential("https://radius.example.com/v1"),
 			}),
@@ -79,7 +89,7 @@ describe("Radius provider", () => {
 				expires: Date.now() + 60 * 60 * 1000,
 			},
 		});
-		const runtime = await ModelRuntime.create({
+		const runtime = await createRadiusRuntime({
 			credentials,
 			modelsStore,
 			modelsPath: null,
@@ -93,7 +103,7 @@ describe("Radius provider", () => {
 
 	it("does not refresh catalogs over the network by default", async () => {
 		const fetchSpy = vi.spyOn(globalThis, "fetch");
-		const runtime = await ModelRuntime.create({
+		const runtime = await createRadiusRuntime({
 			credentials: AuthStorage.inMemory({
 				[RADIUS_PROVIDER_ID]: radiusOAuthCredential("https://radius.example.com/v1"),
 			}),
@@ -107,7 +117,7 @@ describe("Radius provider", () => {
 
 	it("does not fetch or expose Radius models without configured auth", async () => {
 		const fetchSpy = vi.spyOn(globalThis, "fetch");
-		const runtime = await ModelRuntime.create({
+		const runtime = await createRadiusRuntime({
 			credentials: AuthStorage.inMemory(),
 			modelsStore: new InMemoryModelsStore(),
 			modelsPath: null,
@@ -129,7 +139,7 @@ describe("Radius provider", () => {
 				providers: { "radius-dev": { name: "Radius (dev)", baseUrl: "http://localhost:8788", oauth: "radius" } },
 			}),
 		);
-		const runtime = await ModelRuntime.create({
+		const runtime = await createRadiusRuntime({
 			credentials: AuthStorage.inMemory({
 				"radius-dev": {
 					type: "oauth",
@@ -153,7 +163,7 @@ describe("Radius provider", () => {
 	it("requires baseUrl for custom Radius gateways", async () => {
 		const modelsPath = join(tempDir, "models.json");
 		writeFileSync(modelsPath, JSON.stringify({ providers: { "radius-dev": { oauth: "radius" } } }));
-		const runtime = await ModelRuntime.create({
+		const runtime = await createRadiusRuntime({
 			credentials: AuthStorage.inMemory(),
 			modelsStore: new InMemoryModelsStore(),
 			modelsPath,

@@ -52,14 +52,18 @@ async function createCloudflareRuntime(): Promise<{ modelRuntime: ModelRuntime; 
 			CLOUDFLARE_GATEWAY_ID: "test-gateway",
 		},
 	}));
-	const modelRuntime = await ModelRuntime.create({ credentials: authStorage, modelsPath: null });
+	const modelRuntime = await ModelRuntime.create({
+		credentials: authStorage,
+		modelsPath: null,
+		includeBuiltinProviders: true,
+	});
 	return { modelRuntime, modelRegistry: new ModelRegistry(modelRuntime) };
 }
 
 describe("ModelRegistry Cloudflare compat streaming", () => {
 	it("materializes the Cloudflare endpoint through ModelRuntime streaming", async () => {
 		const { modelRuntime } = await createCloudflareRuntime();
-		const model = modelRuntime.getModel("cloudflare-ai-gateway", "workers-ai/@cf/moonshotai/kimi-k2.5");
+		const model = modelRuntime.getModel("cloudflare-ai-gateway", "workers-ai/@cf/moonshotai/kimi-k2.6");
 		expect(model).toBeDefined();
 
 		resetApiProviders();
@@ -75,7 +79,7 @@ describe("ModelRegistry Cloudflare compat streaming", () => {
 
 	it("materializes the Cloudflare endpoint after configured auth resolution", async () => {
 		const { modelRegistry } = await createCloudflareRuntime();
-		const model = modelRegistry.find("cloudflare-ai-gateway", "workers-ai/@cf/moonshotai/kimi-k2.5");
+		const model = modelRegistry.find("cloudflare-ai-gateway", "workers-ai/@cf/moonshotai/kimi-k2.6");
 		expect(model).toBeDefined();
 
 		resetApiProviders();

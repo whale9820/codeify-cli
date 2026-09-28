@@ -1,4 +1,3 @@
-import { createInMemoryModelRegistry, getModelRuntime } from "../model-runtime-test-utils.ts";
 /**
  * Local test harness for the new coding-agent test suite.
  */
@@ -12,6 +11,7 @@ import type { FauxModelDefinition, FauxProviderRegistration, FauxResponseStep, M
 import { registerFauxProvider, streamSimple } from "codeify-ai/compat";
 import { AgentSession, type AgentSessionEvent } from "../../src/core/agent-session.ts";
 import { AuthStorage } from "../../src/core/auth-storage.ts";
+import { ModelRuntime } from "../../src/core/model-runtime.ts";
 import type { ResourceLoader } from "../../src/core/resource-loader.ts";
 import { SessionManager } from "../../src/core/session-manager.ts";
 import type { Settings } from "../../src/core/settings-manager.ts";
@@ -101,9 +101,15 @@ export async function createHarness(options: HarnessOptions = {}): Promise<Harne
 	if (withConfiguredAuth) {
 		await authStorage.modify(model.provider, async () => ({ type: "api_key", key: "faux-key" }));
 	}
-	const modelRegistry = await createInMemoryModelRegistry(authStorage);
+	const modelRuntime = await ModelRuntime.create({
+		credentials: authStorage,
+		modelsPath: null,
+		allowModelNetwork: false,
+		includeBuiltinProviders: false,
+	});
+	modelRuntime.unregisterProvider("codeify");
 	if (withConfiguredAuth) {
-		modelRegistry.registerProvider(model.provider, {
+		modelRuntime.registerProvider(model.provider, {
 			baseUrl: model.baseUrl,
 			apiKey: "faux-key",
 			api: fauxProvider.api,
@@ -120,6 +126,7 @@ export async function createHarness(options: HarnessOptions = {}): Promise<Harne
 			})),
 		});
 	}
+	await modelRuntime.refresh({ allowNetwork: false });
 
 	const agent = new Agent({
 		getApiKey: () => (withConfiguredAuth ? "faux-key" : undefined),
@@ -137,7 +144,7 @@ export async function createHarness(options: HarnessOptions = {}): Promise<Harne
 		sessionManager,
 		settingsManager,
 		cwd: tempDir,
-		modelRuntime: getModelRuntime(modelRegistry),
+		modelRuntime,
 		resourceLoader,
 		baseToolsOverride: toolMap,
 		initialActiveToolNames: options.initialActiveToolNames,

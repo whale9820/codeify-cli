@@ -1,4 +1,4 @@
-import type { Usage } from "codeify-ai/compat";
+import type { Usage } from "codeify-ai";
 import type { SessionEntry } from "./session-manager.ts";
 
 export interface UsageTotals {

@@ -1797,24 +1797,42 @@ describe("ModelRegistry", () => {
 				expect(count).toBe(0);
 			});
 
-			test("getAvailable filters GitHub Copilot OAuth models to account picker availability", async () => {
-				await authStorage.modify("github-copilot", async () => ({
-					type: "oauth",
-					refresh: "github-access-token",
-					access: "tid=test;exp=9999999999;proxy-ep=proxy.individual.githubcopilot.com;",
-					expires: Date.now() + 60_000,
-					availableModelIds: ["gpt-4.1"],
-				}));
+			test.each([
+				{ availableModelIds: ["copilot-allowed"], expected: ["copilot-allowed"] },
+				{ availableModelIds: [], expected: [] },
+				{ availableModelIds: ["copilot-missing"], expected: [] },
+				{ availableModelIds: ["copilot-allowed", "copilot-missing"], expected: ["copilot-allowed"] },
+			])(
+				"getAvailable filters GitHub Copilot OAuth models to $availableModelIds",
+				async ({ availableModelIds, expected }) => {
+					writeRawModelsJson({
+						"github-copilot": providerConfig(
+							"https://copilot.example.test/v1",
+							[{ id: "copilot-allowed" }, { id: "copilot-denied" }],
+							"openai-completions",
+						),
+					});
+					await authStorage.modify("github-copilot", async () => ({
+						type: "oauth",
+						refresh: "github-access-token",
+						access: "tid=test;exp=9999999999;proxy-ep=proxy.individual.githubcopilot.com;",
+						expires: Date.now() + 60_000,
+						availableModelIds,
+					}));
 
-				const registry = await createModelRegistry(authStorage, modelsJsonPath);
+					const registry = await createModelRegistry(authStorage, modelsJsonPath);
 
-				expect(
-					registry
-						.getAvailable()
-						.filter((m) => m.provider === "github-copilot")
-						.map((m) => m.id),
-				).toEqual(["gpt-4.1"]);
-			});
+					expect(getModelsForProvider(registry, "github-copilot").map((model) => model.id)).toEqual(
+						expect.arrayContaining(["copilot-allowed", "copilot-denied"]),
+					);
+					expect(
+						registry
+							.getAvailable()
+							.filter((m) => m.provider === "github-copilot")
+							.map((m) => m.id),
+					).toEqual(expected);
+				},
+			);
 
 			test("getApiKeyAndHeaders resolves authHeader on every request", async () => {
 				const tokenFile = join(tempDir, "token");

@@ -10,6 +10,7 @@ import * as path from "node:path";
 import chalk from "chalk";
 import { spawn, spawnSync } from "child_process";
 import type { AgentMessage, ThinkingLevel } from "codeify-agent-core";
+import type { AssistantMessage, ImageContent, Message, Model } from "codeify-ai";
 import {
 	type AuthEvent,
 	type AuthPrompt,
@@ -18,7 +19,6 @@ import {
 	isReconnectableProviderError,
 	NETWORK_UNSTABLE_ERROR_MESSAGE,
 } from "codeify-ai";
-import type { AssistantMessage, ImageContent, Message, Model } from "codeify-ai/compat";
 import type {
 	AutocompleteItem,
 	AutocompleteProvider,
