@@ -711,7 +711,39 @@ describe("TUI differential rendering", () => {
 		tui.stop();
 	});
 
-	it("full re-renders when deleted lines move the viewport upward", async () => {
+	it("keeps scrollback and the bottom anchor when a line above the viewport changes", async () => {
+		const terminal = new VirtualTerminal(20, 5);
+		const tui = new TUI(terminal);
+		const chat = new TestComponent();
+		const status = new TestComponent();
+		tui.addChild(chat);
+		tui.addChild(status);
+
+		chat.lines = Array.from({ length: 30 }, (_, i) => `Line ${i}`);
+		status.lines = ["Working"];
+		tui.start();
+		await terminal.waitForRender();
+		const initialRedraws = tui.fullRedraws;
+
+		chat.lines = chat.lines.map((line, i) => (i === 3 ? "Line 3 changed" : line));
+		status.lines = ["Working."];
+		tui.requestRender();
+		await terminal.waitForRender();
+
+		assert.strictEqual(tui.fullRedraws, initialRedraws, "Offscreen change should not clear scrollback");
+		assert.deepStrictEqual(terminal.getViewport(), ["Line 26", "Line 27", "Line 28", "Line 29", "Working."]);
+		assert.ok(terminal.getScrollBuffer().includes("Line 0"), "Scrollback should be preserved");
+
+		chat.lines = [...chat.lines, "Line 30"];
+		tui.requestRender();
+		await terminal.waitForRender();
+
+		assert.deepStrictEqual(terminal.getViewport(), ["Line 27", "Line 28", "Line 29", "Line 30", "Working."]);
+
+		tui.stop();
+	});
+
+	it("redraws the viewport in place when deleted lines move it upward", async () => {
 		const terminal = new VirtualTerminal(20, 5);
 		const tui = new TUI(terminal);
 		const component = new TestComponent();
@@ -727,7 +759,7 @@ describe("TUI differential rendering", () => {
 		tui.requestRender();
 		await terminal.waitForRender();
 
-		assert.ok(tui.fullRedraws > initialRedraws, "Shrink should trigger a full redraw");
+		assert.strictEqual(tui.fullRedraws, initialRedraws, "Shrink should not clear scrollback");
 		assert.deepStrictEqual(terminal.getViewport(), ["Line 2", "Line 3", "Line 4", "Line 5", "Line 6"]);
 
 		tui.stop();
@@ -749,7 +781,11 @@ describe("TUI differential rendering", () => {
 		tui.requestRender();
 		await terminal.waitForRender();
 
-		assert.ok(tui.fullRedraws > initialRedraws, "Shrink should reset the viewport with a full redraw");
+		assert.strictEqual(
+			tui.fullRedraws,
+			initialRedraws,
+			"Shrink should reset the viewport without clearing scrollback",
+		);
 		const redrawsAfterShrink = tui.fullRedraws;
 
 		component.lines = ["Line 0", "Line 1", "Line 2"];
@@ -793,7 +829,7 @@ describe("TUI differential rendering", () => {
 		tui.requestRender();
 		await terminal.waitForRender();
 
-		assert.ok(tui.fullRedraws > redrawsBeforeSwitch, "Branch switch should trigger a full redraw");
+		assert.strictEqual(tui.fullRedraws, redrawsBeforeSwitch, "Branch switch should not clear scrollback");
 
 		const viewport = terminal.getViewport();
 		for (let i = 0; i < 10; i++) {

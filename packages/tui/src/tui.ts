@@ -1332,6 +1332,39 @@ export class TUI extends Container {
 			this.previousHeight = height;
 		};
 
+		const viewportRender = (): void => {
+			if (this.previousKittyImageIds.size > 0 || newLines.some((line) => isImageLine(line))) {
+				fullRender(true);
+				return;
+			}
+			const start = Math.min(prevViewportTop, Math.max(0, newLines.length - height));
+			const currentScreenRow = Math.max(0, Math.min(height - 1, hardwareCursorRow - prevViewportTop));
+			let buffer = "\x1b[?2026h";
+			if (currentScreenRow > 0) buffer += `\x1b[${currentScreenRow}A`;
+			buffer += "\r";
+			const written = Math.max(1, newLines.length - start);
+			for (let i = 0; i < written; i++) {
+				if (i > 0) buffer += "\r\n";
+				buffer += `\x1b[2K${newLines[start + i] ?? ""}`;
+			}
+			const clearRows = Math.max(0, height - written);
+			for (let i = 0; i < clearRows; i++) {
+				buffer += "\r\n\x1b[2K";
+			}
+			if (clearRows > 0) buffer += `\x1b[${clearRows}A`;
+			buffer += "\x1b[?2026l";
+			this.terminal.write(buffer);
+			this.cursorRow = Math.max(0, newLines.length - 1);
+			this.hardwareCursorRow = start + written - 1;
+			this.maxLinesRendered = Math.max(this.maxLinesRendered, newLines.length);
+			this.previousViewportTop = Math.max(start, newLines.length - height);
+			this.positionHardwareCursor(cursorPos, newLines.length);
+			this.previousLines = newLines;
+			this.previousKittyImageIds = this.collectKittyImageIds(newLines);
+			this.previousWidth = width;
+			this.previousHeight = height;
+		};
+
 		const debugRedraw = process.env.CODEIFY_DEBUG_REDRAW === "1";
 		const logRedraw = (reason: string): void => {
 			if (!debugRedraw) return;
@@ -1370,7 +1403,7 @@ export class TUI extends Container {
 			this.overlayStack.length === 0
 		) {
 			logRedraw(`content shrink moved viewport up (${contentViewportTop} < ${prevViewportTop})`);
-			fullRender(true);
+			viewportRender();
 			return;
 		}
 
@@ -1429,7 +1462,7 @@ export class TUI extends Container {
 				const targetRow = Math.max(0, newLines.length - 1);
 				if (targetRow < prevViewportTop) {
 					logRedraw(`deleted lines moved viewport up (${targetRow} < ${prevViewportTop})`);
-					fullRender(true);
+					viewportRender();
 					return;
 				}
 				const lineDiff = computeLineDiff(targetRow);
@@ -1440,7 +1473,7 @@ export class TUI extends Container {
 				const extraLines = this.previousLines.length - newLines.length;
 				if (extraLines > height) {
 					logRedraw(`extraLines > height (${extraLines} > ${height})`);
-					fullRender(true);
+					viewportRender();
 					return;
 				}
 				const clearStartOffset = newLines.length === 0 ? 0 : 1;
@@ -1473,7 +1506,7 @@ export class TUI extends Container {
 		// If the first changed line is above the previous viewport, we need a full redraw.
 		if (firstChanged < prevViewportTop) {
 			logRedraw(`firstChanged < viewportTop (${firstChanged} < ${prevViewportTop})`);
-			fullRender(true);
+			viewportRender();
 			return;
 		}
 
@@ -1482,7 +1515,7 @@ export class TUI extends Container {
 		const renderEnd = Math.min(lastChanged, newLines.length - 1);
 		if (renderEnd - firstChanged + 1 > height) {
 			logRedraw(`changed lines > height (${renderEnd - firstChanged + 1} > ${height})`);
-			fullRender(true);
+			viewportRender();
 			return;
 		}
 

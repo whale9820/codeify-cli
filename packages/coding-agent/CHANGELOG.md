@@ -40,6 +40,8 @@
 - Retry errors containing `no output within 30s` up to five times and show `Reconnecting... (1/5)` while reconnecting.
 - Retry transport cuts of the form `upstream_error: ...` up to five times and show `Reconnecting... (1/5)` while reconnecting.
 - Render back-to-back bold spans (`**a****b**`) in thinking and assistant text as separate lines instead of one bold run containing literal asterisks.
+- Hide the red error line for failed requests that will be retried; the spinner shows the attempt count instead.
+- Show `Reconnecting (1/5)...` in the status spinner, styled like the retry indicator, instead of a bold italic transcript line.
 
 - Reduced installer disk usage by installing production dependencies for the low-memory build, cleaned up failed fresh checkouts, reclaimed Unix dependencies before Git updates, and made Git updates fetch the `main` branch explicitly.
 - Fixed newly discovered GPT-6 models being treated as non-reasoning when model catalogs have not published capability metadata yet.

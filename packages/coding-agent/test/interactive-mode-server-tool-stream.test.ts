@@ -41,7 +41,7 @@ describe("InteractiveMode server tool stream failures", () => {
 			pendingTools: new Map([["tool-1", toolComponent]]),
 			chatContainer: { removeChild: vi.fn() },
 			session: {
-				hidesRetryingAssistantError: vi.fn(() => true),
+				willRetryAssistantMessage: vi.fn(() => true),
 			},
 			ui: { requestRender: vi.fn() },
 		};
@@ -56,7 +56,7 @@ describe("InteractiveMode server tool stream failures", () => {
 			message: assistantError(trailingCommaError),
 		});
 
-		expect(fakeThis.session.hidesRetryingAssistantError).toHaveBeenCalled();
+		expect(fakeThis.session.willRetryAssistantMessage).toHaveBeenCalled();
 		expect(errorComponent.updateContent).not.toHaveBeenCalled();
 		expect(fakeThis.chatContainer.removeChild).toHaveBeenCalledWith(errorComponent);
 		expect(fakeThis.chatContainer.removeChild).toHaveBeenCalledWith(toolComponent);
@@ -71,8 +71,6 @@ describe("InteractiveMode server tool stream failures", () => {
 			isInitialized: true,
 			footer: { invalidate: vi.fn() },
 			clearStatusIndicator: vi.fn(),
-			clearReconnectingLine: vi.fn(),
-			showReconnectingLine: vi.fn(),
 			showError: vi.fn(),
 			showStatusIndicator: vi.fn(),
 			ui,
@@ -108,7 +106,6 @@ describe("InteractiveMode server tool stream failures", () => {
 			footer: { invalidate: vi.fn() },
 			retryEscapeHandler: undefined as (() => void) | undefined,
 			defaultEditor: { onEscape: undefined as (() => void) | undefined },
-			clearReconnectingLine: vi.fn(),
 			clearStatusIndicator: vi.fn(),
 			showError: vi.fn(),
 			ui: { requestRender: vi.fn() },

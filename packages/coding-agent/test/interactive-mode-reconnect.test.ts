@@ -1,34 +1,52 @@
 import type { TUI } from "codeify-tui";
 import { describe, expect, test, vi } from "vitest";
-import { RetryStatusIndicator } from "../src/modes/interactive/components/status-indicator.ts";
+import {
+	ReconnectStatusIndicator,
+	RetryStatusIndicator,
+} from "../src/modes/interactive/components/status-indicator.ts";
 import { InteractiveMode } from "../src/modes/interactive/interactive-mode.ts";
 import { initTheme } from "../src/modes/interactive/theme/theme.ts";
 
+type MessageEndHost = {
+	isInitialized: boolean;
+	footer: { invalidate: () => void };
+	streamingComponent: { updateContent: () => void } | undefined;
+	streamingMessage: unknown;
+	pendingTools: Map<string, unknown>;
+	chatContainer: { removeChild: (component: unknown) => void };
+	session: { retryAttempt: number; willRetryAssistantMessage: () => boolean };
+	applyCitationSources: () => void;
+	maybeShowCacheMissNotice: () => void;
+	ui: { requestRender: () => void };
+};
+
+function messageEndHost(willRetry: boolean) {
+	const errorComponent = { updateContent: vi.fn() };
+	const host = {
+		isInitialized: true,
+		footer: { invalidate: vi.fn() },
+		streamingComponent: errorComponent as MessageEndHost["streamingComponent"],
+		streamingMessage: undefined as unknown,
+		pendingTools: new Map<string, unknown>(),
+		chatContainer: { removeChild: vi.fn() },
+		session: { retryAttempt: 0, willRetryAssistantMessage: vi.fn(() => willRetry) },
+		applyCitationSources: vi.fn(),
+		maybeShowCacheMissNotice: vi.fn(),
+		ui: { requestRender: vi.fn() },
+	};
+	return { host, errorComponent };
+}
+
+const handleMessageEnd = Reflect.get(InteractiveMode.prototype, "handleEvent") as (
+	this: MessageEndHost,
+	event: { type: "message_end"; message: { role: string; stopReason: string; errorMessage: string } },
+) => Promise<void>;
+
 describe("InteractiveMode reconnect status", () => {
-	test("replaces a retryable 522 with Reconnecting... (1/5)", async () => {
-		const errorComponent = { updateContent: vi.fn() };
-		const fakeThis = {
-			isInitialized: true,
-			footer: { invalidate: vi.fn() },
-			streamingComponent: errorComponent,
-			streamingMessage: undefined as unknown,
-			pendingTools: new Map(),
-			chatContainer: { removeChild: vi.fn() },
-			session: {
-				retryAttempt: 0,
-				getReconnectAttempt: vi.fn(() => ({ attempt: 1, maxAttempts: 5 })),
-			},
-			showReconnectingLine: vi.fn(),
-			applyCitationSources: vi.fn(),
-			ui: { requestRender: vi.fn() },
-		};
+	test("hides a connection error that will be retried", async () => {
+		const { host, errorComponent } = messageEndHost(true);
 
-		const handleEvent = Reflect.get(InteractiveMode.prototype, "handleEvent") as (
-			this: typeof fakeThis,
-			event: { type: "message_end"; message: { role: string; stopReason: string; errorMessage: string } },
-		) => Promise<void>;
-
-		await handleEvent.call(fakeThis, {
+		await handleMessageEnd.call(host, {
 			type: "message_end",
 			message: {
 				role: "assistant",
@@ -37,47 +55,36 @@ describe("InteractiveMode reconnect status", () => {
 			},
 		});
 
-		expect(fakeThis.chatContainer.removeChild).toHaveBeenCalledWith(errorComponent);
-		expect(fakeThis.showReconnectingLine).toHaveBeenCalledWith(1, 5);
+		expect(errorComponent.updateContent).not.toHaveBeenCalled();
+		expect(host.chatContainer.removeChild).toHaveBeenCalledWith(errorComponent);
+		expect(host.streamingComponent).toBeUndefined();
 	});
 
-	test("keeps a non-reconnect error in the chat", async () => {
-		const errorComponent = { updateContent: vi.fn() };
-		const fakeThis = {
-			isInitialized: true,
-			footer: { invalidate: vi.fn() },
-			streamingComponent: errorComponent,
-			streamingMessage: undefined as unknown,
-			pendingTools: new Map(),
-			chatContainer: { removeChild: vi.fn() },
-			session: {
-				retryAttempt: 0,
-				getReconnectAttempt: vi.fn(() => undefined),
-			},
-			showReconnectingLine: vi.fn(),
-			applyCitationSources: vi.fn(),
-			ui: { requestRender: vi.fn() },
-		};
+	test("hides a non-reconnect error that will be retried", async () => {
+		const { host, errorComponent } = messageEndHost(true);
 
-		const handleEvent = Reflect.get(InteractiveMode.prototype, "handleEvent") as (
-			this: typeof fakeThis,
-			event: { type: "message_end"; message: { role: string; stopReason: string; errorMessage: string } },
-		) => Promise<void>;
-
-		await handleEvent.call(fakeThis, {
+		await handleMessageEnd.call(host, {
 			type: "message_end",
-			message: {
-				role: "assistant",
-				stopReason: "error",
-				errorMessage: "overloaded_error",
-			},
+			message: { role: "assistant", stopReason: "error", errorMessage: "overloaded_error" },
 		});
 
-		expect(fakeThis.chatContainer.removeChild).not.toHaveBeenCalled();
-		expect(fakeThis.showReconnectingLine).not.toHaveBeenCalled();
+		expect(errorComponent.updateContent).not.toHaveBeenCalled();
+		expect(host.chatContainer.removeChild).toHaveBeenCalledWith(errorComponent);
 	});
 
-	test("shows the reconnect line for request timeouts and the retry indicator otherwise", async () => {
+	test("keeps the error in the chat when no retry follows", async () => {
+		const { host, errorComponent } = messageEndHost(false);
+
+		await handleMessageEnd.call(host, {
+			type: "message_end",
+			message: { role: "assistant", stopReason: "error", errorMessage: "overloaded_error" },
+		});
+
+		expect(errorComponent.updateContent).toHaveBeenCalled();
+		expect(host.chatContainer.removeChild).not.toHaveBeenCalled();
+	});
+
+	test("uses the spinner status for reconnects and retries", async () => {
 		initTheme("dark");
 		const ui = { requestRender: vi.fn() } as unknown as TUI;
 		const handleEvent = Reflect.get(InteractiveMode.prototype, "handleEvent") as (
@@ -86,10 +93,7 @@ describe("InteractiveMode reconnect status", () => {
 				footer: { invalidate: () => void };
 				defaultEditor: { onEscape?: () => void };
 				session: { abortRetry: () => void };
-				clearStatusIndicator: (kind?: string) => void;
-				clearReconnectingLine: () => void;
-				showReconnectingLine: (attempt: number, maxAttempts: number) => void;
-				showStatusIndicator: (indicator: unknown) => void;
+				showStatusIndicator: (indicator: { dispose: () => void }) => void;
 				ui: TUI;
 			},
 			event: {
@@ -100,18 +104,16 @@ describe("InteractiveMode reconnect status", () => {
 				errorMessage: string;
 			},
 		) => Promise<void>;
-
-		const timeoutHost = {
+		const host = () => ({
 			isInitialized: true,
 			footer: { invalidate: vi.fn() },
 			defaultEditor: { onEscape: vi.fn() },
 			session: { abortRetry: vi.fn() },
-			clearStatusIndicator: vi.fn(),
-			clearReconnectingLine: vi.fn(),
-			showReconnectingLine: vi.fn(),
-			showStatusIndicator: vi.fn(),
+			showStatusIndicator: vi.fn((indicator: { dispose: () => void }) => indicator.dispose()),
 			ui,
-		};
+		});
+
+		const timeoutHost = host();
 		await handleEvent.call(timeoutHost, {
 			type: "auto_retry_start",
 			attempt: 2,
@@ -119,15 +121,9 @@ describe("InteractiveMode reconnect status", () => {
 			delayMs: 2000,
 			errorMessage: "Request timed out.",
 		});
-		expect(timeoutHost.showReconnectingLine).toHaveBeenCalledWith(2, 5);
-		expect(timeoutHost.showStatusIndicator).not.toHaveBeenCalled();
+		expect(timeoutHost.showStatusIndicator.mock.calls[0]?.[0]).toBeInstanceOf(ReconnectStatusIndicator);
 
-		const upstreamHost = {
-			...timeoutHost,
-			clearReconnectingLine: vi.fn(),
-			showReconnectingLine: vi.fn(),
-			showStatusIndicator: vi.fn(),
-		};
+		const upstreamHost = host();
 		await handleEvent.call(upstreamHost, {
 			type: "auto_retry_start",
 			attempt: 1,
@@ -135,15 +131,9 @@ describe("InteractiveMode reconnect status", () => {
 			delayMs: 2000,
 			errorMessage: "upstream_error: connection reset",
 		});
-		expect(upstreamHost.showReconnectingLine).toHaveBeenCalledWith(1, 5);
-		expect(upstreamHost.showStatusIndicator).not.toHaveBeenCalled();
+		expect(upstreamHost.showStatusIndicator.mock.calls[0]?.[0]).toBeInstanceOf(ReconnectStatusIndicator);
 
-		const retryHost = {
-			...timeoutHost,
-			clearReconnectingLine: vi.fn(),
-			showReconnectingLine: vi.fn(),
-			showStatusIndicator: vi.fn(),
-		};
+		const retryHost = host();
 		await handleEvent.call(retryHost, {
 			type: "auto_retry_start",
 			attempt: 1,
@@ -151,8 +141,6 @@ describe("InteractiveMode reconnect status", () => {
 			delayMs: 2000,
 			errorMessage: "overloaded_error",
 		});
-		expect(retryHost.showReconnectingLine).not.toHaveBeenCalled();
-		expect(retryHost.showStatusIndicator).toHaveBeenCalledTimes(1);
 		expect(retryHost.showStatusIndicator.mock.calls[0]?.[0]).toBeInstanceOf(RetryStatusIndicator);
 	});
 });

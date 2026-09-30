@@ -28,7 +28,6 @@ import {
 	buildCitationSources,
 	contentText,
 	isMalformedJsonError,
-	isReconnectableProviderError,
 	MALFORMED_JSON_MAX_RETRIES,
 	NETWORK_UNSTABLE_ERROR_MESSAGE,
 	renderInlineCitations,
@@ -583,18 +582,6 @@ export class AgentSession {
 
 	hidesRetryingAssistantError(message: AssistantMessage): boolean {
 		return isMalformedJsonError(message.errorMessage ?? "") && this.willRetryAssistantMessage(message);
-	}
-
-	getReconnectAttempt(message: AssistantMessage): { attempt: number; maxAttempts: number } | undefined {
-		if (message.stopReason !== "error" || !isReconnectableProviderError(message.errorMessage ?? "")) {
-			return undefined;
-		}
-		if (!this.willRetryAssistantMessage(message)) return undefined;
-		const settings = this.settingsManager.getRetrySettings();
-		return {
-			attempt: this._retryAttempt + 1,
-			maxAttempts: resolveAssistantRetryLimit(message.errorMessage, settings.maxRetries),
-		};
 	}
 
 	private _willRetryAfterAgentEnd(event: Extract<AgentEvent, { type: "agent_end" }>): boolean {
