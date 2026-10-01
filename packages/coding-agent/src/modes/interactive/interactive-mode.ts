@@ -62,6 +62,12 @@ import {
 } from "../../core/cache-stats.ts";
 import { CODEIFY_DEFAULT_MODEL } from "../../core/defaults.ts";
 import { FooterDataProvider } from "../../core/footer-data-provider.ts";
+import {
+	buildGoalContinuationPrompt,
+	buildGoalStartPrompt,
+	type Goal,
+	MAX_GOAL_CONTINUATIONS,
+} from "../../core/goal.ts";
 import { configureHttpDispatcher, formatHttpIdleTimeoutMs } from "../../core/http-dispatcher.ts";
 import { type AppKeybinding, KeybindingsManager } from "../../core/keybindings.ts";
 import { createCompactionSummaryMessage } from "../../core/messages.ts";
@@ -1597,6 +1603,11 @@ export class InteractiveMode {
 				this.handleSmartModelsCommand(text);
 				return;
 			}
+			if (text === "/goal" || text.startsWith("/goal ")) {
+				this.editor.setText("");
+				await this.handleGoalCommand(text.slice(5).trim());
+				return;
+			}
 			if (text === "/export" || text.startsWith("/export ")) {
 				await this.handleExportCommand(text);
 				this.editor.setText("");
@@ -1987,6 +1998,13 @@ export class InteractiveMode {
 			case "agent_settled":
 				await this.checkShutdownRequested();
 				await this.handleRequestedCompaction();
+				void this.continueGoal();
+				break;
+
+			case "goal_updated":
+				if (event.goal?.status === "complete") {
+					this.showStatus(`Goal complete: ${event.goal.summary ?? event.goal.objective}`);
+				}
 				break;
 
 			case "compaction_requested":
@@ -2729,6 +2747,99 @@ export class InteractiveMode {
 		this.session.setSmartModelUsageEnabled(value === "on");
 		this.refreshBuiltInHeader();
 		this.showStatus(`Smart model usage: ${value}`);
+	}
+
+	private describeGoal(goal: Goal): string {
+		return `Goal (${goal.status}, ${goal.continuations} continuations): ${goal.objective}`;
+	}
+
+	private async handleGoalCommand(argument: string): Promise<void> {
+		const keyword = argument.toLowerCase();
+		const goal = this.session.getGoal();
+
+		if (!argument) {
+			this.showStatus(goal ? this.describeGoal(goal) : "No goal set. Usage: /goal <objective|pause|resume|clear>");
+			return;
+		}
+		if (keyword === "clear") {
+			this.showStatus(this.session.clearGoal() ? "Goal cleared" : "No goal set");
+			return;
+		}
+		if (keyword === "pause") {
+			this.showStatus(this.session.pauseGoal() ? "Goal paused" : "No active goal to pause");
+			return;
+		}
+		if (keyword === "resume") {
+			if (!this.session.resumeGoal()) {
+				this.showStatus("No paused goal to resume");
+				return;
+			}
+			this.showStatus("Goal resumed");
+			void this.continueGoal();
+			return;
+		}
+
+		const created = this.session.setGoal(argument);
+		this.showStatus(`Goal set: ${created.objective}`);
+		const prompt = buildGoalStartPrompt(created);
+		if (this.session.isStreaming) {
+			await this.session.prompt(prompt, { streamingBehavior: "steer" });
+			return;
+		}
+		if (this.onInputCallback) {
+			this.onInputCallback(prompt);
+		} else {
+			this.pendingUserInputs.push(prompt);
+		}
+	}
+
+	private async continueGoal(): Promise<void> {
+		const goal = this.session.getGoal();
+		if (!goal || goal.status !== "active") return;
+		if (this.session.isStreaming || this.session.isCompacting || this.session.pendingMessageCount > 0) return;
+
+		const messages = this.session.messages;
+		const last = messages.at(-1);
+		if (last?.role === "assistant") {
+			const reason = (last as AssistantMessage).stopReason;
+			if (reason === "aborted" || reason === "error") {
+				this.session.pauseGoal();
+				this.showStatus("Goal paused after interruption. Use /goal resume to continue.");
+				return;
+			}
+		}
+		if (goal.continuations > 0) {
+			let madeToolCall = false;
+			for (let i = messages.length - 1; i >= 0; i--) {
+				const message = messages[i];
+				if (message.role === "user") break;
+				if (
+					message.role === "assistant" &&
+					(message as AssistantMessage).content.some((content) => content.type === "toolCall")
+				) {
+					madeToolCall = true;
+					break;
+				}
+			}
+			if (!madeToolCall) {
+				this.session.pauseGoal();
+				this.showStatus("Goal paused: the last continuation made no progress. Use /goal resume to continue.");
+				return;
+			}
+		}
+		if (goal.continuations >= MAX_GOAL_CONTINUATIONS) {
+			this.session.pauseGoal();
+			this.showWarning(`Goal paused after ${MAX_GOAL_CONTINUATIONS} continuations. Use /goal resume to continue.`);
+			return;
+		}
+
+		this.session.recordGoalContinuation();
+		try {
+			await this.session.prompt(buildGoalContinuationPrompt(goal));
+		} catch (error: unknown) {
+			this.session.pauseGoal();
+			this.showError(error instanceof Error ? error.message : "Goal continuation failed");
+		}
 	}
 
 	private refreshBuiltInHeader(): void {

@@ -73,6 +73,7 @@ import {
 import { DEFAULT_THINKING_LEVEL } from "./defaults.ts";
 import { exportSessionToHtml, type ToolHtmlRenderer } from "./export-html/index.ts";
 import { createToolHtmlRenderer } from "./export-html/tool-renderer.ts";
+import { createGoal, type Goal } from "./goal.ts";
 import type { BashExecutionMessage, CustomMessage } from "./messages.ts";
 import type { ModelRuntime } from "./model-runtime.ts";
 import { expandPromptTemplate, type PromptTemplate } from "./prompt-templates.ts";
@@ -85,6 +86,7 @@ import { type BuildSystemPromptOptions, buildSystemPrompt } from "./system-promp
 import { type BashOperations, createLocalBashOperations } from "./tools/bash.ts";
 import { createCodeifyModelToolDefinition } from "./tools/codeify-model.ts";
 import { type ContextUsageSnapshot, createContextUsageToolDefinition } from "./tools/context-usage.ts";
+import { createUpdateGoalToolDefinition } from "./tools/goal.ts";
 import { createAllToolDefinitions } from "./tools/index.ts";
 import { createToolDefinitionFromAgentTool, wrapToolDefinition } from "./tools/tool-definition-wrapper.ts";
 import type { ToolDefinition, ToolExecutionContext, ToolInfo } from "./tools/types.ts";
@@ -133,6 +135,7 @@ export type AgentSessionEvent =
 	  }
 	| { type: "compaction_start"; reason: "manual" | "threshold" | "overflow" }
 	| { type: "compaction_requested"; rationale: string }
+	| { type: "goal_updated"; goal: Goal | undefined }
 	| { type: "entry_appended"; entry: SessionEntry }
 	| { type: "session_info_changed"; name: string | undefined }
 	| { type: "thinking_level_changed"; level: ThinkingLevel }
@@ -300,6 +303,7 @@ export class AgentSession {
 	// Set when the model asks the user to approve compaction. Consumed by the host after the
 	// turn settles, since compaction aborts the agent and cannot run inside a tool call.
 	private _pendingCompactionRequest: string | undefined = undefined;
+	private _goal: Goal | undefined = undefined;
 
 	// Branch summarization state
 	private _branchSummaryAbortController: AbortController | undefined = undefined;
@@ -1924,10 +1928,13 @@ export class AgentSession {
 				// context_usage reports the parent session's window, so it is meaningless to a
 				// delegated agent running its own context.
 				getDelegatedToolNames: () =>
-					[...this._toolRegistry.keys()].filter((name) => name !== "codeify_model" && name !== "context_usage"),
+					[...this._toolRegistry.keys()].filter(
+						(name) => name !== "codeify_model" && name !== "context_usage" && name !== "update_goal",
+					),
 				createDelegatedTools: () => ({
 					tools: [...this._toolRegistry.values()].filter(
-						(tool) => tool.name !== "codeify_model" && tool.name !== "context_usage",
+						(tool) =>
+							tool.name !== "codeify_model" && tool.name !== "context_usage" && tool.name !== "update_goal",
 					),
 				}),
 			});
@@ -1942,6 +1949,10 @@ export class AgentSession {
 					this._emit({ type: "compaction_requested", rationale });
 				},
 			});
+			baseToolDefinitions.update_goal = createUpdateGoalToolDefinition({
+				getGoal: () => this._goal,
+				completeGoal: (summary) => this.completeGoal(summary),
+			});
 		}
 
 		this._baseToolDefinitions = new Map(
@@ -1950,7 +1961,7 @@ export class AgentSession {
 
 		const defaultActiveToolNames = this._baseToolsOverride
 			? Object.keys(this._baseToolsOverride)
-			: ["read", "bash", "edit", "write", "context_usage"];
+			: ["read", "bash", "edit", "write", "context_usage", "update_goal"];
 		const baseActiveToolNames = [...(options.activeToolNames ?? defaultActiveToolNames)];
 		if (this.settingsManager.getSmartModelUsage()) baseActiveToolNames.push("codeify_model");
 		this._refreshToolRegistry({ activeToolNames: baseActiveToolNames });
@@ -2497,6 +2508,48 @@ export class AgentSession {
 			compacted: getLatestCompactionEntry(branchEntries) !== null,
 			costUsd: this.getSessionStats().cost,
 		};
+	}
+
+	getGoal(): Goal | undefined {
+		return this._goal;
+	}
+
+	setGoal(objective: string): Goal {
+		this._goal = createGoal(objective);
+		this._emit({ type: "goal_updated", goal: this._goal });
+		return this._goal;
+	}
+
+	pauseGoal(): boolean {
+		if (this._goal?.status !== "active") return false;
+		this._goal = { ...this._goal, status: "paused" };
+		this._emit({ type: "goal_updated", goal: this._goal });
+		return true;
+	}
+
+	resumeGoal(): boolean {
+		if (this._goal?.status !== "paused") return false;
+		this._goal = { ...this._goal, status: "active", continuations: 0 };
+		this._emit({ type: "goal_updated", goal: this._goal });
+		return true;
+	}
+
+	clearGoal(): boolean {
+		if (!this._goal) return false;
+		this._goal = undefined;
+		this._emit({ type: "goal_updated", goal: undefined });
+		return true;
+	}
+
+	completeGoal(summary?: string): void {
+		if (this._goal?.status !== "active") return;
+		this._goal = { ...this._goal, status: "complete", summary };
+		this._emit({ type: "goal_updated", goal: this._goal });
+	}
+
+	recordGoalContinuation(): void {
+		if (this._goal?.status !== "active") return;
+		this._goal = { ...this._goal, continuations: this._goal.continuations + 1 };
 	}
 
 	/** Take the model's pending compaction request, if it made one. */
