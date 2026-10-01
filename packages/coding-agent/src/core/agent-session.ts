@@ -2568,6 +2568,10 @@ export class AgentSession {
 		return this._backgroundTasks.list();
 	}
 
+	getBackgroundTaskOutput(id: string): { text: string; droppedChars: number } | undefined {
+		return this._backgroundTasks.readOutput(id);
+	}
+
 	stopBackgroundTask(id: string): boolean {
 		return this._backgroundTasks.stop(id);
 	}

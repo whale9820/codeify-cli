@@ -558,6 +558,28 @@ export class InteractiveMode {
 			};
 		}
 
+		const tasksCommand = slashCommands.find((command) => command.name === "tasks");
+		if (tasksCommand) {
+			tasksCommand.getArgumentCompletions = (prefix: string): AutocompleteItem[] | null => {
+				const tasks = this.session.getBackgroundTasks();
+				const running = tasks.filter((task) => task.status === "running");
+				const options = [
+					{ value: "list", description: "Show all background tasks" },
+					...(running.length > 0 ? [{ value: "stop all", description: `Stop ${running.length} running` }] : []),
+					...running.map((task) => ({ value: `stop ${task.id}`, description: task.description })),
+					...tasks
+						.filter((task) => task.status !== "running")
+						.map((task) => ({ value: `output ${task.id}`, description: `${task.status}: ${task.description}` })),
+				];
+				return createFuzzyAutocompleteItems(
+					options,
+					prefix,
+					(option) => option.value,
+					(option) => ({ value: option.value, label: option.value, description: option.description }),
+				);
+			};
+		}
+
 		const loginCommand = slashCommands.find((command) => command.name === "login");
 		if (loginCommand) {
 			loginCommand.getArgumentCompletions = (prefix: string): AutocompleteItem[] | null => {
@@ -1630,7 +1652,7 @@ export class InteractiveMode {
 			}
 			if (text === "/tasks" || text.startsWith("/tasks ")) {
 				this.editor.setText("");
-				this.handleTasksCommand(text.slice(6).trim());
+				await this.handleTasksCommand(text.slice(6).trim());
 				return;
 			}
 			if (text === "/export" || text.startsWith("/export ")) {
@@ -2779,25 +2801,63 @@ export class InteractiveMode {
 		this.showStatus(`Smart model usage: ${value}`);
 	}
 
-	private handleTasksCommand(argument: string): void {
+	private async handleTasksCommand(argument: string): Promise<void> {
 		const [keyword, target] = argument.split(/\s+/u);
+		const tasks = this.session.getBackgroundTasks();
+
 		if (keyword === "stop") {
 			if (!target) {
 				this.showStatus("Usage: /tasks stop <id|all>");
 				return;
 			}
-			const running = this.session.getBackgroundTasks().filter((task) => task.status === "running");
+			const running = tasks.filter((task) => task.status === "running");
 			const ids = target === "all" ? running.map((task) => task.id) : [target];
 			const stopped = ids.filter((id) => this.session.stopBackgroundTask(id));
 			this.showStatus(stopped.length > 0 ? `Stopped ${stopped.join(", ")}` : "No matching running task");
 			return;
 		}
-		const tasks = this.session.getBackgroundTasks();
+		if (keyword === "output") {
+			const output = target ? this.session.getBackgroundTaskOutput(target) : undefined;
+			const task = target ? tasks.find((candidate) => candidate.id === target) : undefined;
+			if (!task || !output) {
+				this.showStatus("Usage: /tasks output <id>");
+				return;
+			}
+			const tail = output.text.length > 4000 ? output.text.slice(-4000) : output.text;
+			this.showStatus(`${formatTaskLine(task)}\n${tail.trimEnd() || "(no output)"}`);
+			return;
+		}
+		if (keyword === "list") {
+			this.showStatus(tasks.length > 0 ? tasks.map(formatTaskLine).join("\n") : "No background tasks");
+			return;
+		}
+
 		if (tasks.length === 0) {
 			this.showStatus("No background tasks");
 			return;
 		}
-		this.showStatus(tasks.map(formatTaskLine).join("\n"));
+		const running = tasks.filter((task) => task.status === "running");
+		const labels = new Map(tasks.map((task) => [formatTaskLine(task), task.id]));
+		const stopAllLabel = `Stop all running (${running.length})`;
+		const choice = await this.showDialogSelector(`Background tasks (${running.length} running)`, [
+			...labels.keys(),
+			...(running.length > 0 ? [stopAllLabel] : []),
+		]);
+		if (!choice) return;
+		if (choice === stopAllLabel) {
+			await this.handleTasksCommand("stop all");
+			return;
+		}
+		const id = labels.get(choice);
+		if (!id) return;
+		const task = tasks.find((candidate) => candidate.id === id);
+		if (task?.status !== "running") {
+			await this.handleTasksCommand(`output ${id}`);
+			return;
+		}
+		const action = await this.showDialogSelector(choice, ["Stop", "Show output"]);
+		if (action === "Stop") await this.handleTasksCommand(`stop ${id}`);
+		else if (action === "Show output") await this.handleTasksCommand(`output ${id}`);
 	}
 
 	private describeGoal(goal: Goal): string {
