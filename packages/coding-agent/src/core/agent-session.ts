@@ -2529,7 +2529,7 @@ export class AgentSession {
 
 	resumeGoal(): boolean {
 		if (this._goal?.status !== "paused") return false;
-		this._goal = { ...this._goal, status: "active", continuations: 0 };
+		this._goal = { ...this._goal, status: "active", continuations: 0, stalls: 0 };
 		this._emit({ type: "goal_updated", goal: this._goal });
 		return true;
 	}
@@ -2547,9 +2547,13 @@ export class AgentSession {
 		this._emit({ type: "goal_updated", goal: this._goal });
 	}
 
-	recordGoalContinuation(): void {
+	recordGoalContinuation(stalled: boolean): void {
 		if (this._goal?.status !== "active") return;
-		this._goal = { ...this._goal, continuations: this._goal.continuations + 1 };
+		this._goal = {
+			...this._goal,
+			continuations: this._goal.continuations + 1,
+			stalls: stalled ? this._goal.stalls + 1 : 0,
+		};
 	}
 
 	/** Take the model's pending compaction request, if it made one. */
