@@ -34,14 +34,16 @@ describe("goal", () => {
 		harness.session.setGoal("ship it");
 		expect(harness.session.getGoal()?.status).toBe("active");
 
-		harness.session.recordGoalContinuation();
+		harness.session.recordGoalContinuation(true);
 		expect(harness.session.getGoal()?.continuations).toBe(1);
+		expect(harness.session.getGoal()?.stalls).toBe(1);
 
 		expect(harness.session.pauseGoal()).toBe(true);
 		expect(harness.session.getGoal()?.status).toBe("paused");
 		expect(harness.session.resumeGoal()).toBe(true);
 		expect(harness.session.getGoal()?.status).toBe("active");
 		expect(harness.session.getGoal()?.continuations).toBe(0);
+		expect(harness.session.getGoal()?.stalls).toBe(0);
 
 		expect(harness.session.clearGoal()).toBe(true);
 		expect(harness.session.getGoal()).toBeUndefined();

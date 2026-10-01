@@ -64,9 +64,11 @@ import { CODEIFY_DEFAULT_MODEL } from "../../core/defaults.ts";
 import { FooterDataProvider } from "../../core/footer-data-provider.ts";
 import {
 	buildGoalContinuationPrompt,
+	buildGoalStallPrompt,
 	buildGoalStartPrompt,
 	type Goal,
 	MAX_GOAL_CONTINUATIONS,
+	MAX_GOAL_STALLS,
 } from "../../core/goal.ts";
 import { configureHttpDispatcher, formatHttpIdleTimeoutMs } from "../../core/http-dispatcher.ts";
 import { type AppKeybinding, KeybindingsManager } from "../../core/keybindings.ts";
@@ -536,6 +538,23 @@ export class InteractiveMode {
 					(value) => value,
 					(value) => ({ value, label: value }),
 				);
+		}
+
+		const goalCommand = slashCommands.find((command) => command.name === "goal");
+		if (goalCommand) {
+			goalCommand.getArgumentCompletions = (prefix: string): AutocompleteItem[] | null => {
+				const options = [
+					{ value: "pause", description: "Pause the active goal" },
+					{ value: "resume", description: "Resume the paused goal" },
+					{ value: "clear", description: "Remove the current goal" },
+				];
+				return createFuzzyAutocompleteItems(
+					options,
+					prefix,
+					(option) => option.value,
+					(option) => ({ value: option.value, label: option.value, description: option.description }),
+				);
+			};
 		}
 
 		const loginCommand = slashCommands.find((command) => command.name === "login");
@@ -2758,7 +2777,14 @@ export class InteractiveMode {
 		const goal = this.session.getGoal();
 
 		if (!argument) {
-			this.showStatus(goal ? this.describeGoal(goal) : "No goal set. Usage: /goal <objective|pause|resume|clear>");
+			const title = goal ? this.describeGoal(goal) : "No goal set";
+			const choice = await this.showDialogSelector(title, ["New goal", "Pause", "Resume", "Clear"]);
+			if (choice === "New goal") {
+				const objective = await this.showInputDialog("Goal objective", "What should the agent work toward?");
+				if (objective?.trim()) await this.handleGoalCommand(objective.trim());
+			} else if (choice) {
+				await this.handleGoalCommand(choice.toLowerCase());
+			}
 			return;
 		}
 		if (keyword === "clear") {
@@ -2808,6 +2834,7 @@ export class InteractiveMode {
 				return;
 			}
 		}
+		let stalled = false;
 		if (goal.continuations > 0) {
 			let madeToolCall = false;
 			for (let i = messages.length - 1; i >= 0; i--) {
@@ -2821,11 +2848,12 @@ export class InteractiveMode {
 					break;
 				}
 			}
-			if (!madeToolCall) {
-				this.session.pauseGoal();
-				this.showStatus("Goal paused: the last continuation made no progress. Use /goal resume to continue.");
-				return;
-			}
+			stalled = !madeToolCall;
+		}
+		if (stalled && goal.stalls + 1 >= MAX_GOAL_STALLS) {
+			this.session.pauseGoal();
+			this.showStatus("Goal paused: the agent keeps stopping without progress. Use /goal resume to continue.");
+			return;
 		}
 		if (goal.continuations >= MAX_GOAL_CONTINUATIONS) {
 			this.session.pauseGoal();
@@ -2833,9 +2861,9 @@ export class InteractiveMode {
 			return;
 		}
 
-		this.session.recordGoalContinuation();
+		this.session.recordGoalContinuation(stalled);
 		try {
-			await this.session.prompt(buildGoalContinuationPrompt(goal));
+			await this.session.prompt(stalled ? buildGoalStallPrompt(goal) : buildGoalContinuationPrompt(goal));
 		} catch (error: unknown) {
 			this.session.pauseGoal();
 			this.showError(error instanceof Error ? error.message : "Goal continuation failed");

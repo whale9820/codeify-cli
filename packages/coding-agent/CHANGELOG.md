@@ -4,7 +4,7 @@
 
 ### Added
 
-- Added `/goal` for persistent objectives: `/goal <objective>` keeps the agent working across turns until it marks the goal complete with the `update_goal` tool; `/goal`, `/goal pause`, `/goal resume`, and `/goal clear` manage it. Interruptions, errors, a continuation with no tool calls, or 50 continuations pause the goal.
+- Added `/goal` for persistent objectives: `/goal <objective>` keeps the agent working across turns until it marks the goal complete with the `update_goal` tool; `/goal`, `/goal pause`, `/goal resume`, and `/goal clear` manage it. `/goal ` shows a dropdown of pause, resume, and clear. If the agent stops mid-task without making tool calls, it is nudged to keep going; interruptions, errors, three stalls in a row, or 50 continuations pause the goal.
 - Honor Codeify `/v1/models` `supports_thinking_toggle`: `/thinking` prepends `off`, and empty thinking modality lists expose `on` instead of invented effort levels. Off sends `thinking: { type: "disabled" }`; on sends `thinking: { type: "adaptive" }`.
 - Send the hosted Responses `web_search` tool on Codeify requests so the model can search the web, and show those searches in the transcript.
 - Render assistant text wrapped in thinking tags (`<think>`, `<thinking>`) as thinking blocks in interactive mode, styled like structured reasoning blocks.

@@ -4,13 +4,15 @@ export interface Goal {
 	objective: string;
 	status: GoalStatus;
 	continuations: number;
+	stalls: number;
 	summary?: string;
 }
 
 export const MAX_GOAL_CONTINUATIONS = 50;
+export const MAX_GOAL_STALLS = 3;
 
 export function createGoal(objective: string): Goal {
-	return { objective, status: "active", continuations: 0 };
+	return { objective, status: "active", continuations: 0, stalls: 0 };
 }
 
 export function buildGoalStartPrompt(goal: Goal): string {
@@ -32,5 +34,14 @@ export function buildGoalContinuationPrompt(goal: Goal): string {
 		"Do not mark the goal complete because it seems probably done; audit it against concrete evidence first.",
 		'If the goal is fully achieved and verified, call the update_goal tool with status "complete" and a short summary instead of continuing.',
 		"If you are blocked and need input from the user, say so plainly and stop.",
+	].join("\n");
+}
+
+export function buildGoalStallPrompt(goal: Goal): string {
+	return [
+		`You stopped without finishing the active goal: ${goal.objective}`,
+		"",
+		"Do not stop or ask for confirmation unless you are genuinely blocked on input only the user can give.",
+		'Resume the work now: take the next concrete step with tools. If the goal is already achieved and verified, call update_goal with status "complete".',
 	].join("\n");
 }
