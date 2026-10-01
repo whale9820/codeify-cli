@@ -1,12 +1,12 @@
 {
 	"name": "codeify-coding-agent",
-	"version": "0.82.39",
+	"version": "0.82.40",
 	"lockfileVersion": 3,
 	"requires": true,
 	"packages": {
 		"": {
 			"name": "codeify-coding-agent",
-			"version": "0.82.39",
+			"version": "0.82.40",
 			"license": "MIT",
 			"dependencies": {
 				"codeify-agent-core": "^0.82.39",
