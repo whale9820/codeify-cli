@@ -138,6 +138,7 @@ export type AgentSessionEvent =
 	| { type: "compaction_start"; reason: "manual" | "threshold" | "overflow" }
 	| { type: "compaction_requested"; rationale: string }
 	| { type: "goal_updated"; goal: Goal | undefined }
+	| { type: "background_tasks_updated" }
 	| { type: "entry_appended"; entry: SessionEntry }
 	| { type: "session_info_changed"; name: string | undefined }
 	| { type: "thinking_level_changed"; level: ThinkingLevel }
@@ -306,7 +307,10 @@ export class AgentSession {
 	// turn settles, since compaction aborts the agent and cannot run inside a tool call.
 	private _pendingCompactionRequest: string | undefined = undefined;
 	private _goal: Goal | undefined = undefined;
-	private _backgroundTasks = new BackgroundTaskManager((task) => this._reportBackgroundTask(task));
+	private _backgroundTasks = new BackgroundTaskManager(
+		(task) => this._reportBackgroundTask(task),
+		() => this._emit({ type: "background_tasks_updated" }),
+	);
 
 	// Branch summarization state
 	private _branchSummaryAbortController: AbortController | undefined = undefined;

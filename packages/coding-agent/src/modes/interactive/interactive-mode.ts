@@ -53,6 +53,7 @@ import {
 } from "../../config.ts";
 import { type AgentSession, type AgentSessionEvent, parseSkillBlock } from "../../core/agent-session.ts";
 import { type AgentSessionRuntime, SessionImportFileNotFoundError } from "../../core/agent-session-runtime.ts";
+import { formatTaskLine } from "../../core/background-tasks.ts";
 import {
 	CACHE_TTL_MS,
 	type CacheMiss,
@@ -1627,6 +1628,11 @@ export class InteractiveMode {
 				await this.handleGoalCommand(text.slice(5).trim());
 				return;
 			}
+			if (text === "/tasks" || text.startsWith("/tasks ")) {
+				this.editor.setText("");
+				this.handleTasksCommand(text.slice(6).trim());
+				return;
+			}
 			if (text === "/export" || text.startsWith("/export ")) {
 				await this.handleExportCommand(text);
 				this.editor.setText("");
@@ -2018,6 +2024,11 @@ export class InteractiveMode {
 				await this.checkShutdownRequested();
 				await this.handleRequestedCompaction();
 				void this.continueGoal();
+				break;
+
+			case "background_tasks_updated":
+				this.footer.invalidate();
+				this.ui.requestRender();
 				break;
 
 			case "goal_updated":
@@ -2766,6 +2777,27 @@ export class InteractiveMode {
 		this.session.setSmartModelUsageEnabled(value === "on");
 		this.refreshBuiltInHeader();
 		this.showStatus(`Smart model usage: ${value}`);
+	}
+
+	private handleTasksCommand(argument: string): void {
+		const [keyword, target] = argument.split(/\s+/u);
+		if (keyword === "stop") {
+			if (!target) {
+				this.showStatus("Usage: /tasks stop <id|all>");
+				return;
+			}
+			const running = this.session.getBackgroundTasks().filter((task) => task.status === "running");
+			const ids = target === "all" ? running.map((task) => task.id) : [target];
+			const stopped = ids.filter((id) => this.session.stopBackgroundTask(id));
+			this.showStatus(stopped.length > 0 ? `Stopped ${stopped.join(", ")}` : "No matching running task");
+			return;
+		}
+		const tasks = this.session.getBackgroundTasks();
+		if (tasks.length === 0) {
+			this.showStatus("No background tasks");
+			return;
+		}
+		this.showStatus(tasks.map(formatTaskLine).join("\n"));
 	}
 
 	private describeGoal(goal: Goal): string {

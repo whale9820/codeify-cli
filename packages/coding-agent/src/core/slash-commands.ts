@@ -27,6 +27,11 @@ export const BUILTIN_SLASH_COMMANDS: ReadonlyArray<BuiltinSlashCommand> = [
 		description: "Set a goal the agent keeps working on until done (or pause, resume, clear)",
 		argumentHint: "<objective|pause|resume|clear>",
 	},
+	{
+		name: "tasks",
+		description: "List background tasks, or stop one",
+		argumentHint: "<stop <id|all>>",
+	},
 	{ name: "scoped-models", description: "Enable/disable models for Ctrl+P cycling" },
 	{ name: "export", description: "Export session (HTML default, or specify path: .html/.jsonl)" },
 	{ name: "import", description: "Import and resume a session from a JSONL file" },
