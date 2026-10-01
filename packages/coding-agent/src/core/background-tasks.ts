@@ -42,9 +42,11 @@ export class BackgroundTaskManager {
 	private entries = new Map<string, Entry>();
 	private nextId = 1;
 	private onFinished: (task: BackgroundTask) => void;
+	private onChange: () => void;
 
-	constructor(onFinished: (task: BackgroundTask) => void) {
+	constructor(onFinished: (task: BackgroundTask) => void, onChange: () => void = () => {}) {
 		this.onFinished = onFinished;
+		this.onChange = onChange;
 	}
 
 	start(options: BackgroundTaskStartOptions): BackgroundTask {
@@ -66,6 +68,7 @@ export class BackgroundTaskManager {
 			stopRequested: false,
 		};
 		this.entries.set(task.id, entry);
+		this.onChange();
 
 		const append = (text: string) => {
 			entry.output += text;
@@ -79,6 +82,7 @@ export class BackgroundTaskManager {
 		const finish = (status: BackgroundTaskStatus, patch: Partial<BackgroundTask>) => {
 			if (entry.task.status !== "running") return;
 			entry.task = { ...entry.task, ...patch, status, endedAt: Date.now() };
+			this.onChange();
 			this.onFinished(entry.task);
 		};
 
@@ -138,6 +142,7 @@ export class BackgroundTaskManager {
 
 	detach(): void {
 		this.onFinished = () => {};
+		this.onChange = () => {};
 		this.stopAll();
 	}
 }

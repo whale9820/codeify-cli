@@ -145,6 +145,10 @@ export class FooterComponent implements Component {
 			contextPercentStr = contextPercentDisplay;
 		}
 		statsParts.push(contextPercentStr);
+		const runningTasks = this.session.getBackgroundTasks().filter((task) => task.status === "running").length;
+		if (runningTasks > 0) {
+			statsParts.push(`${theme.fg("dim", "•")} ${theme.fg("accent", `${runningTasks} bg`)}`);
+		}
 		if (areExperimentalFeaturesEnabled()) {
 			statsParts.push(`${theme.fg("dim", "•")} ${theme.bold(theme.fg("warning", "xp"))}`);
 		}
