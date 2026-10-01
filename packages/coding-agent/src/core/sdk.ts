@@ -257,6 +257,9 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 	if (!options.noTools && !options.tools && !excludedToolNameSet?.has("context_usage")) {
 		initialActiveToolNames.push("context_usage");
 	}
+	if (!options.noTools && !options.tools && !excludedToolNameSet?.has("update_goal")) {
+		initialActiveToolNames.push("update_goal");
+	}
 
 	if (options.customTools) {
 		for (const tool of options.customTools) {

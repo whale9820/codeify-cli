@@ -22,6 +22,11 @@ export const BUILTIN_SLASH_COMMANDS: ReadonlyArray<BuiltinSlashCommand> = [
 	{ name: "thinking", description: "Set reasoning effort", argumentHint: "<level>" },
 	{ name: "effort", description: "Set reasoning effort", argumentHint: "<level>" },
 	{ name: "smart", description: "Enable or disable agentic smart model delegation", argumentHint: "<on|off>" },
+	{
+		name: "goal",
+		description: "Set a goal the agent keeps working on until done (or pause, resume, clear)",
+		argumentHint: "<objective|pause|resume|clear>",
+	},
 	{ name: "scoped-models", description: "Enable/disable models for Ctrl+P cycling" },
 	{ name: "export", description: "Export session (HTML default, or specify path: .html/.jsonl)" },
 	{ name: "import", description: "Import and resume a session from a JSONL file" },
