@@ -4,6 +4,7 @@
 
 ### Added
 
+- Added the `background_task` tool: the agent can start shell commands or delegated agents in the background and keeps the conversation free while they run. When a task finishes, its result is delivered back as a new message that triggers a turn, and the agent is encouraged to prefer it over `bash` for anything slow. Tasks can be listed, read, and stopped, and are cancelled when the session ends.
 - Added `/goal` for persistent objectives: `/goal <objective>` keeps the agent working across turns until it marks the goal complete with the `update_goal` tool; `/goal`, `/goal pause`, `/goal resume`, and `/goal clear` manage it. `/goal ` shows a dropdown of pause, resume, and clear. If the agent stops mid-task without making tool calls, it is nudged to keep going; interruptions, errors, three stalls in a row, or 50 continuations pause the goal.
 - Honor Codeify `/v1/models` `supports_thinking_toggle`: `/thinking` prepends `off`, and empty thinking modality lists expose `on` instead of invented effort levels. Off sends `thinking: { type: "disabled" }`; on sends `thinking: { type: "adaptive" }`.
 - Send the hosted Responses `web_search` tool on Codeify requests so the model can search the web, and show those searches in the transcript.

@@ -58,6 +58,7 @@ import { stripFrontmatter } from "../utils/frontmatter.ts";
 import { resolvePath } from "../utils/paths.ts";
 import { sleep } from "../utils/sleep.ts";
 import { formatNoApiKeyFoundMessage, formatNoModelSelectedMessage } from "./auth-guidance.ts";
+import { type BackgroundTask, BackgroundTaskManager, buildCompletionMessage } from "./background-tasks.ts";
 import { type BashResult, executeBashWithOperations } from "./bash-executor.ts";
 import {
 	type CompactionResult,
@@ -83,6 +84,7 @@ import { CURRENT_SESSION_VERSION, getLatestCompactionEntry, type SessionHeader }
 import type { SettingsManager } from "./settings-manager.ts";
 import { createSyntheticSourceInfo, type SourceInfo } from "./source-info.ts";
 import { type BuildSystemPromptOptions, buildSystemPrompt } from "./system-prompt.ts";
+import { createBackgroundTaskToolDefinition } from "./tools/background-task.ts";
 import { type BashOperations, createLocalBashOperations } from "./tools/bash.ts";
 import { createCodeifyModelToolDefinition } from "./tools/codeify-model.ts";
 import { type ContextUsageSnapshot, createContextUsageToolDefinition } from "./tools/context-usage.ts";
@@ -304,6 +306,7 @@ export class AgentSession {
 	// turn settles, since compaction aborts the agent and cannot run inside a tool call.
 	private _pendingCompactionRequest: string | undefined = undefined;
 	private _goal: Goal | undefined = undefined;
+	private _backgroundTasks = new BackgroundTaskManager((task) => this._reportBackgroundTask(task));
 
 	// Branch summarization state
 	private _branchSummaryAbortController: AbortController | undefined = undefined;
@@ -658,6 +661,7 @@ export class AgentSession {
 			this.abortCompaction();
 			this.abortBranchSummary();
 			this.abortBash();
+			this._backgroundTasks.detach();
 			this.agent.abort();
 		} catch {
 			// Dispose must succeed even if an abort hook throws.
@@ -1929,12 +1933,19 @@ export class AgentSession {
 				// delegated agent running its own context.
 				getDelegatedToolNames: () =>
 					[...this._toolRegistry.keys()].filter(
-						(name) => name !== "codeify_model" && name !== "context_usage" && name !== "update_goal",
+						(name) =>
+							name !== "codeify_model" &&
+							name !== "context_usage" &&
+							name !== "update_goal" &&
+							name !== "background_task",
 					),
 				createDelegatedTools: () => ({
 					tools: [...this._toolRegistry.values()].filter(
 						(tool) =>
-							tool.name !== "codeify_model" && tool.name !== "context_usage" && tool.name !== "update_goal",
+							tool.name !== "codeify_model" &&
+							tool.name !== "context_usage" &&
+							tool.name !== "update_goal" &&
+							tool.name !== "background_task",
 					),
 				}),
 			});
@@ -1949,6 +1960,45 @@ export class AgentSession {
 					this._emit({ type: "compaction_requested", rationale });
 				},
 			});
+			const bashOperations = createLocalBashOperations({ shellPath });
+			const delegate = baseToolDefinitions.codeify_model;
+			baseToolDefinitions.background_task = createBackgroundTaskToolDefinition({
+				startCommand: (command, description, timeout) =>
+					this._backgroundTasks.start({
+						kind: "command",
+						description,
+						run: async ({ signal, append }) => {
+							const prefixed = shellCommandPrefix ? `${shellCommandPrefix}\n${command}` : command;
+							return bashOperations.exec(prefixed, this._cwd, {
+								onData: (data) => append(data.toString("utf-8")),
+								signal,
+								timeout,
+							});
+						},
+					}),
+				startAgent: delegate
+					? (model, task, allowedTools, description) =>
+							this._backgroundTasks.start({
+								kind: "agent",
+								description,
+								run: async ({ signal }) => {
+									const result = await delegate.execute(
+										`background-${Date.now()}`,
+										{ action: "run", model, task, allowedTools },
+										signal,
+										undefined,
+										{ cwd: this._cwd, model: this.model },
+									);
+									const block = result.content.find((item) => item.type === "text");
+									return { text: block?.type === "text" ? block.text : "" };
+								},
+							})
+					: undefined,
+				list: () => this._backgroundTasks.list(),
+				get: (id) => this._backgroundTasks.get(id),
+				readOutput: (id) => this._backgroundTasks.readOutput(id),
+				stop: (id) => this._backgroundTasks.stop(id),
+			});
 			baseToolDefinitions.update_goal = createUpdateGoalToolDefinition({
 				getGoal: () => this._goal,
 				completeGoal: (summary) => this.completeGoal(summary),
@@ -1961,7 +2011,7 @@ export class AgentSession {
 
 		const defaultActiveToolNames = this._baseToolsOverride
 			? Object.keys(this._baseToolsOverride)
-			: ["read", "bash", "edit", "write", "context_usage", "update_goal"];
+			: ["read", "bash", "edit", "write", "context_usage", "update_goal", "background_task"];
 		const baseActiveToolNames = [...(options.activeToolNames ?? defaultActiveToolNames)];
 		if (this.settingsManager.getSmartModelUsage()) baseActiveToolNames.push("codeify_model");
 		this._refreshToolRegistry({ activeToolNames: baseActiveToolNames });
@@ -2508,6 +2558,28 @@ export class AgentSession {
 			compacted: getLatestCompactionEntry(branchEntries) !== null,
 			costUsd: this.getSessionStats().cost,
 		};
+	}
+
+	getBackgroundTasks(): BackgroundTask[] {
+		return this._backgroundTasks.list();
+	}
+
+	stopBackgroundTask(id: string): boolean {
+		return this._backgroundTasks.stop(id);
+	}
+
+	private _reportBackgroundTask(task: BackgroundTask): void {
+		if (task.status === "stopped") return;
+		const output = this._backgroundTasks.readOutput(task.id) ?? { text: "", droppedChars: 0 };
+		void this.sendCustomMessage(
+			{
+				customType: "background_task",
+				content: buildCompletionMessage(task, output),
+				display: true,
+				details: task,
+			},
+			{ triggerTurn: true, deliverAs: "followUp" },
+		).catch(() => {});
 	}
 
 	getGoal(): Goal | undefined {
