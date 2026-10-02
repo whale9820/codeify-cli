@@ -45,3 +45,9 @@ plans/
 .pi/hf-sessions/
 .pi/hf-sessions-backup/
 collect.sh
+
+AGENTS.md
+CLAUDE.md
+.codeify/
+*.pem
+*.key

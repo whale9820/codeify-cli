@@ -3015,7 +3015,7 @@ export class InteractiveMode {
 				return;
 			}
 			this.showStatus("Goal resumed");
-			void this.continueGoal();
+			void this.continueGoal({ resumed: true });
 			return;
 		}
 
@@ -3033,14 +3033,14 @@ export class InteractiveMode {
 		}
 	}
 
-	private async continueGoal(): Promise<void> {
+	private async continueGoal(options: { resumed?: boolean } = {}): Promise<void> {
 		const goal = this.session.getGoal();
 		if (!goal || goal.status !== "active") return;
 		if (this.session.isStreaming || this.session.isCompacting || this.session.pendingMessageCount > 0) return;
 
 		const messages = this.session.messages;
 		const last = messages.at(-1);
-		if (last?.role === "assistant") {
+		if (last?.role === "assistant" && !options.resumed) {
 			const reason = (last as AssistantMessage).stopReason;
 			if (reason === "aborted" || reason === "error") {
 				this.session.pauseGoal();
