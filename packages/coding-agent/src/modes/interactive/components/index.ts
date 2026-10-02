@@ -1,5 +1,6 @@
 export { ArminComponent } from "./armin.ts";
 export { AssistantMessageComponent } from "./assistant-message.ts";
+export { BackgroundTaskMessageComponent } from "./background-task-message.ts";
 export { BashExecutionComponent } from "./bash-execution.ts";
 export { BorderedLoader } from "./bordered-loader.ts";
 export { BranchSummaryMessageComponent } from "./branch-summary-message.ts";
