@@ -56,6 +56,7 @@ export class ModelSelectorComponent extends Container implements Focusable {
 	private readonly refreshAbortController = new AbortController();
 	private refreshTimeout?: ReturnType<typeof setTimeout>;
 	private closed = false;
+	private readonly providerFilter: string | undefined;
 
 	constructor(
 		tui: TUI,
@@ -66,9 +67,11 @@ export class ModelSelectorComponent extends Container implements Focusable {
 		onSelect: (model: Model<any>) => void,
 		onCancel: () => void,
 		initialSearchInput?: string,
+		providerFilter?: string,
 	) {
 		super();
 
+		this.providerFilter = providerFilter;
 		this.tui = tui;
 		this.currentModel = currentModel;
 		this.settingsManager = settingsManager;
@@ -127,10 +130,13 @@ export class ModelSelectorComponent extends Container implements Focusable {
 	}
 
 	private loadModelsFromSnapshot(): void {
-		const models = this.modelRuntime.getAvailableSnapshot().map((model: Model<any>) => ({
-			id: model.id,
-			model,
-		}));
+		const models = this.modelRuntime
+			.getAvailableSnapshot()
+			.filter((model: Model<any>) => !this.providerFilter || model.provider === this.providerFilter)
+			.map((model: Model<any>) => ({
+				id: model.id,
+				model,
+			}));
 		this.allModels = this.sortModels(models);
 		this.scopedModels = this.scopedModels.map((scoped) => {
 			const refreshed = this.modelRuntime.getModel(scoped.model.provider, scoped.model.id);
