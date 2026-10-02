@@ -93,17 +93,19 @@ export class FooterComponent implements Component {
 			rightSide = thinkingLevel === "off" ? `${modelSlug} • thinking off` : `${modelSlug} • ${thinkingLevel}`;
 		}
 
+		const margin = "  ";
+		const innerWidth = Math.max(1, width - margin.length * 2);
 		const minPadding = 2;
 		const rightWidth = visibleWidth(rightSide);
 		const left = [theme.fg("dim", pwd), ...indicatorParts].join(theme.fg("dim", " · "));
-		const availableForLeft = width - rightWidth - minPadding;
+		const availableForLeft = innerWidth - rightWidth - minPadding;
 
 		if (availableForLeft < 1) {
-			return [truncateToWidth(theme.fg("dim", rightSide), width, theme.fg("dim", "..."))];
+			return [margin + truncateToWidth(theme.fg("dim", rightSide), innerWidth, theme.fg("dim", "...")) + margin];
 		}
 
 		const shownLeft = truncateToWidth(left, availableForLeft, theme.fg("dim", "..."));
-		const padding = " ".repeat(Math.max(0, width - visibleWidth(shownLeft) - rightWidth));
-		return [shownLeft + theme.fg("dim", padding + rightSide)];
+		const padding = " ".repeat(Math.max(0, innerWidth - visibleWidth(shownLeft) - rightWidth));
+		return [margin + shownLeft + theme.fg("dim", padding + rightSide) + margin];
 	}
 }
