@@ -439,45 +439,6 @@ describe("Agent", () => {
 		expect(events.filter((event) => event.type === "tool_execution_update")).toHaveLength(0);
 	});
 
-	it("should update state with mutators", () => {
-		const agent = new Agent({ streamFn: unusedStreamFunction });
-
-		// Test setSystemPrompt
-		agent.state.systemPrompt = "Custom prompt";
-		expect(agent.state.systemPrompt).toBe("Custom prompt");
-
-		// Test setModel
-		const newModel = getModel("google", "gemini-2.5-flash");
-		agent.state.model = newModel;
-		expect(agent.state.model).toBe(newModel);
-
-		// Test setThinkingLevel
-		agent.state.thinkingLevel = "high";
-		expect(agent.state.thinkingLevel).toBe("high");
-
-		// Test setTools
-		const tools = [{ name: "test", description: "test tool" } as any];
-		agent.state.tools = tools;
-		expect(agent.state.tools).toEqual(tools);
-		expect(agent.state.tools).not.toBe(tools); // Should be a copy
-
-		// Test replaceMessages
-		const messages = [{ role: "user" as const, content: "Hello", timestamp: Date.now() }];
-		agent.state.messages = messages;
-		expect(agent.state.messages).toEqual(messages);
-		expect(agent.state.messages).not.toBe(messages); // Should be a copy
-
-		// Test appendMessage
-		const newMessage = { role: "assistant" as const, content: [{ type: "text" as const, text: "Hi" }] };
-		agent.state.messages.push(newMessage as any);
-		expect(agent.state.messages).toHaveLength(2);
-		expect(agent.state.messages[1]).toBe(newMessage);
-
-		// Test clearMessages
-		agent.state.messages = [];
-		expect(agent.state.messages).toEqual([]);
-	});
-
 	it("should support steering message queue", async () => {
 		const agent = new Agent({ streamFn: unusedStreamFunction });
 

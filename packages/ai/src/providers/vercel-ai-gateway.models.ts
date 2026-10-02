@@ -4,7 +4,7 @@
 import values from "./data/vercel-ai-gateway.json" with { type: "json" };
 import type { Model } from "../types.ts";
 
-export const VERCEL_AI_GATEWAY_MODELS = values as unknown as {
+export const VERCEL_AI_GATEWAY_MODELS = values as {
 	"alibaba/qwen-3-14b": Model<"anthropic-messages"> & {
 		id: "alibaba/qwen-3-14b";
 		provider: "vercel-ai-gateway";
@@ -125,6 +125,14 @@ export const VERCEL_AI_GATEWAY_MODELS = values as unknown as {
 		id: "alibaba/qwen3.8-max-0902";
 		provider: "vercel-ai-gateway";
 	};
+	"alibaba/qwen3.8-max-prime": Model<"anthropic-messages"> & {
+		id: "alibaba/qwen3.8-max-prime";
+		provider: "vercel-ai-gateway";
+	};
+	"alibaba/qwen3.8-omni-flash": Model<"anthropic-messages"> & {
+		id: "alibaba/qwen3.8-omni-flash";
+		provider: "vercel-ai-gateway";
+	};
 	"amazon/nova-2-lite": Model<"anthropic-messages"> & {
 		id: "amazon/nova-2-lite";
 		provider: "vercel-ai-gateway";
@@ -189,6 +197,14 @@ export const VERCEL_AI_GATEWAY_MODELS = values as unknown as {
 		id: "anthropic/claude-opus-5-fast";
 		provider: "vercel-ai-gateway";
 	};
+	"anthropic/claude-opus-5.5": Model<"anthropic-messages"> & {
+		id: "anthropic/claude-opus-5.5";
+		provider: "vercel-ai-gateway";
+	};
+	"anthropic/claude-opus-5.5-fast": Model<"anthropic-messages"> & {
+		id: "anthropic/claude-opus-5.5-fast";
+		provider: "vercel-ai-gateway";
+	};
 	"anthropic/claude-sonnet-4": Model<"anthropic-messages"> & {
 		id: "anthropic/claude-sonnet-4";
 		provider: "vercel-ai-gateway";
@@ -203,6 +219,10 @@ export const VERCEL_AI_GATEWAY_MODELS = values as unknown as {
 	};
 	"anthropic/claude-sonnet-5": Model<"anthropic-messages"> & {
 		id: "anthropic/claude-sonnet-5";
+		provider: "vercel-ai-gateway";
+	};
+	"anthropic/claude-sonnet-5.5": Model<"anthropic-messages"> & {
+		id: "anthropic/claude-sonnet-5.5";
 		provider: "vercel-ai-gateway";
 	};
 	"arcee-ai/trinity-large-thinking": Model<"anthropic-messages"> & {
@@ -267,6 +287,10 @@ export const VERCEL_AI_GATEWAY_MODELS = values as unknown as {
 	};
 	"deepseek/deepseek-v4.1-flash": Model<"anthropic-messages"> & {
 		id: "deepseek/deepseek-v4.1-flash";
+		provider: "vercel-ai-gateway";
+	};
+	"fireworks/ember-1": Model<"anthropic-messages"> & {
+		id: "fireworks/ember-1";
 		provider: "vercel-ai-gateway";
 	};
 	"google/gemini-2.5-flash": Model<"anthropic-messages"> & {
@@ -341,10 +365,6 @@ export const VERCEL_AI_GATEWAY_MODELS = values as unknown as {
 		id: "inclusionai/ling-3.0-flash-fin";
 		provider: "vercel-ai-gateway";
 	};
-	"inclusionai/ling-3.0-flash-fin-free": Model<"anthropic-messages"> & {
-		id: "inclusionai/ling-3.0-flash-fin-free";
-		provider: "vercel-ai-gateway";
-	};
 	"inclusionai/ling-3.0-flash-sante": Model<"anthropic-messages"> & {
 		id: "inclusionai/ling-3.0-flash-sante";
 		provider: "vercel-ai-gateway";
@@ -357,28 +377,20 @@ export const VERCEL_AI_GATEWAY_MODELS = values as unknown as {
 		id: "inclusionai/ling-3.0-flash-vl";
 		provider: "vercel-ai-gateway";
 	};
-	"inclusionai/ling-3.0-flash-vl-free": Model<"anthropic-messages"> & {
-		id: "inclusionai/ling-3.0-flash-vl-free";
+	"inclusionai/ling-3.1-flash": Model<"anthropic-messages"> & {
+		id: "inclusionai/ling-3.1-flash";
+		provider: "vercel-ai-gateway";
+	};
+	"inclusionai/ling-3.1-flash-free": Model<"anthropic-messages"> & {
+		id: "inclusionai/ling-3.1-flash-free";
 		provider: "vercel-ai-gateway";
 	};
 	"interfaze/interfaze-beta": Model<"anthropic-messages"> & {
 		id: "interfaze/interfaze-beta";
 		provider: "vercel-ai-gateway";
 	};
-	"kwaipilot/kat-coder-air-v2.5": Model<"anthropic-messages"> & {
-		id: "kwaipilot/kat-coder-air-v2.5";
-		provider: "vercel-ai-gateway";
-	};
-	"kwaipilot/kat-coder-pro-v1": Model<"anthropic-messages"> & {
-		id: "kwaipilot/kat-coder-pro-v1";
-		provider: "vercel-ai-gateway";
-	};
-	"kwaipilot/kat-coder-pro-v2": Model<"anthropic-messages"> & {
-		id: "kwaipilot/kat-coder-pro-v2";
-		provider: "vercel-ai-gateway";
-	};
-	"kwaipilot/kat-coder-pro-v2.5": Model<"anthropic-messages"> & {
-		id: "kwaipilot/kat-coder-pro-v2.5";
+	"meituan/longcat-2.5-preview": Model<"anthropic-messages"> & {
+		id: "meituan/longcat-2.5-preview";
 		provider: "vercel-ai-gateway";
 	};
 	"meta/llama-3.1-70b": Model<"anthropic-messages"> & {
@@ -461,14 +473,6 @@ export const VERCEL_AI_GATEWAY_MODELS = values as unknown as {
 		id: "mistral/codestral";
 		provider: "vercel-ai-gateway";
 	};
-	"mistral/devstral-2": Model<"anthropic-messages"> & {
-		id: "mistral/devstral-2";
-		provider: "vercel-ai-gateway";
-	};
-	"mistral/devstral-small-2": Model<"anthropic-messages"> & {
-		id: "mistral/devstral-small-2";
-		provider: "vercel-ai-gateway";
-	};
 	"mistral/ministral-14b": Model<"anthropic-messages"> & {
 		id: "mistral/ministral-14b";
 		provider: "vercel-ai-gateway";
@@ -485,10 +489,6 @@ export const VERCEL_AI_GATEWAY_MODELS = values as unknown as {
 		id: "mistral/mistral-large-3";
 		provider: "vercel-ai-gateway";
 	};
-	"mistral/mistral-medium": Model<"anthropic-messages"> & {
-		id: "mistral/mistral-medium";
-		provider: "vercel-ai-gateway";
-	};
 	"mistral/mistral-medium-3.5": Model<"anthropic-messages"> & {
 		id: "mistral/mistral-medium-3.5";
 		provider: "vercel-ai-gateway";
@@ -501,8 +501,8 @@ export const VERCEL_AI_GATEWAY_MODELS = values as unknown as {
 		id: "mistral/mistral-small";
 		provider: "vercel-ai-gateway";
 	};
-	"mistral/pixtral-12b": Model<"anthropic-messages"> & {
-		id: "mistral/pixtral-12b";
+	"mixedbread/toast-1": Model<"anthropic-messages"> & {
+		id: "mixedbread/toast-1";
 		provider: "vercel-ai-gateway";
 	};
 	"moonshotai/kimi-k2": Model<"anthropic-messages"> & {
@@ -749,6 +749,30 @@ export const VERCEL_AI_GATEWAY_MODELS = values as unknown as {
 		id: "openai/gpt-6-astra-fast";
 		provider: "vercel-ai-gateway";
 	};
+	"openai/gpt-6-luna": Model<"anthropic-messages"> & {
+		id: "openai/gpt-6-luna";
+		provider: "vercel-ai-gateway";
+	};
+	"openai/gpt-6-luna-fast": Model<"anthropic-messages"> & {
+		id: "openai/gpt-6-luna-fast";
+		provider: "vercel-ai-gateway";
+	};
+	"openai/gpt-6-sol": Model<"anthropic-messages"> & {
+		id: "openai/gpt-6-sol";
+		provider: "vercel-ai-gateway";
+	};
+	"openai/gpt-6-sol-fast": Model<"anthropic-messages"> & {
+		id: "openai/gpt-6-sol-fast";
+		provider: "vercel-ai-gateway";
+	};
+	"openai/gpt-6.1-sol": Model<"anthropic-messages"> & {
+		id: "openai/gpt-6.1-sol";
+		provider: "vercel-ai-gateway";
+	};
+	"openai/gpt-6.1-sol-fast": Model<"anthropic-messages"> & {
+		id: "openai/gpt-6.1-sol-fast";
+		provider: "vercel-ai-gateway";
+	};
 	"openai/gpt-oss-120b": Model<"anthropic-messages"> & {
 		id: "openai/gpt-oss-120b";
 		provider: "vercel-ai-gateway";
@@ -799,6 +823,14 @@ export const VERCEL_AI_GATEWAY_MODELS = values as unknown as {
 	};
 	"poolside/laguna-s-2.1-free": Model<"anthropic-messages"> & {
 		id: "poolside/laguna-s-2.1-free";
+		provider: "vercel-ai-gateway";
+	};
+	"quiverai/arrow-2": Model<"anthropic-messages"> & {
+		id: "quiverai/arrow-2";
+		provider: "vercel-ai-gateway";
+	};
+	"quiverai/arrow-2-telos": Model<"anthropic-messages"> & {
+		id: "quiverai/arrow-2-telos";
 		provider: "vercel-ai-gateway";
 	};
 	"sakana/fugu-max": Model<"anthropic-messages"> & {
@@ -861,6 +893,10 @@ export const VERCEL_AI_GATEWAY_MODELS = values as unknown as {
 		id: "spacexai/grok-4.6";
 		provider: "vercel-ai-gateway";
 	};
+	"spacexai/grok-4.7": Model<"anthropic-messages"> & {
+		id: "spacexai/grok-4.7";
+		provider: "vercel-ai-gateway";
+	};
 	"spacexai/grok-build-0.1": Model<"anthropic-messages"> & {
 		id: "spacexai/grok-build-0.1";
 		provider: "vercel-ai-gateway";
@@ -895,6 +931,18 @@ export const VERCEL_AI_GATEWAY_MODELS = values as unknown as {
 	};
 	"xiaomi/mimo-v2.5-pro": Model<"anthropic-messages"> & {
 		id: "xiaomi/mimo-v2.5-pro";
+		provider: "vercel-ai-gateway";
+	};
+	"xiaomi/mimo-v2.6-flash": Model<"anthropic-messages"> & {
+		id: "xiaomi/mimo-v2.6-flash";
+		provider: "vercel-ai-gateway";
+	};
+	"xiaomi/mimo-v2.6-pro": Model<"anthropic-messages"> & {
+		id: "xiaomi/mimo-v2.6-pro";
+		provider: "vercel-ai-gateway";
+	};
+	"xiaomi/mimo-v2.6-pro-ultraspeed": Model<"anthropic-messages"> & {
+		id: "xiaomi/mimo-v2.6-pro-ultraspeed";
 		provider: "vercel-ai-gateway";
 	};
 	"zai/glm-4.5": Model<"anthropic-messages"> & {
@@ -955,6 +1003,10 @@ export const VERCEL_AI_GATEWAY_MODELS = values as unknown as {
 	};
 	"zai/glm-5.3-flash": Model<"anthropic-messages"> & {
 		id: "zai/glm-5.3-flash";
+		provider: "vercel-ai-gateway";
+	};
+	"zai/glm-5.3-flashx": Model<"anthropic-messages"> & {
+		id: "zai/glm-5.3-flashx";
 		provider: "vercel-ai-gateway";
 	};
 	"zai/glm-5v-turbo": Model<"anthropic-messages"> & {

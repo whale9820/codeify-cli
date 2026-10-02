@@ -768,7 +768,7 @@ const SAFEGUARD_ERROR_CODE_PATTERN = /content.?filter|policy|safety|moderation|f
 
 function withSafeguardPrefix(message: string, code: string | null | undefined): string {
 	if (!SAFEGUARD_ERROR_CODE_PATTERN.test(`${code ?? ""} ${message}`)) return message;
-	return `${SAFEGUARD_BLOCK_MESSAGE}: ${message}. Rephrase the request or switch models to continue.`;
+	return `${SAFEGUARD_BLOCK_MESSAGE}: ${message.replace(/\.+$/u, "")}. Rephrase the request or switch models to continue.`;
 }
 
 function mapStopReason(status: OpenAI.Responses.ResponseStatus | undefined): StopReason {

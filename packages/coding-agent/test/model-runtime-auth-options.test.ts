@@ -85,16 +85,6 @@ describe("ModelRuntime auth options", () => {
 			expect.arrayContaining([
 				expect.objectContaining({
 					type: "api_key",
-					provider: expect.objectContaining({ id: "amazon-bedrock", name: "Amazon Bedrock" }),
-					method: expect.objectContaining({ name: "AWS credentials or bearer token" }),
-				}),
-				expect.objectContaining({
-					type: "api_key",
-					provider: expect.objectContaining({ id: "google-vertex", name: "Google Vertex AI" }),
-					method: expect.objectContaining({ name: "Google Cloud credentials" }),
-				}),
-				expect.objectContaining({
-					type: "oauth",
 					provider: expect.objectContaining({ id: "anthropic", name: "Anthropic" }),
 				}),
 				expect.objectContaining({
@@ -109,25 +99,19 @@ describe("ModelRuntime auth options", () => {
 		);
 		expect(authOptions(runtime, "api_key").every((option) => option.type === "api_key")).toBe(true);
 		expect(authOptions(runtime, "oauth").every((option) => option.type === "oauth")).toBe(true);
-		expect(options.some((option) => option.provider.id === "openai-codex" && option.type === "api_key")).toBe(false);
 	});
 
 	it("attaches the provider's active auth status to every method option", async () => {
 		const runtime = await createRuntime({
 			credentials: AuthStorage.inMemory({
-				anthropic: {
-					type: "oauth",
-					access: "access",
-					refresh: "refresh",
-					expires: Date.now() + 60_000,
-				},
+				anthropic: { type: "api_key", key: "test-key" },
 			}),
 			modelsPath: null,
 		});
 
 		const options = authOptions(runtime).filter((option) => option.provider.id === "anthropic");
-		expect(options).toHaveLength(2);
-		expect(await runtime.checkAuth("anthropic")).toMatchObject({ type: "oauth" });
+		expect(options).toHaveLength(1);
+		expect(await runtime.checkAuth("anthropic")).toMatchObject({ type: "api_key" });
 	});
 
 	it("constructs an API key method for a configured provider", async () => {

@@ -249,6 +249,10 @@ export const HUGGINGFACE_MODELS = values as {
 		id: "tencent/Hy3";
 		provider: "huggingface";
 	};
+	"tencent/Hy4-preview": Model<"openai-completions"> & {
+		id: "tencent/Hy4-preview";
+		provider: "huggingface";
+	};
 	"thinkingmachines/Inkling": Model<"openai-completions"> & {
 		id: "thinkingmachines/Inkling";
 		provider: "huggingface";

@@ -5,8 +5,12 @@ import values from "./data/nvidia.json" with { type: "json" };
 import type { Model } from "../types.ts";
 
 export const NVIDIA_MODELS = values as {
-	"deepseek-ai/deepseek-v4-flash-0731": Model<"openai-completions"> & {
-		id: "deepseek-ai/deepseek-v4-flash-0731";
+	"deepseek-ai/deepseek-v4.1-flash": Model<"openai-completions"> & {
+		id: "deepseek-ai/deepseek-v4.1-flash";
+		provider: "nvidia";
+	};
+	"google/diffusiongemma-26b-a4b-it": Model<"openai-completions"> & {
+		id: "google/diffusiongemma-26b-a4b-it";
 		provider: "nvidia";
 	};
 	"google/gemma-3-12b-it": Model<"openai-completions"> & {
@@ -75,6 +79,10 @@ export const NVIDIA_MODELS = values as {
 	};
 	"poolside/laguna-xs-2.1": Model<"openai-completions"> & {
 		id: "poolside/laguna-xs-2.1";
+		provider: "nvidia";
+	};
+	"z-ai/glm-5.3": Model<"openai-completions"> & {
+		id: "z-ai/glm-5.3";
 		provider: "nvidia";
 	};
 	"z-ai/glm-5.3-flash": Model<"openai-completions"> & {

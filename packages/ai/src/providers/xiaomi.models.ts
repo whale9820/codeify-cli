@@ -29,4 +29,16 @@ export const XIAOMI_MODELS = values as {
 		id: "mimo-v2.5-pro-ultraspeed";
 		provider: "xiaomi";
 	};
+	"mimo-v2.6-flash": Model<"openai-completions"> & {
+		id: "mimo-v2.6-flash";
+		provider: "xiaomi";
+	};
+	"mimo-v2.6-pro": Model<"openai-completions"> & {
+		id: "mimo-v2.6-pro";
+		provider: "xiaomi";
+	};
+	"mimo-v2.6-pro-ultraspeed": Model<"openai-completions"> & {
+		id: "mimo-v2.6-pro-ultraspeed";
+		provider: "xiaomi";
+	};
 };

@@ -14,8 +14,6 @@ const outputLockfilePath = join(outputDir, "package-lock.json");
 const internalPackagePrefix = "codeify-";
 const installPackageName = "codeify-coding-agent-install";
 const allowedInstallScriptPackages = new Map([
-	["@google/genai@1.52.0", "preinstall is a no-op in the published package"],
-	["protobufjs@7.6.4", "postinstall only warns about protobufjs version scheme mismatches"],
 ]);
 
 const args = new Set(process.argv.slice(2));

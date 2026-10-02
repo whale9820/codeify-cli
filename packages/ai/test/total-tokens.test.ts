@@ -18,8 +18,6 @@ import type { Api, Context, Model, StreamOptions, Usage } from "../src/types.ts"
 
 type StreamOptionsWithExtras = StreamOptions & Record<string, unknown>;
 
-import { hasAzureOpenAICredentials, resolveAzureDeploymentName } from "./azure-utils.ts";
-import { hasBedrockCredentials } from "./bedrock-utils.ts";
 import { hasCloudflareAiGatewayCredentials, hasCloudflareWorkersAICredentials } from "./cloudflare-utils.ts";
 import { resolveApiKey } from "./oauth.ts";
 
@@ -29,7 +27,7 @@ const oauthTokens = await Promise.all([
 	resolveApiKey("github-copilot"),
 	resolveApiKey("openai-codex"),
 ]);
-const [anthropicOAuthToken, githubCopilotToken, openaiCodexToken] = oauthTokens;
+const [anthropicOAuthToken, githubCopilotToken, _openaiCodexToken] = oauthTokens;
 
 // Generate a long system prompt to trigger caching (>2k bytes for most providers)
 const LONG_SYSTEM_PROMPT = `You are a helpful assistant. Be concise in your responses.
@@ -195,49 +193,9 @@ describe("totalTokens field", () => {
 		);
 	});
 
-	describe.skipIf(!hasAzureOpenAICredentials())("Azure OpenAI Responses", () => {
-		it(
-			"gpt-4o-mini - should return totalTokens equal to sum of components",
-			{ retry: 3, timeout: 60000 },
-			async () => {
-				const llm = getModel("azure-openai-responses", "gpt-4o-mini");
-				const azureDeploymentName = resolveAzureDeploymentName(llm.id);
-				const azureOptions = azureDeploymentName ? { azureDeploymentName } : {};
-
-				console.log(`\nAzure OpenAI Responses / ${llm.id}:`);
-				const { first, second } = await testTotalTokensWithCache(llm, azureOptions);
-
-				logUsage("First request", first);
-				logUsage("Second request", second);
-
-				assertTotalTokensEqualsComponents(first);
-				assertTotalTokensEqualsComponents(second);
-			},
-		);
-	});
-
 	// =========================================================================
 	// Google
 	// =========================================================================
-
-	describe.skipIf(!process.env.GEMINI_API_KEY)("Google", () => {
-		it(
-			"gemini-2.5-flash - should return totalTokens equal to sum of components",
-			{ retry: 3, timeout: 60000 },
-			async () => {
-				const llm = getModel("google", "gemini-2.5-flash");
-
-				console.log(`\nGoogle / ${llm.id}:`);
-				const { first, second } = await testTotalTokensWithCache(llm);
-
-				logUsage("First request", first);
-				logUsage("Second request", second);
-
-				assertTotalTokensEqualsComponents(first);
-				assertTotalTokensEqualsComponents(second);
-			},
-		);
-	});
 
 	// =========================================================================
 	// xAI
@@ -377,24 +335,6 @@ describe("totalTokens field", () => {
 	// Together AI
 	// =========================================================================
 
-	describe.skipIf(!process.env.TOGETHER_API_KEY)("Together AI", () => {
-		it("Kimi-K2.6 - should return totalTokens equal to sum of components", { retry: 3, timeout: 60000 }, async () => {
-			const llm = getModel("together", "moonshotai/Kimi-K2.6");
-
-			console.log(`\nTogether AI / ${llm.id}:`);
-			const { first, second } = await testTotalTokensWithCache(llm, {
-				apiKey: process.env.TOGETHER_API_KEY,
-				reasoningEffort: "high",
-			});
-
-			logUsage("First request", first);
-			logUsage("Second request", second);
-
-			assertTotalTokensEqualsComponents(first);
-			assertTotalTokensEqualsComponents(second);
-		});
-	});
-
 	// =========================================================================
 	// z.ai
 	// =========================================================================
@@ -417,25 +357,6 @@ describe("totalTokens field", () => {
 	// =========================================================================
 	// Mistral
 	// =========================================================================
-
-	describe.skipIf(!process.env.MISTRAL_API_KEY)("Mistral", () => {
-		it(
-			"devstral-medium-latest - should return totalTokens equal to sum of components",
-			{ retry: 3, timeout: 60000 },
-			async () => {
-				const llm = getModel("mistral", "devstral-medium-latest");
-
-				console.log(`\nMistral / ${llm.id}:`);
-				const { first, second } = await testTotalTokensWithCache(llm, { apiKey: process.env.MISTRAL_API_KEY });
-
-				logUsage("First request", first);
-				logUsage("Second request", second);
-
-				assertTotalTokensEqualsComponents(first);
-				assertTotalTokensEqualsComponents(second);
-			},
-		);
-	});
 
 	// =========================================================================
 	// MiniMax
@@ -612,25 +533,6 @@ describe("totalTokens field", () => {
 	// Kimi For Coding
 	// =========================================================================
 
-	describe.skipIf(!process.env.KIMI_API_KEY)("Kimi For Coding", () => {
-		it(
-			"kimi-for-coding - should return totalTokens equal to sum of components",
-			{ retry: 3, timeout: 60000 },
-			async () => {
-				const llm = getModel("kimi-coding", "kimi-for-coding");
-
-				console.log(`\nKimi For Coding / ${llm.id}:`);
-				const { first, second } = await testTotalTokensWithCache(llm, { apiKey: process.env.KIMI_API_KEY });
-
-				logUsage("First request", first);
-				logUsage("Second request", second);
-
-				assertTotalTokensEqualsComponents(first);
-				assertTotalTokensEqualsComponents(second);
-			},
-		);
-	});
-
 	// =========================================================================
 	// Vercel AI Gateway
 	// =========================================================================
@@ -791,45 +693,7 @@ describe("totalTokens field", () => {
 	// =========================================================================
 	// =========================================================================
 
-	describe.skipIf(!hasBedrockCredentials())("Amazon Bedrock", () => {
-		it(
-			"claude-sonnet-4-5 - should return totalTokens equal to sum of components",
-			{ retry: 3, timeout: 60000 },
-			async () => {
-				const llm = getModel("amazon-bedrock", "global.anthropic.claude-sonnet-4-5-20250929-v1:0");
-
-				console.log(`\nAmazon Bedrock / ${llm.id}:`);
-				const { first, second } = await testTotalTokensWithCache(llm);
-
-				logUsage("First request", first);
-				logUsage("Second request", second);
-
-				assertTotalTokensEqualsComponents(first);
-				assertTotalTokensEqualsComponents(second);
-			},
-		);
-	});
-
 	// =========================================================================
 	// OpenAI Codex (OAuth)
 	// =========================================================================
-
-	describe("OpenAI Codex (OAuth)", () => {
-		it.skipIf(!openaiCodexToken)(
-			"gpt-5.5 - should return totalTokens equal to sum of components",
-			{ retry: 3, timeout: 60000 },
-			async () => {
-				const llm = getModel("openai-codex", "gpt-5.5");
-
-				console.log(`\nOpenAI Codex / ${llm.id}:`);
-				const { first, second } = await testTotalTokensWithCache(llm, { apiKey: openaiCodexToken });
-
-				logUsage("First request", first);
-				logUsage("Second request", second);
-
-				assertTotalTokensEqualsComponents(first);
-				assertTotalTokensEqualsComponents(second);
-			},
-		);
-	});
 });

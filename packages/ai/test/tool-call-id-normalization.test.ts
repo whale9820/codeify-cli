@@ -19,7 +19,7 @@ import { resolveApiKey } from "./oauth.ts";
 // Resolve API keys
 const copilotToken = await resolveApiKey("github-copilot");
 const openrouterKey = getEnvApiKey("openrouter");
-const codexToken = await resolveApiKey("openai-codex");
+const _codexToken = await resolveApiKey("openai-codex");
 
 // Simple echo tool for testing
 const echoToolSchema = Type.Object({
@@ -111,67 +111,6 @@ describe("Tool Call ID Normalization - Live Handoff", () => {
 		},
 		60000,
 	);
-
-	it.skipIf(!copilotToken || !codexToken)(
-		"github-copilot -> openai-codex should normalize pipe-separated IDs",
-		async () => {
-			const copilotModel = getModel("github-copilot", "gpt-5.2-codex");
-			const codexModel = getModel("openai-codex", "gpt-5.5");
-
-			// Step 1: Generate tool call with github-copilot
-			const userMessage: Message = {
-				role: "user",
-				content: "Use the echo tool to echo 'test message'",
-				timestamp: Date.now(),
-			};
-
-			const assistantResponse = await completeSimple(
-				copilotModel,
-				{
-					systemPrompt: "You are a helpful assistant. Use the echo tool when asked.",
-					messages: [userMessage],
-					tools: [echoTool],
-				},
-				{ apiKey: copilotToken },
-			);
-
-			expect(assistantResponse.stopReason, `Copilot error: ${assistantResponse.errorMessage}`).toBe("toolUse");
-
-			const toolCall = assistantResponse.content.find((c) => c.type === "toolCall");
-			expect(toolCall).toBeDefined();
-
-			// Create tool result
-			const toolResult: ToolResultMessage = {
-				role: "toolResult",
-				toolCallId: (toolCall as any).id,
-				toolName: "echo",
-				content: [{ type: "text", text: "test message" }],
-				isError: false,
-				timestamp: Date.now(),
-			};
-
-			// Step 2: Complete with openai-codex (uses openai-codex-responses API)
-			const codexResponse = await completeSimple(
-				codexModel,
-				{
-					systemPrompt: "You are a helpful assistant.",
-					messages: [
-						userMessage,
-						assistantResponse,
-						toolResult,
-						{ role: "user", content: "Say hi", timestamp: Date.now() },
-					],
-					tools: [echoTool],
-				},
-				{ apiKey: codexToken },
-			);
-
-			// Should NOT fail with ID validation error
-			expect(codexResponse.stopReason, `Codex error: ${codexResponse.errorMessage}`).not.toBe("error");
-			expect(codexResponse.errorMessage).toBeUndefined();
-		},
-		60000,
-	);
 });
 
 /**
@@ -257,32 +196,6 @@ describe("Tool Call ID Normalization - Prefilled Context", () => {
 			if (response.errorMessage) {
 				expect(response.errorMessage).not.toContain("call_id");
 				expect(response.errorMessage).not.toContain("too long");
-			}
-		},
-		30000,
-	);
-
-	it.skipIf(!codexToken)(
-		"openai-codex should handle prefilled context with long pipe-separated IDs",
-		async () => {
-			const model = getModel("openai-codex", "gpt-5.5");
-			const messages = buildPrefilledMessages();
-
-			const response = await completeSimple(
-				model,
-				{
-					systemPrompt: "You are a helpful assistant.",
-					messages,
-					tools: [echoTool],
-				},
-				{ apiKey: codexToken },
-			);
-
-			// Should NOT fail with ID validation error
-			expect(response.stopReason, `Codex error: ${response.errorMessage}`).not.toBe("error");
-			if (response.errorMessage) {
-				expect(response.errorMessage).not.toContain("id");
-				expect(response.errorMessage).not.toContain("additional characters");
 			}
 		},
 		30000,

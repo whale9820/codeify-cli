@@ -17,4 +17,12 @@ export const XIAOMI_TOKEN_PLAN_SGP_MODELS = values as {
 		id: "mimo-v2.5-pro";
 		provider: "xiaomi-token-plan-sgp";
 	};
+	"mimo-v2.6-flash": Model<"openai-completions"> & {
+		id: "mimo-v2.6-flash";
+		provider: "xiaomi-token-plan-sgp";
+	};
+	"mimo-v2.6-pro": Model<"openai-completions"> & {
+		id: "mimo-v2.6-pro";
+		provider: "xiaomi-token-plan-sgp";
+	};
 };

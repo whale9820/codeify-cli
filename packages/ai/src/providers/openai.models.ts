@@ -133,6 +133,26 @@ export const OPENAI_MODELS = values as {
 		id: "gpt-6-astra";
 		provider: "openai";
 	};
+	"gpt-6-luna": Model<"openai-responses"> & {
+		id: "gpt-6-luna";
+		provider: "openai";
+	};
+	"gpt-6-sol": Model<"openai-responses"> & {
+		id: "gpt-6-sol";
+		provider: "openai";
+	};
+	"gpt-6.1-sol": Model<"openai-responses"> & {
+		id: "gpt-6.1-sol";
+		provider: "openai";
+	};
+	"gpt-daybreak-blue-latest": Model<"openai-responses"> & {
+		id: "gpt-daybreak-blue-latest";
+		provider: "openai";
+	};
+	"gpt-daybreak-red-latest": Model<"openai-responses"> & {
+		id: "gpt-daybreak-red-latest";
+		provider: "openai";
+	};
 	"gpt-realtime-2.1": Model<"openai-responses"> & {
 		id: "gpt-realtime-2.1";
 		provider: "openai";
