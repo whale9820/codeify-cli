@@ -96,6 +96,7 @@ export async function createAgentSessionServices(
 			authPath: join(agentDir, "auth.json"),
 			modelsPath: options.includeBuiltinProviders === true ? join(agentDir, "models.json") : null,
 			modelsStorePath: join(agentDir, "models-store.json"),
+			overridesPath: join(agentDir, "overrides.json"),
 			includeBuiltinProviders: options.includeBuiltinProviders,
 		}));
 	const settingsManager = options.settingsManager ?? SettingsManager.create(cwd, agentDir);

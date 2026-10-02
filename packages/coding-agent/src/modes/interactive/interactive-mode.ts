@@ -514,7 +514,7 @@ export class InteractiveMode {
 				const models =
 					this.session.scopedModels.length > 0
 						? this.session.scopedModels.map((s) => s.model)
-						: await this.session.modelRuntime.getAvailable();
+						: this.filterToActiveBackend(await this.session.modelRuntime.getAvailable());
 
 				if (models.length === 0) return null;
 
@@ -3684,6 +3684,15 @@ export class InteractiveMode {
 		return findExactModelReferenceMatch(searchTerm, models);
 	}
 
+	private activeBackendProvider(): string | undefined {
+		return this.session.modelRuntime.getOverrideStore().list().length > 0 ? this.session.model?.provider : undefined;
+	}
+
+	private filterToActiveBackend(models: readonly Model<any>[]): Model<any>[] {
+		const provider = this.activeBackendProvider();
+		return provider ? models.filter((model) => model.provider === provider) : [...models];
+	}
+
 	private async getModelCandidates(): Promise<Model<any>[]> {
 		if (this.session.scopedModels.length > 0) {
 			return this.session.scopedModels.map((scoped) => scoped.model);
@@ -3691,7 +3700,7 @@ export class InteractiveMode {
 
 		try {
 			await this.session.modelRuntime.refresh();
-			return [...(await this.session.modelRuntime.getAvailable())];
+			return this.filterToActiveBackend(await this.session.modelRuntime.getAvailable());
 		} catch {
 			return [];
 		}
@@ -3783,6 +3792,7 @@ export class InteractiveMode {
 					this.ui.requestRender();
 				},
 				initialSearchInput,
+				this.activeBackendProvider(),
 			);
 			return { component: selector, focus: selector };
 		});

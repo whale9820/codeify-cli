@@ -64,6 +64,7 @@ export interface CreateModelRuntimeOptions {
 	modelsPath?: string | null;
 	modelsStore?: ModelsStore;
 	modelsStorePath?: string;
+	overridesPath?: string;
 	/** Allow create() to refresh model catalogs over the network. Defaults to false. */
 	allowModelNetwork?: boolean;
 	/** Timeout for the create-time network model refresh. */
@@ -124,11 +125,12 @@ export class ModelRuntime implements Models {
 		modelsStore: ModelsStore,
 		providers: readonly Provider[],
 		modelNetworkEnabled: boolean,
+		overridesPath: string | undefined,
 	) {
 		this.credentials = credentials;
 		this.config = config;
 		this.modelsPath = modelsPath;
-		this.overrides = new OverrideStore(modelsPath ? join(dirname(modelsPath), "overrides.json") : undefined);
+		this.overrides = new OverrideStore(overridesPath);
 		this.modelNetworkEnabled = modelNetworkEnabled;
 		this.defaultBuiltins = new Map(providers.map((provider) => [provider.id, provider]));
 		for (const [providerId, provider] of this.defaultBuiltins) this.builtins.set(providerId, provider);
@@ -171,6 +173,7 @@ export class ModelRuntime implements Models {
 			modelsStore,
 			providers,
 			process.env.CODEIFY_OFFLINE === undefined,
+			options.overridesPath ?? (modelsPath ? join(dirname(modelsPath), "overrides.json") : undefined),
 		);
 		if (!runtime.getProvider("codeify")) {
 			runtime.registerProvider("codeify", codeifyProvider());
