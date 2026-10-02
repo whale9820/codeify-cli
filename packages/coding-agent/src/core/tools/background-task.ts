@@ -83,6 +83,7 @@ export function createBackgroundTaskToolDefinition(
 			"Start independent background tasks together, then continue with other useful work. Never block the user waiting on something that can run in the background.",
 			"After starting a background task, briefly tell the user it is running. You will be messaged when it completes; react to that message then.",
 			"Do not busy-wait on a background task with sleep or repeated list calls.",
+			"Your turn stays open until every running background task has finished and you have reacted to its result. Stop long-lived tasks (dev servers, watchers) with the stop action once you no longer need them, or the turn will never end.",
 		],
 		parameters: backgroundTaskSchema,
 		executionMode: "parallel",

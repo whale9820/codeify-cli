@@ -1,4 +1,4 @@
-const { execFileSync } = require("node:child_process");
+const { execFileSync, spawn } = require("node:child_process");
 const {
 	accessSync,
 	chmodSync,
@@ -136,7 +136,49 @@ function run(command, args, cwd, forceSilent = false, extraEnv) {
 	}
 }
 
-const interactive = Boolean(process.stdout.isTTY) && !verbose;
+const interactive = Boolean(process.stdout && process.stdout.isTTY) && !verbose;
+const useColor = interactive && !process.env.NO_COLOR;
+const paint = (code, text) => (useColor ? `\x1b[${code}m${text}\x1b[0m` : text);
+const bold = (text) => paint("1", text);
+const dim = (text) => paint("2", text);
+const green = (text) => paint("32", text);
+const red = (text) => paint("31", text);
+const cyan = (text) => paint("36", text);
+const totalSteps = 4;
+let stepNumber = 0;
+const installStarted = Date.now();
+
+const spinnerScript = [
+	'const frames=["\\u280b","\\u2819","\\u2839","\\u2838","\\u283c","\\u2834","\\u2826","\\u2827","\\u2807","\\u280f"];',
+	"const started=Date.now();let frame=0;",
+	"const draw=()=>{",
+	"try{process.kill(Number(process.env.CODEIFY_SPINNER_PARENT),0)}catch{process.exit(0)}",
+	"const elapsed=((Date.now()-started)/1000).toFixed(1);",
+	'process.stdout.write("\\r\\x1b[2K  "+process.env.CODEIFY_SPINNER_COLOR_ON+frames[frame++%frames.length]+process.env.CODEIFY_SPINNER_COLOR_OFF+" "+process.env.CODEIFY_SPINNER_STEP+" "+process.env.CODEIFY_SPINNER_LABEL+process.env.CODEIFY_SPINNER_DIM_ON+"  "+elapsed+"s"+process.env.CODEIFY_SPINNER_DIM_OFF);',
+	"};",
+	"draw();setInterval(draw,80);",
+].join("");
+
+function startSpinner(step, label) {
+	if (!interactive) return undefined;
+	try {
+		return spawn(process.execPath, ["-e", spinnerScript], {
+			env: {
+				...process.env,
+				CODEIFY_SPINNER_PARENT: String(process.pid),
+				CODEIFY_SPINNER_STEP: step,
+				CODEIFY_SPINNER_LABEL: label,
+				CODEIFY_SPINNER_COLOR_ON: useColor ? "\x1b[36m" : "",
+				CODEIFY_SPINNER_COLOR_OFF: useColor ? "\x1b[0m" : "",
+				CODEIFY_SPINNER_DIM_ON: useColor ? "\x1b[2m" : "",
+				CODEIFY_SPINNER_DIM_OFF: useColor ? "\x1b[0m" : "",
+			},
+			stdio: ["ignore", "inherit", "ignore"],
+		});
+	} catch {
+		return undefined;
+	}
+}
 
 function formatDuration(milliseconds) {
 	return `${(milliseconds / 1000).toFixed(1)}s`;
@@ -144,16 +186,28 @@ function formatDuration(milliseconds) {
 
 function task(runningLabel, doneLabel, action) {
 	const started = Date.now();
-	if (verbose) console.log(`${runningLabel}...`);
-	else if (interactive) process.stdout.write(`  ${runningLabel}...`);
+	const step = `[${++stepNumber}/${totalSteps}]`;
+	let spinner;
+	if (verbose) console.log(`${step} ${runningLabel}...`);
+	else if (interactive) {
+		process.stdout.write("\x1b[?25l");
+		spinner = startSpinner(dim(step), runningLabel);
+		if (!spinner) process.stdout.write(`  ${dim(step)} ${runningLabel}...`);
+	}
+	const stopSpinner = () => {
+		if (spinner) spinner.kill("SIGKILL");
+		if (interactive) process.stdout.write("\r\x1b[2K");
+	};
 	try {
 		const result = action();
-		const line = `  \u2713 ${doneLabel.padEnd(28)} ${formatDuration(Date.now() - started)}`;
-		if (interactive) process.stdout.write(`\r\x1b[2K${line}\n`);
+		stopSpinner();
+		const line = `  ${green("\u2713")} ${dim(step)} ${doneLabel.padEnd(28)} ${dim(formatDuration(Date.now() - started))}`;
+		if (interactive) process.stdout.write(`${line}\n\x1b[?25h`);
 		else console.log(line);
 		return result;
 	} catch (error) {
-		if (interactive) process.stdout.write(`\r\x1b[2K  \u2717 ${runningLabel}\n`);
+		stopSpinner();
+		if (interactive) process.stdout.write(`  ${red("\u2717")} ${dim(step)} ${runningLabel}\n\x1b[?25h`);
 		throw error;
 	}
 }
@@ -244,7 +298,8 @@ const completionPath = join(installHome, ".codeify-install-complete");
 let installSucceeded = false;
 
 try {
-console.log("Codeify CLI");
+console.log(`${bold(cyan("Codeify CLI"))} ${dim(updatingExisting ? "update" : "install")}`);
+console.log(dim(`  ${installHome}`));
 console.log("");
 if (updatingExisting) rmSync(completionPath, { force: true });
 
@@ -342,11 +397,13 @@ const version = run(process.execPath, [cliPath, "--version"], installHome, true)
 writeFileSync(completionPath, `${version}\n`, "utf8");
 
 console.log("");
-console.log(`Codeify CLI ${version} installed successfully.`);
+console.log(
+	`${green("\u2713")} ${bold(`Codeify CLI ${version}`)} ${updatingExisting ? "updated" : "installed"} ${dim(`in ${formatDuration(Date.now() - installStarted)}`)}`,
+);
 if (!pathEntries.includes(binDirectory)) {
 	console.log(isWindows ? "Restart your terminal to pick up the new PATH." : `Add ${binDirectory} to PATH first.`);
 }
-console.log("Run: codeify");
+console.log(`Run: ${bold(cyan("codeify"))}`);
 
 installSucceeded = true;
 } catch (error) {
