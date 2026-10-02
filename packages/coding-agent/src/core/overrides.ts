@@ -62,13 +62,43 @@ function escapeConfigValue(value: string): string {
 	return escaped.startsWith("!") ? `$${escaped}` : escaped;
 }
 
-export function overrideProviderConfig(backend: OverrideBackend): RuntimeProviderConfig {
+/**
+ * Keep known models as they are (they may carry metadata inherited from Codeify when the
+ * backend was added) and append models the backend newly lists. Models the backend no longer
+ * lists are dropped.
+ */
+export function mergeProbedModels(
+	existing: readonly CodeifyModelDefinition[],
+	probed: readonly CodeifyModelDefinition[],
+): CodeifyModelDefinition[] {
+	const known = new Map(existing.map((model) => [model.id, model]));
+	return probed.map((model) => known.get(model.id) ?? model);
+}
+
+/**
+ * Build the runtime provider config for an override backend. When `store` is given, refreshing
+ * the model catalog queries the backend's own GET /models and persists the result.
+ */
+export function overrideProviderConfig(backend: OverrideBackend, store?: OverrideStore): RuntimeProviderConfig {
 	return {
 		name: backend.name,
 		baseUrl: backend.baseUrl,
 		api: "openai-responses",
 		apiKey: escapeConfigValue(backend.apiKey),
 		models: backend.models,
+		refreshModels: store
+			? async (context) => {
+					const current = store.get(backend.name) ?? backend;
+					if (!context.allowNetwork) return current.models;
+					const probe = await probeOverrideBackend(current.baseUrl, current.apiKey, context.signal);
+					if (!probe.ok) throw new Error(`Could not refresh ${backend.name}: ${probe.error}`);
+					// An empty list is more likely a quirk of the backend than a real wipe; keep what we have.
+					if (probe.models.length === 0) return current.models;
+					const models = mergeProbedModels(current.models, probe.models);
+					store.upsert({ ...current, models });
+					return models;
+				}
+			: undefined,
 	};
 }
 
