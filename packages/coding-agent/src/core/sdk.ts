@@ -263,6 +263,9 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 	if (!options.noTools && !options.tools && !excludedToolNameSet?.has("browser")) {
 		initialActiveToolNames.push("browser");
 	}
+	if (!options.noTools && !options.tools && !excludedToolNameSet?.has("background_task")) {
+		initialActiveToolNames.push("background_task");
+	}
 
 	if (options.customTools) {
 		for (const tool of options.customTools) {
