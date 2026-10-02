@@ -61,6 +61,7 @@ import {
 	computeCacheWaste,
 	detectCacheMiss,
 } from "../../core/cache-stats.ts";
+import { CODEIFY_PROVIDER_ID } from "../../core/codeify-provider.ts";
 import { CODEIFY_DEFAULT_MODEL } from "../../core/defaults.ts";
 import { FooterDataProvider } from "../../core/footer-data-provider.ts";
 import {
@@ -75,6 +76,14 @@ import { configureHttpDispatcher, formatHttpIdleTimeoutMs } from "../../core/htt
 import { type AppKeybinding, KeybindingsManager } from "../../core/keybindings.ts";
 import { createCompactionSummaryMessage } from "../../core/messages.ts";
 import { findExactModelReferenceMatch, resolveModelScope } from "../../core/model-resolver.ts";
+import {
+	normalizeBaseUrl,
+	type OverrideBackend,
+	overrideProviderConfig,
+	overrideProviderId,
+	probeOverrideBackend,
+	validateOverrideName,
+} from "../../core/overrides.ts";
 import type { ProjectTrustContext } from "../../core/project-trust.ts";
 import type { ResourceDiagnostic } from "../../core/resource-loader.ts";
 import { formatMissingSessionCwdPrompt, MissingSessionCwdError } from "../../core/session-cwd.ts";
@@ -199,6 +208,7 @@ const DEAD_TERMINAL_ERROR_CODES = new Set(["EIO", "EPIPE", "ENOTCONN"]);
 interface DialogOptions {
 	signal?: AbortSignal;
 	timeout?: number;
+	secret?: boolean;
 }
 
 function isDeadTerminalError(error: unknown): boolean {
@@ -592,6 +602,31 @@ export class InteractiveMode {
 				}));
 			};
 		}
+
+		const overrideCommand: SlashCommand = {
+			name: "override",
+			hidden: true,
+			getArgumentCompletions: (prefix: string): AutocompleteItem[] | null => {
+				const backends = this.session.modelRuntime.getOverrideStore().list();
+				const options = [
+					{ value: "add", description: "Connect a new backend" },
+					{ value: "list", description: "Show saved backends" },
+					{ value: `use ${CODEIFY_PROVIDER_ID}`, description: "Switch back to the default backend" },
+					...backends.flatMap((backend) => [
+						{ value: `use ${backend.name}`, description: backend.baseUrl },
+						{ value: `edit ${backend.name}`, description: "Change URL, key, or name" },
+						{ value: `delete ${backend.name}`, description: "Remove this backend" },
+					]),
+				];
+				return createFuzzyAutocompleteItems(
+					options,
+					prefix,
+					(option) => option.value,
+					(option) => ({ value: option.value, label: option.value, description: option.description }),
+				);
+			},
+		};
+		slashCommands.push(overrideCommand);
 
 		// Convert prompt templates to SlashCommand format for autocomplete
 		const templateCommands: SlashCommand[] = this.session.promptTemplates.map((cmd) => ({
@@ -1448,7 +1483,7 @@ export class InteractiveMode {
 					this.hideInputDialog();
 					resolve(undefined);
 				},
-				{ tui: this.ui, timeout: opts?.timeout },
+				{ tui: this.ui, timeout: opts?.timeout, secret: opts?.secret },
 			);
 
 			this.editorContainer.clear();
@@ -1682,6 +1717,12 @@ export class InteractiveMode {
 			}
 			if (text === "/session") {
 				this.handleSessionCommand();
+				this.editor.setText("");
+				return;
+			}
+			if (text === "/override" || text.startsWith("/override ")) {
+				this.editor.setText("");
+				await this.handleOverrideCommand(text.slice(9).trim());
 				this.editor.setText("");
 				return;
 			}
@@ -3491,6 +3532,147 @@ export class InteractiveMode {
 		}
 
 		this.showModelSelector(searchTerm);
+	}
+
+	private async handleOverrideCommand(args: string): Promise<void> {
+		const [action = "add", ...rest] = args.split(/\s+/u).filter(Boolean);
+		const target = rest[0];
+		const store = this.session.modelRuntime.getOverrideStore();
+		try {
+			if (action === "add") {
+				await this.promptOverrideBackend();
+				return;
+			}
+			if (action === "list") {
+				const names = store.list().map((backend) => `${backend.name} (${backend.baseUrl})`);
+				this.showStatus(names.length > 0 ? `Backends: ${names.join(", ")}` : "No saved backends");
+				return;
+			}
+			if (action !== "use" && action !== "edit" && action !== "delete") {
+				this.showWarning(`Unknown action: ${action}`);
+				return;
+			}
+			if (action === "use" && target?.toLowerCase() === CODEIFY_PROVIDER_ID) {
+				await this.switchToDefaultBackend();
+				return;
+			}
+			const backend = target ? store.get(target) : undefined;
+			if (!backend) {
+				this.showWarning(target ? `No backend named ${target}` : `Usage: /override ${action} <name>`);
+				return;
+			}
+			if (action === "use") {
+				await this.switchToOverrideBackend(backend);
+			} else if (action === "edit") {
+				await this.promptOverrideBackend(backend);
+			} else if (await this.showConfirmDialog("Delete backend", `Remove ${backend.name}?`)) {
+				await this.deleteOverrideBackend(backend);
+			}
+		} catch (error) {
+			this.showError(error instanceof Error ? error.message : String(error));
+		}
+	}
+
+	private async promptOverrideBackend(existing?: OverrideBackend): Promise<void> {
+		const runtime = this.session.modelRuntime;
+		const store = runtime.getOverrideStore();
+		const urlInput = await this.showInputDialog(
+			existing
+				? `Base URL (enter to keep ${existing.baseUrl})`
+				: "Base URL (OpenAI Responses API, e.g. https://host/v1)",
+		);
+		if (urlInput === undefined) return;
+		const baseUrl = urlInput.trim() ? normalizeBaseUrl(urlInput) : existing?.baseUrl;
+		if (!baseUrl) {
+			this.showError("Enter a valid http(s) base URL.");
+			return;
+		}
+		const keyInput = await this.showInputDialog(existing ? "API key (enter to keep current)" : "API key", undefined, {
+			secret: true,
+		});
+		if (keyInput === undefined) return;
+		const apiKey = keyInput.trim() || existing?.apiKey;
+		if (!apiKey) {
+			this.showError("An API key is required.");
+			return;
+		}
+
+		this.showStatus("Testing the Responses API...");
+		let probe = await probeOverrideBackend(baseUrl, apiKey);
+		if (!probe.ok && probe.models.length === 0) {
+			const modelId = (await this.showInputDialog("Model id to test with"))?.trim();
+			if (!modelId) return;
+			probe = await probeOverrideBackend(baseUrl, apiKey, undefined, modelId);
+			if (probe.ok) probe = { ok: true, models: [modelId] };
+		}
+		if (!probe.ok) {
+			this.showError(`Backend check failed: ${probe.error}`);
+			return;
+		}
+
+		let name = existing?.name;
+		while (true) {
+			const nameInput = await this.showInputDialog(
+				existing ? `Name (enter to keep ${existing.name})` : "Name this backend",
+			);
+			if (nameInput === undefined) return;
+			const candidate = nameInput.trim() || existing?.name;
+			const problem = candidate ? validateOverrideName(candidate, store.list(), existing?.name) : "Enter a name.";
+			if (!problem && candidate) {
+				name = candidate;
+				break;
+			}
+			this.showError(problem ?? "Enter a name.");
+		}
+		if (!name) return;
+
+		const backend: OverrideBackend = { name, baseUrl, apiKey, models: probe.models };
+		const id = overrideProviderId(name);
+		if (existing && overrideProviderId(existing.name) !== id) {
+			runtime.unregisterProvider(overrideProviderId(existing.name));
+		}
+		store.upsert(backend, existing?.name);
+		runtime.registerProvider(id, overrideProviderConfig(backend));
+		await runtime.refresh({ allowNetwork: false });
+		await this.switchToOverrideBackend(backend);
+	}
+
+	private async switchToOverrideBackend(backend: OverrideBackend): Promise<void> {
+		const id = overrideProviderId(backend.name);
+		const current = this.session.model;
+		const modelId = current?.provider === id && backend.models.includes(current.id) ? current.id : backend.models[0];
+		const model = modelId ? this.session.modelRuntime.getModel(id, modelId) : undefined;
+		if (!model) {
+			this.showError(`${backend.name} has no usable models`);
+			return;
+		}
+		await this.session.setModel(model);
+		this.footer.invalidate();
+		this.updateEditorBorderColor();
+		this.showStatus(`Using ${backend.name}: ${model.id}`);
+	}
+
+	private async switchToDefaultBackend(): Promise<void> {
+		const models = this.session.modelRuntime.getModels().filter((model) => model.provider === CODEIFY_PROVIDER_ID);
+		const model = models.find((candidate) => candidate.id === CODEIFY_DEFAULT_MODEL) ?? models[0];
+		if (!model) {
+			this.showError("The default backend has no models");
+			return;
+		}
+		await this.session.setModel(model);
+		this.footer.invalidate();
+		this.updateEditorBorderColor();
+		this.showStatus(`Using ${CODEIFY_PROVIDER_ID}: ${model.id}`);
+	}
+
+	private async deleteOverrideBackend(backend: OverrideBackend): Promise<void> {
+		const runtime = this.session.modelRuntime;
+		const id = overrideProviderId(backend.name);
+		if (this.session.model?.provider === id) await this.switchToDefaultBackend();
+		runtime.unregisterProvider(id);
+		runtime.getOverrideStore().remove(backend.name);
+		await runtime.refresh({ allowNetwork: false });
+		this.showStatus(`Removed ${backend.name}`);
 	}
 
 	private async findExactModelMatch(searchTerm: string): Promise<Model<any> | undefined> {

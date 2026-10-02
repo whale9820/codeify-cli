@@ -35,6 +35,7 @@ import { AuthStorage as DefaultAuthStorage } from "./auth-storage.ts";
 import { codeifyProvider } from "./codeify-provider.ts";
 import { ModelConfig } from "./model-config.ts";
 import { FileModelsStore, InMemoryCodingAgentModelsStore } from "./models-store.ts";
+import { OverrideStore, overrideProviderConfig, overrideProviderId } from "./overrides.ts";
 import {
 	type AuthStatus,
 	type CompatibilityRequestConfig,
@@ -103,6 +104,7 @@ export class ModelRuntime implements Models {
 	private readonly providerConfigs = new Map<string, RuntimeProviderConfig>();
 	private readonly compositionErrors = new Map<string, string>();
 	private readonly modelsPath: string | undefined;
+	private readonly overrides: OverrideStore;
 	private readonly modelNetworkEnabled: boolean;
 	private config: ModelConfig;
 	private snapshot: ModelRuntimeSnapshot = {
@@ -126,6 +128,7 @@ export class ModelRuntime implements Models {
 		this.credentials = credentials;
 		this.config = config;
 		this.modelsPath = modelsPath;
+		this.overrides = new OverrideStore(modelsPath ? join(dirname(modelsPath), "overrides.json") : undefined);
 		this.modelNetworkEnabled = modelNetworkEnabled;
 		this.defaultBuiltins = new Map(providers.map((provider) => [provider.id, provider]));
 		for (const [providerId, provider] of this.defaultBuiltins) this.builtins.set(providerId, provider);
@@ -172,6 +175,9 @@ export class ModelRuntime implements Models {
 		if (!runtime.getProvider("codeify")) {
 			runtime.registerProvider("codeify", codeifyProvider());
 		}
+		for (const backend of runtime.overrides.list()) {
+			runtime.registerProvider(overrideProviderId(backend.name), overrideProviderConfig(backend));
+		}
 		runtime.configureRadiusProviders();
 		runtime.rebuildProviders();
 		const refreshFromNetwork = runtime.modelNetworkEnabled && options.allowModelNetwork === true;
@@ -185,6 +191,10 @@ export class ModelRuntime implements Models {
 			if (timeout) clearTimeout(timeout);
 		}
 		return runtime;
+	}
+
+	getOverrideStore(): OverrideStore {
+		return this.overrides;
 	}
 
 	private configureRadiusProviders(): void {

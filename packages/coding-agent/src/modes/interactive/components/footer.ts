@@ -1,6 +1,7 @@
 import { isAbsolute, relative, resolve, sep } from "node:path";
 import { type Component, truncateToWidth, visibleWidth } from "codeify-tui";
 import type { AgentSession } from "../../../core/agent-session.ts";
+import { CODEIFY_PROVIDER_ID } from "../../../core/codeify-provider.ts";
 import { areExperimentalFeaturesEnabled } from "../../../core/experimental.ts";
 import type { ReadonlyFooterDataProvider } from "../../../core/footer-data-provider.ts";
 import { theme } from "../theme/theme.ts";
@@ -70,6 +71,14 @@ export class FooterComponent implements Component {
 		const branch = this.footerData.getGitBranch();
 		if (branch) {
 			pwd = `${pwd} (${branch})`;
+		}
+
+		if (state.model) {
+			const providerLabel =
+				state.model.provider === CODEIFY_PROVIDER_ID
+					? CODEIFY_PROVIDER_ID
+					: (this.session.modelRuntime.getProvider(state.model.provider)?.name ?? state.model.provider);
+			pwd = `${pwd} • ${providerLabel}`;
 		}
 
 		const sessionName = this.session.sessionManager.getSessionName();
