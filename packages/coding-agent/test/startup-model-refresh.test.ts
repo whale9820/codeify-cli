@@ -8,11 +8,11 @@ import { AuthStorage } from "../src/core/auth-storage.ts";
 import { CODEIFY_BASE_URL } from "../src/core/codeify-provider.ts";
 import { ModelRuntime } from "../src/core/model-runtime.ts";
 
-const cachedModel: Model<"openai-responses"> = {
+const cachedModel: Model<"openai-completions"> = {
 	id: "cached-model",
 	name: "cached-model",
 	provider: "codeify",
-	api: "openai-responses",
+	api: "openai-completions",
 	baseUrl: CODEIFY_BASE_URL,
 	reasoning: true,
 	thinkingLevelMap: { off: null, low: "low", high: "high", xhigh: null, max: null },

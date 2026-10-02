@@ -330,6 +330,26 @@ function resolveMaxTokens(model: CodeifyModel): number {
 	return positiveNumber(raw) ?? 32_768;
 }
 
+const ANTHROPIC_MODEL_PATTERN = /^(claude|glm)-/i;
+const OPENAI_RESPONSES_MODEL_PATTERN = /^gpt-/i;
+
+export function apiForModelId(id: string): "anthropic-messages" | "openai-responses" | "openai-completions" {
+	if (ANTHROPIC_MODEL_PATTERN.test(id)) return "anthropic-messages";
+	if (OPENAI_RESPONSES_MODEL_PATTERN.test(id)) return "openai-responses";
+	return "openai-completions";
+}
+
+export function routeModels(models: readonly CodeifyModelDefinition[], baseUrl: string): CodeifyModelDefinition[] {
+	return models.map((model) => {
+		const api = apiForModelId(model.id);
+		if (api === "anthropic-messages") {
+			return { ...model, api, baseUrl: baseUrl.replace(/\/v1\/?$/u, "") };
+		}
+		const { baseUrl: _discarded, ...rest } = model;
+		return { ...rest, api };
+	});
+}
+
 export function toModelDefinition(model: CodeifyModel): CodeifyModelDefinition {
 	const reasoning = supportsReasoning(model.id, model);
 	const contextWindow = resolveContextWindow(model);
@@ -677,7 +697,7 @@ export function codeifyProvider(): RuntimeProviderConfig {
 			},
 			getApiKey: (credentials) => credentials.access,
 		},
-		models: [toModelDefinition({ id: CODEIFY_DEFAULT_MODEL })],
+		models: routeModels([toModelDefinition({ id: CODEIFY_DEFAULT_MODEL })], CODEIFY_BASE_URL),
 		refreshModels: async (context) => {
 			const apiKey = context.credential?.type === "oauth" ? context.credential.access : context.credential?.key;
 			const allowNetwork = Boolean(apiKey) && context.allowNetwork;
@@ -689,7 +709,7 @@ export function codeifyProvider(): RuntimeProviderConfig {
 				allowNetwork,
 			);
 			if (allowNetwork) networkRefreshed = true;
-			return models;
+			return routeModels(models, CODEIFY_BASE_URL);
 		},
 	};
 }
