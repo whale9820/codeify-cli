@@ -2,6 +2,29 @@ import { describe, expect, test } from "vitest";
 import { buildSystemPrompt } from "../src/core/system-prompt.ts";
 
 describe("buildSystemPrompt", () => {
+	describe("background tasks", () => {
+		test("tells the agent about /tasks and Ctrl+B when background_task is available", () => {
+			const prompt = buildSystemPrompt({
+				selectedTools: ["bash", "background_task"],
+				contextFiles: [],
+				skills: [],
+				cwd: process.cwd(),
+			});
+			expect(prompt).toContain("/tasks");
+			expect(prompt).toContain("Ctrl+B");
+		});
+
+		test("omits the guidance without the tool", () => {
+			const prompt = buildSystemPrompt({
+				selectedTools: ["bash"],
+				contextFiles: [],
+				skills: [],
+				cwd: process.cwd(),
+			});
+			expect(prompt).not.toContain("Ctrl+B");
+		});
+	});
+
 	describe("empty tools", () => {
 		test("shows (none) for empty tools list", () => {
 			const prompt = buildSystemPrompt({

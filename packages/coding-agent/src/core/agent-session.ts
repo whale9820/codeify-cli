@@ -309,6 +309,8 @@ export class AgentSession {
 	// turn settles, since compaction aborts the agent and cannot run inside a tool call.
 	private _pendingCompactionRequest: string | undefined = undefined;
 	private _goal: Goal | undefined = undefined;
+	/** Foreground bash commands that can still be moved to the background. */
+	private _foregroundCommands = new Set<() => void>();
 	private _backgroundTasks = new BackgroundTaskManager(
 		(task) => this._reportBackgroundTask(task),
 		() => this._emit({ type: "background_tasks_updated" }),
@@ -1931,7 +1933,28 @@ export class AgentSession {
 				)
 			: createAllToolDefinitions(this._cwd, {
 					read: { autoResizeImages },
-					bash: { commandPrefix: shellCommandPrefix, shellPath },
+					bash: {
+						commandPrefix: shellCommandPrefix,
+						shellPath,
+						background: {
+							watch: (_command) => {
+								let request: () => void = () => {};
+								const requested = new Promise<void>((resolve) => {
+									request = resolve;
+								});
+								this._foregroundCommands.add(request);
+								this._emit({ type: "background_tasks_updated" });
+								return {
+									requested,
+									dispose: () => {
+										this._foregroundCommands.delete(request);
+										this._emit({ type: "background_tasks_updated" });
+									},
+								};
+							},
+							adopt: (options) => this._backgroundTasks.adopt(options),
+						},
+					},
 				});
 		if (!this._baseToolsOverride && this.settingsManager.getSmartModelUsage()) {
 			baseToolDefinitions.codeify_model = createCodeifyModelToolDefinition(this._cwd, this._modelRuntime, {
@@ -2008,6 +2031,7 @@ export class AgentSession {
 				list: () => this._backgroundTasks.list(),
 				get: (id) => this._backgroundTasks.get(id),
 				readOutput: (id) => this._backgroundTasks.readOutput(id),
+				readNewOutput: (id) => this._backgroundTasks.readNewOutput(id),
 				stop: (id) => this._backgroundTasks.stop(id),
 			});
 			baseToolDefinitions.update_goal = createUpdateGoalToolDefinition({
@@ -2581,6 +2605,22 @@ export class AgentSession {
 
 	stopBackgroundTask(id: string): boolean {
 		return this._backgroundTasks.stop(id);
+	}
+
+	clearFinishedBackgroundTasks(): number {
+		return this._backgroundTasks.clearFinished();
+	}
+
+	/** Number of foreground bash commands currently running that Ctrl+B could move to the background. */
+	getForegroundCommandCount(): number {
+		return this._foregroundCommands.size;
+	}
+
+	/** Move every running foreground bash command to the background. Returns how many were moved. */
+	backgroundForegroundCommands(): number {
+		const requests = [...this._foregroundCommands];
+		for (const request of requests) request();
+		return requests.length;
 	}
 
 	private _reportBackgroundTask(task: BackgroundTask): void {

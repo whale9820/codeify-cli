@@ -4,6 +4,9 @@
 
 ### Added
 
+- Added Ctrl+B (`app.tools.background`) to move a running bash command to the background. The tool call returns immediately with a task ID, the process keeps running (even if the turn is aborted), its output keeps being captured, and the result is delivered back to the agent when it finishes. The running command shows a "ctrl+b to run in background" hint.
+- Added `/tasks follow <id>`, a live tail of a task's output (x stops it, Esc closes), also reachable from the `/tasks` menu. The `background_task` output action gained `sinceLast` (only new output since the last read) and `filter` (regex line filter). The system prompt now tells the agent about `/tasks` and Ctrl+B so it handles commands moved to the background correctly.
+- Added `/tasks clear` and `/tasks kill <id|all>`, and "Clear finished" in the `/tasks` menu. Typing `/tasks ` now always opens the argument dropdown.
 - Added the `background_task` tool: the agent can start shell commands or delegated agents in the background and keeps the conversation free while they run. When a task finishes, its result is delivered back as a new message that triggers a turn, and the agent is encouraged to prefer it over `bash` for anything slow. Tasks can be listed, read, and stopped, and are cancelled when the session ends. `/tasks` opens a menu of background tasks (stop or view output), `/tasks ` shows a dropdown of list, stop, and output options, and the footer shows how many are running.
 - Added `/goal` for persistent objectives: `/goal <objective>` keeps the agent working across turns until it marks the goal complete with the `update_goal` tool; `/goal`, `/goal pause`, `/goal resume`, and `/goal clear` manage it. `/goal ` shows a dropdown of pause, resume, and clear. If the agent stops mid-task without making tool calls, it is nudged to keep going; interruptions, errors, three stalls in a row, or 50 continuations pause the goal.
 - Added a built-in `browser` tool that drives a headless Camoufox browser through a Python bridge, records all network traffic (requests, headers, bodies, websocket frames), and can list, inspect, export, and replay captured API calls with `fetch`. Requires `pip3 install -U "camoufox[geoip]"` and `python3 -m camoufox fetch`; set `CODEIFY_BROWSER_PYTHON` to pick the interpreter.
@@ -18,6 +21,8 @@
 
 ### Changed
 
+- `ctrl+b` no longer moves the editor cursor left (use the left arrow); it now moves the running command to the background.
+- On Windows without any bash, the bash tool now falls back to PowerShell (then cmd.exe) and tells the model which syntax to use, instead of failing with "No bash shell found".
 - Limited the startup `[Skills]` list to the first 10 skills followed by "and N more"; expanding still shows all.
 - Keep a blank line between the last agent response and the input bar after a turn finishes.
 - Show `--help` and `--version` before loading settings or creating a session runtime.

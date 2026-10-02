@@ -41,6 +41,6 @@ describe("KeybindingsManager", () => {
 				keybindings: ["tui.input.submit", "tui.select.confirm"],
 			},
 		]);
-		assert.deepStrictEqual(keybindings.getKeys("tui.editor.cursorLeft"), ["left", "ctrl+b"]);
+		assert.deepStrictEqual(keybindings.getKeys("tui.editor.cursorLeft"), ["left"]);
 	});
 });

@@ -137,6 +137,7 @@ import {
 	type StatusIndicator,
 	WorkingStatusIndicator,
 } from "./components/status-indicator.ts";
+import { TaskFollowComponent } from "./components/task-follow.ts";
 import { ThinkingSelectorComponent } from "./components/thinking-selector.ts";
 import { ToolExecutionComponent } from "./components/tool-execution.ts";
 import { TreeSelectorComponent } from "./components/tree-selector.ts";
@@ -576,13 +577,22 @@ export class InteractiveMode {
 			tasksCommand.getArgumentCompletions = (prefix: string): AutocompleteItem[] | null => {
 				const tasks = this.session.getBackgroundTasks();
 				const running = tasks.filter((task) => task.status === "running");
+				const finished = tasks.filter((task) => task.status !== "running");
 				const options = [
 					{ value: "list", description: "Show all background tasks" },
 					...(running.length > 0 ? [{ value: "stop all", description: `Stop ${running.length} running` }] : []),
 					...running.map((task) => ({ value: `stop ${task.id}`, description: task.description })),
-					...tasks
-						.filter((task) => task.status !== "running")
-						.map((task) => ({ value: `output ${task.id}`, description: `${task.status}: ${task.description}` })),
+					...tasks.map((task) => ({
+						value: `follow ${task.id}`,
+						description: `${task.status}: ${task.description}`,
+					})),
+					...tasks.map((task) => ({
+						value: `output ${task.id}`,
+						description: `${task.status}: ${task.description}`,
+					})),
+					...(finished.length > 0
+						? [{ value: "clear", description: `Remove ${finished.length} finished from the list` }]
+						: []),
 				];
 				return createFuzzyAutocompleteItems(
 					options,
@@ -1602,6 +1612,7 @@ export class InteractiveMode {
 		this.ui.onDebug = () => this.handleDebugCommand();
 		this.defaultEditor.onAction("app.model.select", () => this.showModelSelector());
 		this.defaultEditor.onAction("app.tools.expand", () => this.toggleToolOutputExpansion());
+		this.defaultEditor.onAction("app.tools.background", () => this.handleBackgroundCommand());
 		this.defaultEditor.onAction("app.thinking.toggle", () => this.toggleThinkingBlockVisibility());
 		this.defaultEditor.onAction("app.editor.external", () => this.openExternalEditor());
 		this.defaultEditor.onAction("app.message.copy", () => void this.handleCopyCommand());
@@ -2724,6 +2735,15 @@ export class InteractiveMode {
 		this.signalCleanupHandlers = [];
 	}
 
+	private handleBackgroundCommand(): void {
+		const moved = this.session.backgroundForegroundCommands();
+		this.showStatus(
+			moved > 0
+				? `Moved ${moved} running command${moved === 1 ? "" : "s"} to the background (/tasks to manage)`
+				: "No running command to move to the background",
+		);
+	}
+
 	private handleCtrlZ(): void {
 		if (process.platform === "win32") {
 			this.showStatus("Suspend to background is not supported on Windows");
@@ -2860,9 +2880,16 @@ export class InteractiveMode {
 		const [keyword, target] = argument.split(/\s+/u);
 		const tasks = this.session.getBackgroundTasks();
 
-		if (keyword === "stop") {
+		if (keyword === "clear") {
+			const removed = this.session.clearFinishedBackgroundTasks();
+			this.showStatus(
+				removed > 0 ? `Cleared ${removed} finished task${removed === 1 ? "" : "s"}` : "No finished tasks",
+			);
+			return;
+		}
+		if (keyword === "stop" || keyword === "kill") {
 			if (!target) {
-				this.showStatus("Usage: /tasks stop <id|all>");
+				this.showStatus(`Usage: /tasks ${keyword} <id|all>`);
 				return;
 			}
 			const running = tasks.filter((task) => task.status === "running");
@@ -2882,6 +2909,15 @@ export class InteractiveMode {
 			this.showStatus(`${formatTaskLine(task)}\n${tail.trimEnd() || "(no output)"}`);
 			return;
 		}
+		if (keyword === "follow") {
+			const task = target ? tasks.find((candidate) => candidate.id === target) : undefined;
+			if (!task) {
+				this.showStatus("Usage: /tasks follow <id>");
+				return;
+			}
+			this.showTaskFollow(task.id);
+			return;
+		}
 		if (keyword === "list") {
 			this.showStatus(tasks.length > 0 ? tasks.map(formatTaskLine).join("\n") : "No background tasks");
 			return;
@@ -2894,25 +2930,51 @@ export class InteractiveMode {
 		const running = tasks.filter((task) => task.status === "running");
 		const labels = new Map(tasks.map((task) => [formatTaskLine(task), task.id]));
 		const stopAllLabel = `Stop all running (${running.length})`;
+		const clearLabel = `Clear finished (${tasks.length - running.length})`;
 		const choice = await this.showDialogSelector(`Background tasks (${running.length} running)`, [
 			...labels.keys(),
 			...(running.length > 0 ? [stopAllLabel] : []),
+			...(tasks.length > running.length ? [clearLabel] : []),
 		]);
 		if (!choice) return;
 		if (choice === stopAllLabel) {
 			await this.handleTasksCommand("stop all");
 			return;
 		}
+		if (choice === clearLabel) {
+			await this.handleTasksCommand("clear");
+			return;
+		}
 		const id = labels.get(choice);
 		if (!id) return;
 		const task = tasks.find((candidate) => candidate.id === id);
 		if (task?.status !== "running") {
-			await this.handleTasksCommand(`output ${id}`);
+			await this.handleTasksCommand(`follow ${id}`);
 			return;
 		}
-		const action = await this.showDialogSelector(choice, ["Stop", "Show output"]);
-		if (action === "Stop") await this.handleTasksCommand(`stop ${id}`);
+		const action = await this.showDialogSelector(choice, ["Follow live output", "Stop", "Show output"]);
+		if (action === "Follow live output") await this.handleTasksCommand(`follow ${id}`);
+		else if (action === "Stop") await this.handleTasksCommand(`stop ${id}`);
 		else if (action === "Show output") await this.handleTasksCommand(`output ${id}`);
+	}
+
+	private showTaskFollow(taskId: string): void {
+		this.showSelector((done) => {
+			const view = new TaskFollowComponent({
+				tui: this.ui,
+				taskId,
+				getTask: (id) => this.session.getBackgroundTasks().find((task) => task.id === id),
+				getOutput: (id) => this.session.getBackgroundTaskOutput(id),
+				onStop: (id) => {
+					this.session.stopBackgroundTask(id);
+				},
+				onClose: () => {
+					done();
+					this.ui.requestRender();
+				},
+			});
+			return { component: view, focus: view };
+		});
 	}
 
 	private describeGoal(goal: Goal): string {
@@ -5084,6 +5146,7 @@ export class InteractiveMode {
 		const cycleModelForward = this.getAppKeyDisplay("app.model.cycleForward");
 		const selectModel = this.getAppKeyDisplay("app.model.select");
 		const expandTools = this.getAppKeyDisplay("app.tools.expand");
+		const backgroundTools = this.getAppKeyDisplay("app.tools.background");
 		const toggleThinking = this.getAppKeyDisplay("app.thinking.toggle");
 		const externalEditor = this.getAppKeyDisplay("app.editor.external");
 		const cycleModelBackward = this.getAppKeyDisplay("app.model.cycleBackward");
@@ -5129,6 +5192,7 @@ export class InteractiveMode {
 | \`${cycleModelForward}\` / \`${cycleModelBackward}\` | Cycle models |
 | \`${selectModel}\` | Open model selector |
 | \`${expandTools}\` | Toggle tool output expansion |
+| \`${backgroundTools}\` | Move the running bash command to the background |
 | \`${toggleThinking}\` | Toggle thinking block visibility |
 | \`${externalEditor}\` | Edit message in external editor |
 | \`${copyMessage}\` | Copy last assistant message |

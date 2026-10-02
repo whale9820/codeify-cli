@@ -7,6 +7,8 @@ export interface ShellConfig {
 	shell: string;
 	args: string[];
 	commandTransport?: "argv" | "stdin";
+	/** Which shell family this is; anything other than bash needs different command syntax. */
+	kind?: "bash" | "powershell" | "cmd";
 }
 
 /**
@@ -18,7 +20,27 @@ function isLegacyWslBashPath(path: string): boolean {
 }
 
 function getBashShellConfig(shell: string): ShellConfig {
-	return isLegacyWslBashPath(shell) ? { shell, args: ["-s"], commandTransport: "stdin" } : { shell, args: ["-c"] };
+	return isLegacyWslBashPath(shell)
+		? { shell, args: ["-s"], commandTransport: "stdin", kind: "bash" }
+		: { shell, args: ["-c"], kind: "bash" };
+}
+
+/**
+ * Windows without any bash: fall back to PowerShell (pwsh, then Windows PowerShell), then cmd.exe.
+ */
+function getWindowsFallbackShellConfig(): ShellConfig {
+	for (const name of ["pwsh.exe", "powershell.exe"]) {
+		try {
+			const result = spawnSync("where", [name], { encoding: "utf-8", timeout: 5000, windowsHide: true });
+			const firstMatch = result.status === 0 ? result.stdout.trim().split(/\r?\n/)[0] : undefined;
+			if (firstMatch && existsSync(firstMatch)) {
+				return { shell: firstMatch, args: ["-NoProfile", "-NonInteractive", "-Command"], kind: "powershell" };
+			}
+		} catch {
+			// Try the next candidate
+		}
+	}
+	return { shell: process.env.ComSpec || "cmd.exe", args: ["/d", "/s", "/c"], kind: "cmd" };
 }
 
 function findBashOnPath(): string | null {
@@ -61,7 +83,7 @@ function findBashOnPath(): string | null {
  * Resolve shell configuration based on platform and an optional explicit shell path.
  * Resolution order:
  * 1. User-specified shellPath
- * 2. On Windows: Git Bash in known locations, then bash on PATH
+ * 2. On Windows: Git Bash in known locations, then bash on PATH, then PowerShell, then cmd.exe
  * 3. On Unix: /bin/bash, then bash on PATH, then fallback to sh
  */
 export function getShellConfig(customShellPath?: string): ShellConfig {
@@ -97,13 +119,8 @@ export function getShellConfig(customShellPath?: string): ShellConfig {
 			return getBashShellConfig(bashOnPath);
 		}
 
-		throw new Error(
-			`No bash shell found. Options:\n` +
-				`  1. Install Git for Windows: https://git-scm.com/download/win\n` +
-				`  2. Add your bash to PATH (Cygwin, MSYS2, etc.)\n` +
-				"  3. Set shellPath in settings.json\n\n" +
-				`Searched Git Bash in:\n${paths.map((p) => `  ${p}`).join("\n")}`,
-		);
+		// 4. No bash anywhere: use PowerShell or cmd.exe so commands still run
+		return getWindowsFallbackShellConfig();
 	}
 
 	// Unix: try /bin/bash, then bash on PATH, then fallback to sh
@@ -116,7 +133,7 @@ export function getShellConfig(customShellPath?: string): ShellConfig {
 		return getBashShellConfig(bashOnPath);
 	}
 
-	return { shell: "sh", args: ["-c"] };
+	return { shell: "sh", args: ["-c"], kind: "bash" };
 }
 
 export function getShellEnv(): NodeJS.ProcessEnv {

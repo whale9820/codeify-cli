@@ -29,8 +29,8 @@ export const BUILTIN_SLASH_COMMANDS: ReadonlyArray<BuiltinSlashCommand> = [
 	},
 	{
 		name: "tasks",
-		description: "List background tasks, or stop one",
-		argumentHint: "<list|stop <id|all>|output <id>>",
+		description: "Manage background tasks: list, follow live output, view output, stop, clear",
+		argumentHint: "<list|follow <id>|output <id>|stop <id|all>|clear>",
 	},
 	{ name: "scoped-models", description: "Enable/disable models for Ctrl+P cycling" },
 	{ name: "export", description: "Export session (HTML default, or specify path: .html/.jsonl)" },

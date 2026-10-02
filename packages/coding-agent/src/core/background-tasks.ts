@@ -27,6 +27,17 @@ export interface BackgroundTaskStartOptions {
 	run: (context: BackgroundTaskRunContext) => Promise<BackgroundTaskRunResult | undefined>;
 }
 
+export interface BackgroundTaskAdoptOptions {
+	kind: BackgroundTask["kind"];
+	description: string;
+	/** Output the running process already produced before it was moved to the background. */
+	initialOutput?: string;
+	/** Aborting this controller stops the process; the adopter must have wired it to the process. */
+	controller: AbortController;
+	/** Settles when the already-running process ends. */
+	completion: Promise<BackgroundTaskRunResult | undefined>;
+}
+
 const MAX_OUTPUT_CHARS = 64_000;
 export const MAX_RUNNING_BACKGROUND_TASKS = 8;
 
@@ -36,6 +47,8 @@ interface Entry {
 	output: string;
 	droppedChars: number;
 	stopRequested: boolean;
+	/** Absolute character offset (including dropped output) already returned by readNewOutput. */
+	readCursor: number;
 }
 
 export class BackgroundTaskManager {
@@ -53,32 +66,55 @@ export class BackgroundTaskManager {
 		if (this.runningCount() >= MAX_RUNNING_BACKGROUND_TASKS) {
 			throw new Error(`At most ${MAX_RUNNING_BACKGROUND_TASKS} background tasks can run at once.`);
 		}
+		const controller = new AbortController();
+		const entry = this.register(options.kind, options.description, controller, "");
+		const append = (text: string) => this.appendOutput(entry, text);
+		this.track(entry, options.run({ signal: controller.signal, append }));
+		return entry.task;
+	}
+
+	/**
+	 * Take over a process that is already running (for example a foreground bash command the
+	 * user sent to the background). Returns the task and a function that feeds it further output.
+	 */
+	adopt(options: BackgroundTaskAdoptOptions): { task: BackgroundTask; append: (text: string) => void } {
+		const entry = this.register(options.kind, options.description, options.controller, options.initialOutput ?? "");
+		this.track(entry, options.completion);
+		return { task: entry.task, append: (text) => this.appendOutput(entry, text) };
+	}
+
+	private register(
+		kind: BackgroundTask["kind"],
+		description: string,
+		controller: AbortController,
+		initialOutput: string,
+	): Entry {
 		const task: BackgroundTask = {
 			id: `bg${this.nextId++}`,
-			kind: options.kind,
-			description: options.description,
+			kind,
+			description,
 			status: "running",
 			startedAt: Date.now(),
 		};
-		const entry: Entry = {
-			task,
-			controller: new AbortController(),
-			output: "",
-			droppedChars: 0,
-			stopRequested: false,
-		};
+		const entry: Entry = { task, controller, output: "", droppedChars: 0, stopRequested: false, readCursor: 0 };
 		this.entries.set(task.id, entry);
+		this.appendOutput(entry, initialOutput);
 		this.onChange();
+		return entry;
+	}
 
-		const append = (text: string) => {
-			entry.output += text;
-			if (entry.output.length > MAX_OUTPUT_CHARS) {
-				const excess = entry.output.length - MAX_OUTPUT_CHARS;
-				entry.output = entry.output.slice(excess);
-				entry.droppedChars += excess;
-			}
-		};
+	private appendOutput(entry: Entry, text: string): void {
+		if (!text) return;
+		entry.output += text;
+		if (entry.output.length > MAX_OUTPUT_CHARS) {
+			const excess = entry.output.length - MAX_OUTPUT_CHARS;
+			entry.output = entry.output.slice(excess);
+			entry.droppedChars += excess;
+		}
+	}
 
+	private track(entry: Entry, completion: Promise<BackgroundTaskRunResult | undefined>): void {
+		const append = (text: string) => this.appendOutput(entry, text);
 		const finish = (status: BackgroundTaskStatus, patch: Partial<BackgroundTask>) => {
 			if (entry.task.status !== "running") return;
 			entry.task = { ...entry.task, ...patch, status, endedAt: Date.now() };
@@ -86,8 +122,7 @@ export class BackgroundTaskManager {
 			this.onFinished(entry.task);
 		};
 
-		void options
-			.run({ signal: entry.controller.signal, append })
+		void completion
 			.then((result) => {
 				if (result?.text) append(result.text);
 				if (entry.stopRequested) {
@@ -106,8 +141,18 @@ export class BackgroundTaskManager {
 					finish("failed", { error: message });
 				}
 			});
+	}
 
-		return task;
+	/** Remove finished tasks from the list. Returns how many were removed. */
+	clearFinished(): number {
+		let removed = 0;
+		for (const [id, entry] of this.entries) {
+			if (entry.task.status === "running") continue;
+			this.entries.delete(id);
+			removed++;
+		}
+		if (removed > 0) this.onChange();
+		return removed;
 	}
 
 	get(id: string): BackgroundTask | undefined {
@@ -126,6 +171,18 @@ export class BackgroundTaskManager {
 		const entry = this.entries.get(id);
 		if (!entry) return undefined;
 		return { text: entry.output, droppedChars: entry.droppedChars };
+	}
+
+	/** Output produced since the last readNewOutput call for this task (like Claude Code's BashOutput). */
+	readNewOutput(id: string): { text: string; droppedChars: number } | undefined {
+		const entry = this.entries.get(id);
+		if (!entry) return undefined;
+		const total = entry.droppedChars + entry.output.length;
+		const start = Math.max(entry.readCursor, entry.droppedChars);
+		const lost = start - entry.readCursor;
+		const text = entry.output.slice(start - entry.droppedChars);
+		entry.readCursor = total;
+		return { text, droppedChars: lost };
 	}
 
 	stop(id: string): boolean {
