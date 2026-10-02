@@ -603,10 +603,9 @@ export class InteractiveMode {
 			};
 		}
 
-		const overrideCommand: SlashCommand = {
-			name: "override",
-			hidden: true,
-			getArgumentCompletions: (prefix: string): AutocompleteItem[] | null => {
+		const overrideCommand = slashCommands.find((command) => command.name === "override");
+		if (overrideCommand) {
+			overrideCommand.getArgumentCompletions = (prefix: string): AutocompleteItem[] | null => {
 				const backends = this.session.modelRuntime.getOverrideStore().list();
 				const options = [
 					{ value: "add", description: "Connect a new backend" },
@@ -624,9 +623,8 @@ export class InteractiveMode {
 					(option) => option.value,
 					(option) => ({ value: option.value, label: option.value, description: option.description }),
 				);
-			},
-		};
-		slashCommands.push(overrideCommand);
+			};
+		}
 
 		// Convert prompt templates to SlashCommand format for autocomplete
 		const templateCommands: SlashCommand[] = this.session.promptTemplates.map((cmd) => ({

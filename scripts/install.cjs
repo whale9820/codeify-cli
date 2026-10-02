@@ -97,7 +97,11 @@ function verifyCommand(command, args, message) {
 	}
 }
 
-function run(command, args, cwd, silent = false, extraEnv) {
+const verbose = process.env.CODEIFY_INSTALL_VERBOSE === "1";
+const quietStdio = verbose ? "inherit" : ["ignore", "ignore", "inherit"];
+
+function run(command, args, cwd, forceSilent = false, extraEnv) {
+	const silent = forceSilent || !verbose;
 	const options = {
 		cwd,
 		encoding: "utf8",
@@ -132,8 +136,26 @@ function run(command, args, cwd, silent = false, extraEnv) {
 	}
 }
 
-function step(number, message) {
-	console.log(`[${number}/4] ${message}`);
+const interactive = Boolean(process.stdout.isTTY) && !verbose;
+
+function formatDuration(milliseconds) {
+	return `${(milliseconds / 1000).toFixed(1)}s`;
+}
+
+function task(runningLabel, doneLabel, action) {
+	const started = Date.now();
+	if (verbose) console.log(`${runningLabel}...`);
+	else if (interactive) process.stdout.write(`  ${runningLabel}...`);
+	try {
+		const result = action();
+		const line = `  \u2713 ${doneLabel.padEnd(28)} ${formatDuration(Date.now() - started)}`;
+		if (interactive) process.stdout.write(`\r\x1b[2K${line}\n`);
+		else console.log(line);
+		return result;
+	} catch (error) {
+		if (interactive) process.stdout.write(`\r\x1b[2K  \u2717 ${runningLabel}\n`);
+		throw error;
+	}
 }
 
 function installBuildCompiler() {
@@ -183,7 +205,7 @@ function installWindowsArchive() {
 			'const{writeFile}=require("node:fs/promises");fetch(process.env.CODEIFY_SOURCE_ARCHIVE).then(r=>r.ok?r.arrayBuffer():Promise.reject(Error("Source download failed: "+r.status))).then(b=>writeFile(process.env.CODEIFY_SOURCE_PATH,Buffer.from(b)))';
 		execute(process.execPath, ["-e", downloadScript], {
 			env: { ...childEnv, CODEIFY_SOURCE_ARCHIVE: sourceArchive, CODEIFY_SOURCE_PATH: archivePath },
-			stdio: "inherit",
+			stdio: quietStdio,
 		});
 		const powershell = [
 			"$ErrorActionPreference='Stop'",
@@ -195,7 +217,7 @@ function installWindowsArchive() {
 				CODEIFY_SOURCE_DESTINATION: extractDirectory,
 				CODEIFY_SOURCE_PATH: archivePath,
 			},
-			stdio: "inherit",
+			stdio: quietStdio,
 		});
 		const sourceDirectories = readdirSync(extractDirectory)
 			.map((entry) => join(extractDirectory, entry))
@@ -224,107 +246,103 @@ let installSucceeded = false;
 try {
 console.log("Codeify CLI");
 console.log("");
-step(1, updatingExisting ? "Updating source" : "Downloading source");
 if (updatingExisting) rmSync(completionPath, { force: true });
 
-if (existingCheckout) {
-	if (!gitAvailable) {
-		throw new Error("Git is required to update this existing Git-based installation.");
-	}
-	if (!isWindows) {
-		rmSync(join(installHome, "node_modules"), { force: true, recursive: true });
-	}
-	run("git", ["-C", installHome, "pull", "--ff-only", "origin", "main"]);
-} else if (existingArchiveInstall) {
-	if (!isWindows) {
-		throw new Error("Git is required to update this installation.");
-	}
-	installWindowsArchive();
-} else if (existsSync(installHome)) {
-	throw new Error(`${installHome} already exists and is not a Codeify CLI installation.`);
-} else if (gitAvailable) {
-	mkdirSync(dirname(installHome), { recursive: true });
-	run("git", ["clone", "--depth", "1", repository, installHome]);
-} else if (isWindows) {
-	installWindowsArchive();
-} else {
-	throw new Error("Git is required.");
-}
-
-step(2, "Installing dependencies");
-run(
-	npmCommand,
-	[
-		updatingExisting && isWindows ? "install" : "ci",
-		...(minimalInstall ? ["--omit=dev"] : []),
-		"--ignore-scripts",
-	],
-	installHome,
-	false,
-	lowMemory ? { NODE_OPTIONS: "--max-old-space-size=256", npm_config_maxsockets: "3" } : undefined,
-);
-let compilerDirectory;
-try {
-	if (minimalInstall) {
-		compilerDirectory = installBuildCompiler();
-		const compilerNodeModules = join(compilerDirectory, "node_modules");
-		const nodePath = [compilerNodeModules, process.env.NODE_PATH].filter(Boolean).join(delimiter);
-		const memoryLabel =
-			detectedMemoryBytes > 0
-				? `${(detectedMemoryBytes / (1024 * 1024 * 1024)).toFixed(1)} GB detected`
-				: "minimal mode";
-		step(3, "Building Codeify CLI");
-		run(
-			process.execPath,
-			[join(installHome, "scripts", "build-lowmem.mjs")],
-			installHome,
-			false,
-			{ NODE_PATH: nodePath },
-		);
+task(updatingExisting ? "Updating source" : "Downloading source", updatingExisting ? "Updated source" : "Downloaded source", () => {
+	if (existingCheckout) {
+		if (!gitAvailable) {
+			throw new Error("Git is required to update this existing Git-based installation.");
+		}
+		if (!isWindows) {
+			rmSync(join(installHome, "node_modules"), { force: true, recursive: true });
+		}
+		run("git", ["-C", installHome, "pull", "--quiet", "--ff-only", "origin", "main"]);
+	} else if (existingArchiveInstall) {
+		if (!isWindows) {
+			throw new Error("Git is required to update this installation.");
+		}
+		installWindowsArchive();
+	} else if (existsSync(installHome)) {
+		throw new Error(`${installHome} already exists and is not a Codeify CLI installation.`);
+	} else if (gitAvailable) {
+		mkdirSync(dirname(installHome), { recursive: true });
+		run("git", ["clone", "--quiet", "--depth", "1", repository, installHome]);
+	} else if (isWindows) {
+		installWindowsArchive();
 	} else {
-		step(3, "Building Codeify CLI");
-		run(npmCommand, ["run", "build:runtime"], installHome);
+		throw new Error("Git is required.");
 	}
-} finally {
-	if (compilerDirectory) {
-		rmSync(compilerDirectory, { force: true, recursive: true });
+});
+
+task("Installing dependencies", "Installed dependencies", () =>
+	run(
+		npmCommand,
+		[
+			updatingExisting && isWindows ? "install" : "ci",
+			...(minimalInstall ? ["--omit=dev"] : []),
+			"--ignore-scripts",
+			"--loglevel=error",
+		],
+		installHome,
+		false,
+		lowMemory ? { NODE_OPTIONS: "--max-old-space-size=256", npm_config_maxsockets: "3" } : undefined,
+	),
+);
+
+task("Building Codeify CLI", "Built Codeify CLI", () => {
+	let compilerDirectory;
+	try {
+		if (minimalInstall) {
+			compilerDirectory = installBuildCompiler();
+			const nodePath = [join(compilerDirectory, "node_modules"), process.env.NODE_PATH].filter(Boolean).join(delimiter);
+			run(process.execPath, [join(installHome, "scripts", "build-lowmem.mjs")], installHome, false, {
+				NODE_PATH: nodePath,
+			});
+		} else {
+			run(npmCommand, ["run", "build:runtime", "--silent"], installHome);
+		}
+	} finally {
+		if (compilerDirectory) {
+			rmSync(compilerDirectory, { force: true, recursive: true });
+		}
 	}
-}
+});
 
 const cliPath = join(installHome, "packages", "coding-agent", "dist", "cli.js");
-step(4, "Creating the codeify command");
-mkdirSync(binDirectory, { recursive: true });
+task("Creating the codeify command", "Created the codeify command", () => {
+	mkdirSync(binDirectory, { recursive: true });
 
-if (isWindows) {
-	const launcherPath = join(binDirectory, "codeify.cmd");
-	writeFileSync(launcherPath, `@echo off\r\nnode.exe "${cliPath}" %*\r\n`, "ascii");
-	const powershell = [
-		"$bin=$env:CODEIFY_INSTALL_BIN",
-		"$current=[Environment]::GetEnvironmentVariable('Path','User')",
-		"$entries=@($current -split ';' | Where-Object { $_ })",
-		"if ($entries -notcontains $bin) { [Environment]::SetEnvironmentVariable('Path', ((@($entries) + $bin) -join ';'), 'User') }",
-	].join("; ");
-	execFileSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", powershell], {
-		env: { ...process.env, CODEIFY_INSTALL_BIN: binDirectory },
-		stdio: "inherit",
-	});
-} else {
-	const launcherPath = join(binDirectory, "codeify");
-	if (existsSync(launcherPath)) {
-		if (lstatSync(launcherPath).isDirectory()) {
-			throw new Error(`${launcherPath} is a directory and cannot be replaced.`);
+	if (isWindows) {
+		const launcherPath = join(binDirectory, "codeify.cmd");
+		writeFileSync(launcherPath, `@echo off\r\nnode.exe "${cliPath}" %*\r\n`, "ascii");
+		const powershell = [
+			"$bin=$env:CODEIFY_INSTALL_BIN",
+			"$current=[Environment]::GetEnvironmentVariable('Path','User')",
+			"$entries=@($current -split ';' | Where-Object { $_ })",
+			"if ($entries -notcontains $bin) { [Environment]::SetEnvironmentVariable('Path', ((@($entries) + $bin) -join ';'), 'User') }",
+		].join("; ");
+		execFileSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", powershell], {
+			env: { ...process.env, CODEIFY_INSTALL_BIN: binDirectory },
+			stdio: quietStdio,
+		});
+	} else {
+		const launcherPath = join(binDirectory, "codeify");
+		if (existsSync(launcherPath)) {
+			if (lstatSync(launcherPath).isDirectory()) {
+				throw new Error(`${launcherPath} is a directory and cannot be replaced.`);
+			}
+			rmSync(launcherPath, { force: true });
 		}
-		rmSync(launcherPath, { force: true });
+		chmodSync(cliPath, 0o755);
+		symlinkSync(cliPath, launcherPath);
 	}
-	chmodSync(cliPath, 0o755);
-	symlinkSync(cliPath, launcherPath);
-}
+});
 
 const version = run(process.execPath, [cliPath, "--version"], installHome, true).trim();
 writeFileSync(completionPath, `${version}\n`, "utf8");
 
 console.log("");
-console.log(`Codeify CLI ${version} installed successfully.`);
+console.log(`Codeify CLI ${version} is ready.`);
 if (!pathEntries.includes(binDirectory)) {
 	if (isWindows) {
 		console.log("Restart your terminal, then run: codeify");

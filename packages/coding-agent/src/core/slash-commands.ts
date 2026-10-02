@@ -45,6 +45,7 @@ export const BUILTIN_SLASH_COMMANDS: ReadonlyArray<BuiltinSlashCommand> = [
 	{ name: "clone", description: "Duplicate the current session at the current position" },
 	{ name: "tree", description: "Navigate session tree (switch branches)" },
 	{ name: "trust", description: "Save project trust decision for future sessions" },
+	{ name: "override", description: "Manage custom backends", argumentHint: "<add|edit|delete|use>" },
 	{ name: "login", description: "Configure Codeify authentication" },
 	{ name: "logout", description: "Remove Codeify authentication" },
 	{ name: "new", description: "Start a new session" },
