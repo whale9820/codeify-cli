@@ -1,9 +1,10 @@
 import type { AgentTool } from "codeify-agent-core";
-import { Box, Container, Spacer, Text } from "codeify-tui";
+import { Box, type Component, Container, Text } from "codeify-tui";
 import { constants } from "fs";
 import { access as fsAccess, readFile as fsReadFile, writeFile as fsWriteFile } from "fs/promises";
 import { type Static, Type } from "typebox";
-import { renderDiff } from "../../modes/interactive/components/diff.ts";
+import { DiffComponent, summarizeDiff } from "../../modes/interactive/components/diff.ts";
+import { PrefixedComponent } from "../../modes/interactive/components/prefixed.ts";
 import type { Theme } from "../../modes/interactive/theme/theme.ts";
 import {
 	applyEditsToNormalizedContent,
@@ -20,7 +21,7 @@ import {
 } from "./edit-diff.ts";
 import { withFileMutationQueue } from "./file-mutation-queue.ts";
 import { resolveToCwd } from "./path-utils.ts";
-import { normalizeDisplayText, renderToolPath, replaceTabs, str } from "./render-utils.ts";
+import { normalizeDisplayText, renderToolPath, replaceTabs, shortenPath, str } from "./render-utils.ts";
 import { wrapToolDefinition } from "./tool-definition-wrapper.ts";
 import type { ToolDefinition } from "./types.ts";
 
@@ -284,7 +285,7 @@ type EditCallRenderComponent = Box & {
 };
 
 function createEditCallRenderComponent(): EditCallRenderComponent {
-	return Object.assign(new Box(1, 1, (text: string) => text), {
+	return Object.assign(new Box(0, 0), {
 		preview: undefined as EditPreview | undefined,
 		previewArgsKey: undefined as string | undefined,
 		previewPending: false,
@@ -370,10 +371,26 @@ function formatLiveEditPreview(args: RenderableEditArgs | undefined, theme: Them
 	return visibleBlocks.length > 0 ? visibleBlocks.join("\n\n") : undefined;
 }
 
-function formatEditCall(args: RenderableEditArgs | undefined, theme: Theme, cwd: string, progress?: string): string {
+function formatEditCall(args: RenderableEditArgs | undefined, theme: Theme, cwd: string): string {
 	const pathDisplay = renderToolPath(str(args?.file_path ?? args?.path), theme, cwd);
-	const header = `${theme.fg("toolTitle", theme.bold("edit"))} ${pathDisplay}`;
-	return progress ? `${header}\n\n${theme.fg("muted", progress)}` : header;
+	return `${theme.fg("toolTitle", theme.bold("Update"))}(${pathDisplay})`;
+}
+
+function pluralize(count: number, word: string): string {
+	return `${count} ${word}${count === 1 ? "" : "s"}`;
+}
+
+function buildDiffBody(diff: string, rawPath: string | null, theme: Theme): Component {
+	const { additions, removals } = summarizeDiff(diff);
+	const summary = `Updated ${rawPath ? shortenPath(rawPath) : "file"} with ${pluralize(additions, "addition")} and ${pluralize(removals, "removal")}`;
+	const body = new Container();
+	body.addChild(new Text(theme.fg("toolOutput", summary), 0, 0));
+	body.addChild(new DiffComponent(diff));
+	return body;
+}
+
+function withResultPrefix(component: Component, theme: Theme): Component {
+	return new PrefixedComponent(component, `  ${theme.fg("dim", "⎿")}  `, "     ");
 }
 
 function formatEditResult(
@@ -382,7 +399,7 @@ function formatEditResult(
 	result: EditToolResultLike,
 	theme: Theme,
 	isError: boolean,
-): string | undefined {
+): Component | undefined {
 	const rawPath = str(args?.file_path ?? args?.path);
 	const previewDiff = preview && !("error" in preview) ? preview.diff : undefined;
 	const previewError = preview && "error" in preview ? preview.error : undefined;
@@ -394,32 +411,25 @@ function formatEditResult(
 		if (!errorText || errorText === previewError) {
 			return undefined;
 		}
-		return theme.fg("error", errorText);
+		return new Text(theme.fg("error", errorText), 0, 0);
 	}
 
 	const resultDiff = result.details?.diff;
 	if (resultDiff && resultDiff !== previewDiff) {
-		return renderDiff(resultDiff, { filePath: rawPath ?? undefined });
+		return buildDiffBody(resultDiff, rawPath, theme);
 	}
 
 	return undefined;
 }
 
-function getEditHeaderBg(
+function getEditDotColor(
 	preview: EditPreview | undefined,
 	settledError: boolean | undefined,
-	theme: Theme,
-): (text: string) => string {
+): "dim" | "error" | "success" {
 	if (preview) {
-		if ("error" in preview) {
-			return (text: string) => theme.bg("toolErrorBg", text);
-		}
-		return (text: string) => theme.bg("toolSuccessBg", text);
+		return "error" in preview ? "error" : "success";
 	}
-	if (settledError) {
-		return (text: string) => theme.bg("toolErrorBg", text);
-	}
-	return (text: string) => theme.bg("toolPendingBg", text);
+	return settledError ? "error" : "dim";
 }
 
 function buildEditCallComponent(
@@ -430,22 +440,26 @@ function buildEditCallComponent(
 	progress?: string,
 	livePreview?: string,
 ): EditCallRenderComponent {
-	component.setBgFn(getEditHeaderBg(component.preview, component.settledError, theme));
 	component.clear();
-	component.addChild(new Text(formatEditCall(args, theme, cwd, progress), 0, 0));
+	const dot = theme.fg(getEditDotColor(component.preview, component.settledError), "●");
+	component.addChild(new PrefixedComponent(new Text(formatEditCall(args, theme, cwd), 0, 0), `${dot} `, "  "));
+
+	if (progress) {
+		component.addChild(withResultPrefix(new Text(theme.fg("muted", progress), 0, 0), theme));
+	}
 
 	if (!component.preview) {
 		if (livePreview) {
-			component.addChild(new Spacer(1));
-			component.addChild(new Text(livePreview, 0, 0));
+			component.addChild(withResultPrefix(new Text(livePreview, 0, 0), theme));
 		}
 		return component;
 	}
 
 	const body =
-		"error" in component.preview ? theme.fg("error", component.preview.error) : renderDiff(component.preview.diff);
-	component.addChild(new Spacer(1));
-	component.addChild(new Text(body, 0, 0));
+		"error" in component.preview
+			? new Text(theme.fg("error", component.preview.error), 0, 0)
+			: buildDiffBody(component.preview.diff, str(args?.file_path ?? args?.path), theme);
+	component.addChild(withResultPrefix(body, theme));
 	return component;
 }
 
@@ -642,8 +656,7 @@ export function createEditToolDefinition(
 			if (!output) {
 				return component;
 			}
-			component.addChild(new Spacer(1));
-			component.addChild(new Text(output, 1, 0));
+			component.addChild(withResultPrefix(output, theme));
 			return component;
 		},
 	};

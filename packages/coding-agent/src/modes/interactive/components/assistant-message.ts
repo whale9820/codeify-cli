@@ -181,17 +181,10 @@ export class AssistantMessageComponent extends Container {
 			} else if (item.kind === "thinking") {
 				if (item.text.trim()) {
 					this.contentContainer.addChild(
-						new Text(theme.fg("thinkingText", theme.italic("✻ Thinking…")), this.outputPad, 0),
-					);
-					this.contentContainer.addChild(
-						new PrefixedComponent(
-							new Markdown(separateAdjacentBold(item.text.trim()), 0, 0, this.markdownTheme, {
-								color: (text: string) => theme.fg("thinkingText", text),
-								italic: true,
-							}),
-							"  ",
-							"  ",
-						),
+						new Markdown(separateAdjacentBold(item.text.trim()), this.outputPad, 0, this.markdownTheme, {
+							color: (text: string) => theme.fg("thinkingText", text),
+							italic: true,
+						}),
 					);
 					if (hasVisibleContentAfter) {
 						this.contentContainer.addChild(new Spacer(1));

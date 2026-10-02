@@ -430,6 +430,7 @@ export class InteractiveMode {
 		const autocompleteMaxVisible = this.settingsManager.getAutocompleteMaxVisible();
 		this.defaultEditor = new CustomEditor(this.ui, getEditorTheme(), this.keybindings, {
 			paddingX: editorPaddingX,
+			promptPrefix: "> ",
 			autocompleteMaxVisible,
 		});
 		this.editor = this.defaultEditor;

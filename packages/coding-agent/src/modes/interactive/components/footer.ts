@@ -114,12 +114,12 @@ export class FooterComponent implements Component {
 
 		// Build stats line
 		const statsParts = [];
-		if (usageTotals.input) statsParts.push(`↑${formatTokens(usageTotals.input)}`);
-		if (usageTotals.output) statsParts.push(`↓${formatTokens(usageTotals.output)}`);
-		if (usageTotals.cacheRead) statsParts.push(`R${formatTokens(usageTotals.cacheRead)}`);
-		if (usageTotals.cacheWrite) statsParts.push(`W${formatTokens(usageTotals.cacheWrite)}`);
+		if (usageTotals.input) statsParts.push(`${formatTokens(usageTotals.input)} in`);
+		if (usageTotals.output) statsParts.push(`${formatTokens(usageTotals.output)} out`);
+		if (usageTotals.cacheRead) statsParts.push(`${formatTokens(usageTotals.cacheRead)} cached`);
+		if (usageTotals.cacheWrite) statsParts.push(`${formatTokens(usageTotals.cacheWrite)} cache writes`);
 		if ((usageTotals.cacheRead > 0 || usageTotals.cacheWrite > 0) && latestCacheHitRate !== undefined) {
-			statsParts.push(`CH${latestCacheHitRate.toFixed(1)}%`);
+			statsParts.push(`${latestCacheHitRate.toFixed(0)}% cache hit`);
 		}
 
 		// Kimi Coding is subscription-backed despite using API-key authentication.
@@ -132,11 +132,11 @@ export class FooterComponent implements Component {
 
 		// Colorize context percentage based on usage
 		let contextPercentStr: string;
-		const autoIndicator = this.autoCompactEnabled ? " (auto)" : "";
+		const autoIndicator = this.autoCompactEnabled ? ", auto-compact" : "";
 		const contextPercentDisplay =
 			contextPercent === "?"
-				? `?/${formatTokens(contextWindow)}${autoIndicator}`
-				: `${contextPercent}%/${formatTokens(contextWindow)}${autoIndicator}`;
+				? `context ? of ${formatTokens(contextWindow)}${autoIndicator}`
+				: `context ${contextPercent}% of ${formatTokens(contextWindow)}${autoIndicator}`;
 		if (contextPercentValue > 90) {
 			contextPercentStr = theme.fg("error", contextPercentDisplay);
 		} else if (contextPercentValue > 70) {
@@ -147,13 +147,13 @@ export class FooterComponent implements Component {
 		statsParts.push(contextPercentStr);
 		const runningTasks = this.session.getBackgroundTasks().filter((task) => task.status === "running").length;
 		if (runningTasks > 0) {
-			statsParts.push(`${theme.fg("dim", "•")} ${theme.fg("accent", `${runningTasks} bg`)}`);
+			statsParts.push(theme.fg("accent", `${runningTasks} background`));
 		}
 		if (areExperimentalFeaturesEnabled()) {
-			statsParts.push(`${theme.fg("dim", "•")} ${theme.bold(theme.fg("warning", "xp"))}`);
+			statsParts.push(theme.bold(theme.fg("warning", "experimental")));
 		}
 
-		let statsLeft = statsParts.join(" ");
+		let statsLeft = statsParts.join(" · ");
 
 		const modelSlug = state.model?.id || "no-model";
 
