@@ -37,6 +37,10 @@ export const CLOUDFLARE_AI_GATEWAY_MODELS = values as {
 		id: "claude-opus-5";
 		provider: "cloudflare-ai-gateway";
 	};
+	"claude-opus-5.5": Model<"anthropic-messages"> & {
+		id: "claude-opus-5.5";
+		provider: "cloudflare-ai-gateway";
+	};
 	"claude-sonnet-4.5": Model<"anthropic-messages"> & {
 		id: "claude-sonnet-4.5";
 		provider: "cloudflare-ai-gateway";
@@ -119,6 +123,18 @@ export const CLOUDFLARE_AI_GATEWAY_MODELS = values as {
 	};
 	"gpt-5.6-terra": Model<"openai-responses"> & {
 		id: "gpt-5.6-terra";
+		provider: "cloudflare-ai-gateway";
+	};
+	"gpt-6-astra": Model<"openai-responses"> & {
+		id: "gpt-6-astra";
+		provider: "cloudflare-ai-gateway";
+	};
+	"gpt-6-luna": Model<"openai-responses"> & {
+		id: "gpt-6-luna";
+		provider: "cloudflare-ai-gateway";
+	};
+	"gpt-6-sol": Model<"openai-responses"> & {
+		id: "gpt-6-sol";
 		provider: "cloudflare-ai-gateway";
 	};
 	"o3": Model<"openai-responses"> & {

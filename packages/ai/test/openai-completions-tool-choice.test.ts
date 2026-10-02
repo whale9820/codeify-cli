@@ -1,6 +1,5 @@
 import { Type } from "typebox";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { convertMessages } from "../src/api/openai-completions.ts";
 import { getModel, stream, streamSimple } from "../src/compat.ts";
 import type { AssistantMessage, Model, SimpleStreamOptions, Tool, ToolResultMessage } from "../src/types.ts";
 
@@ -1156,33 +1155,6 @@ describe("openai-completions tool_choice", () => {
 		expect(params.reasoning_effort).toBe("high");
 	});
 
-	it("normalizes OpenCode Go reasoning deltas to reasoning_content for replay", async () => {
-		mockState.chunks = [
-			{
-				id: "chatcmpl-opencode-go-reasoning",
-				choices: [{ delta: { reasoning: "think" }, finish_reason: "stop" }],
-			},
-		];
-
-		const { compat: _compat, ...baseModel } = getModel("opencode-go", "kimi-k2.6")!;
-		const model = { ...baseModel, api: "openai-completions" } as const;
-		const response = await streamSimple(
-			model,
-			{
-				messages: [{ role: "user", content: "Use reasoning.", timestamp: Date.now() }],
-			},
-			{ apiKey: "test" },
-		).result();
-
-		expect(response.content).toEqual([
-			{
-				type: "thinking",
-				thinking: "think",
-				thinkingSignature: "reasoning_content",
-			},
-		]);
-	});
-
 	it("keeps non-OpenCode Go reasoning deltas on the original reasoning field", async () => {
 		mockState.chunks = [
 			{
@@ -1208,107 +1180,6 @@ describe("openai-completions tool_choice", () => {
 				thinkingSignature: "reasoning",
 			},
 		]);
-	});
-
-	it("replays OpenCode Go reasoning thinking blocks as reasoning_content", () => {
-		const { compat: _compat, ...baseModel } = getModel("opencode-go", "kimi-k2.6")!;
-		const model = { ...baseModel, api: "openai-completions" } as Model<"openai-completions">;
-		const messages = convertMessages(
-			model,
-			{
-				messages: [
-					{
-						role: "assistant",
-						api: "openai-completions",
-						provider: "opencode-go",
-						model: "kimi-k2.6",
-						content: [
-							{ type: "thinking", thinking: "think", thinkingSignature: "reasoning" },
-							{ type: "toolCall", id: "call_1", name: "read", arguments: { path: "README.md" } },
-						],
-						usage: {
-							input: 0,
-							output: 0,
-							cacheRead: 0,
-							cacheWrite: 0,
-							totalTokens: 0,
-							cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
-						},
-						stopReason: "stop",
-						timestamp: Date.now(),
-					},
-				],
-			},
-			{
-				...model.compat,
-				supportsStore: false,
-				supportsDeveloperRole: false,
-				supportsReasoningEffort: true,
-				supportsUsageInStreaming: true,
-				maxTokensField: "max_completion_tokens",
-				requiresToolResultName: false,
-				requiresAssistantAfterToolResult: false,
-				requiresThinkingAsText: false,
-				requiresReasoningContentOnAssistantMessages: false,
-				thinkingFormat: "openai",
-				openRouterRouting: {},
-				vercelGatewayRouting: {},
-				chatTemplateKwargs: {},
-				zaiToolStream: false,
-				supportsStrictMode: true,
-				sendSessionAffinityHeaders: false,
-				sessionAffinityFormat: "openai",
-				supportsLongCacheRetention: true,
-			},
-		);
-
-		expect(messages[0]).toMatchObject({ role: "assistant", reasoning_content: "think" });
-		expect(messages[0]).not.toHaveProperty("reasoning");
-	});
-
-	it("sends thinking disabled for OpenCode Go Kimi K2.6 when thinking is off", async () => {
-		const model = getModel("opencode-go", "kimi-k2.6")!;
-		let payload: unknown;
-
-		await streamSimple(
-			model,
-			{
-				messages: [{ role: "user", content: "Hi", timestamp: Date.now() }],
-			},
-			{
-				apiKey: "test",
-				onPayload: (params: unknown) => {
-					payload = params;
-				},
-			},
-		).result();
-
-		const params = (payload ?? mockState.lastParams) as { thinking?: unknown; reasoning_effort?: string };
-		expect(params.thinking).toEqual({ type: "disabled" });
-		expect(params.reasoning_effort).toBeUndefined();
-	});
-
-	it("sends thinking enabled for OpenCode Go Kimi K2.6 when thinking is enabled", async () => {
-		const model = getModel("opencode-go", "kimi-k2.6")!;
-		let payload: unknown;
-
-		await streamSimple(
-			model,
-			{
-				messages: [{ role: "user", content: "Hi", timestamp: Date.now() }],
-			},
-			{
-				apiKey: "test",
-				reasoning: "high",
-				onPayload: (params: unknown) => {
-					payload = params;
-				},
-			},
-		).result();
-
-		const params = (payload ?? mockState.lastParams) as { thinking?: unknown; reasoning_effort?: string };
-		expect(params.thinking).toEqual({ type: "enabled" });
-		expect(params.reasoning_effort).toBeUndefined();
 	});
 
 	it("omits disabled thinking for Moonshot Kimi K2.7 Code models", async () => {
@@ -1357,32 +1228,6 @@ describe("openai-completions tool_choice", () => {
 		const params = (payload ?? mockState.lastParams) as { thinking?: unknown; reasoning_effort?: string };
 		expect(params.thinking).toEqual({ type: "disabled" });
 		expect(params.reasoning_effort).toBeUndefined();
-	});
-
-	it.skip("sends max_tokens for OpenCode completions models", async () => {
-		const cases = [getModel("opencode-go", "kimi-k2.6")!, getModel("opencode", "grok-build-0.1")!] as const;
-
-		for (const model of cases) {
-			let payload: unknown;
-
-			await streamSimple(
-				model,
-				{
-					messages: [{ role: "user", content: "Hi", timestamp: Date.now() }],
-				},
-				{
-					apiKey: "test",
-					maxTokens: 123,
-					onPayload: (params: unknown) => {
-						payload = params;
-					},
-				},
-			).result();
-
-			const params = (payload ?? mockState.lastParams) as { max_tokens?: number; max_completion_tokens?: number };
-			// These models use max_completion_tokens by default
-			expect(params.max_completion_tokens ?? params.max_tokens).toBe(123);
-		}
 	});
 
 	it("omits reasoning effort for OpenCode Grok Build", async () => {

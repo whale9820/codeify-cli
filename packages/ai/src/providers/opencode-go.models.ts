@@ -21,10 +21,6 @@ export const OPENCODE_GO_MODELS = values as {
 		id: "deepseek-v4.1-flash";
 		provider: "opencode-go";
 	};
-	"glm-5.1": Model<"openai-completions"> & {
-		id: "glm-5.1";
-		provider: "opencode-go";
-	};
 	"glm-5.2": Model<"openai-completions"> & {
 		id: "glm-5.2";
 		provider: "opencode-go";
@@ -41,8 +37,16 @@ export const OPENCODE_GO_MODELS = values as {
 		id: "gpt-5.6-luna";
 		provider: "opencode-go";
 	};
+	"gpt-6-luna": Model<"openai-responses"> & {
+		id: "gpt-6-luna";
+		provider: "opencode-go";
+	};
 	"grok-4.6": Model<"openai-responses"> & {
 		id: "grok-4.6";
+		provider: "opencode-go";
+	};
+	"grok-4.7": Model<"openai-responses"> & {
+		id: "grok-4.7";
 		provider: "opencode-go";
 	};
 	"hy3": Model<"openai-completions"> & {
@@ -51,10 +55,6 @@ export const OPENCODE_GO_MODELS = values as {
 	};
 	"hy4-preview": Model<"openai-completions"> & {
 		id: "hy4-preview";
-		provider: "opencode-go";
-	};
-	"kimi-k2.6": Model<"openai-completions"> & {
-		id: "kimi-k2.6";
 		provider: "opencode-go";
 	};
 	"kimi-k2.7-code": Model<"openai-completions"> & {
@@ -69,12 +69,24 @@ export const OPENCODE_GO_MODELS = values as {
 		id: "longcat-2.0";
 		provider: "opencode-go";
 	};
+	"longcat-2.5-preview-free": Model<"openai-completions"> & {
+		id: "longcat-2.5-preview-free";
+		provider: "opencode-go";
+	};
 	"mimo-v2.5": Model<"openai-completions"> & {
 		id: "mimo-v2.5";
 		provider: "opencode-go";
 	};
 	"mimo-v2.5-pro": Model<"openai-completions"> & {
 		id: "mimo-v2.5-pro";
+		provider: "opencode-go";
+	};
+	"mimo-v2.6-flash": Model<"openai-completions"> & {
+		id: "mimo-v2.6-flash";
+		provider: "opencode-go";
+	};
+	"mimo-v2.6-pro": Model<"openai-completions"> & {
+		id: "mimo-v2.6-pro";
 		provider: "opencode-go";
 	};
 	"minimax-m2.7": Model<"openai-completions"> & {
@@ -93,14 +105,6 @@ export const OPENCODE_GO_MODELS = values as {
 		id: "muse-spark-1.3-contributor";
 		provider: "opencode-go";
 	};
-	"qwen3.6-plus": Model<"openai-completions"> & {
-		id: "qwen3.6-plus";
-		provider: "opencode-go";
-	};
-	"qwen3.7-max": Model<"openai-completions"> & {
-		id: "qwen3.7-max";
-		provider: "opencode-go";
-	};
 	"qwen3.7-plus": Model<"openai-completions"> & {
 		id: "qwen3.7-plus";
 		provider: "opencode-go";
@@ -111,6 +115,10 @@ export const OPENCODE_GO_MODELS = values as {
 	};
 	"qwen3.8-max": Model<"openai-completions"> & {
 		id: "qwen3.8-max";
+		provider: "opencode-go";
+	};
+	"space-bunny-free": Model<"openai-completions"> & {
+		id: "space-bunny-free";
 		provider: "opencode-go";
 	};
 };

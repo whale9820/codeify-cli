@@ -17,13 +17,11 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { complete, getModel, getModels } from "../src/compat.ts";
 import type { AssistantMessage, Context, Model, Usage } from "../src/types.ts";
 import { isContextOverflow } from "../src/utils/overflow.ts";
-import { hasAzureOpenAICredentials } from "./azure-utils.ts";
-import { hasBedrockCredentials } from "./bedrock-utils.ts";
 import { resolveApiKey } from "./oauth.ts";
 
 // Resolve OAuth tokens at module level (async, runs before tests)
 const oauthTokens = await Promise.all([resolveApiKey("github-copilot"), resolveApiKey("openai-codex")]);
-const [githubCopilotToken, openaiCodexToken] = oauthTokens;
+const [githubCopilotToken, _openaiCodexToken] = oauthTokens;
 
 // Lorem ipsum paragraph for realistic token estimation
 const LOREM_IPSUM = `Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum. `;
@@ -184,34 +182,10 @@ describe("Context overflow error handling", () => {
 		}, 120000);
 	});
 
-	describe.skipIf(!hasAzureOpenAICredentials())("Azure OpenAI Responses", () => {
-		it("gpt-4o-mini - should detect overflow via isContextOverflow", async () => {
-			const model = getModel("azure-openai-responses", "gpt-4o-mini");
-			const result = await testContextOverflow(model, process.env.AZURE_OPENAI_API_KEY!);
-			logResult(result);
-
-			expect(result.stopReason).toBe("error");
-			expect(result.errorMessage).toMatch(/context|maximum/i);
-			expect(isContextOverflow(result.response, model.contextWindow)).toBe(true);
-		}, 120000);
-	});
-
 	// =============================================================================
 	// Google
 	// Expected pattern: "input token count (X) exceeds the maximum"
 	// =============================================================================
-
-	describe.skipIf(!process.env.GEMINI_API_KEY)("Google", () => {
-		it("gemini-2.5-flash - should detect overflow via isContextOverflow", async () => {
-			const model = getModel("google", "gemini-2.5-flash");
-			const result = await testContextOverflow(model, process.env.GEMINI_API_KEY!);
-			logResult(result);
-
-			expect(result.stopReason).toBe("error");
-			expect(result.errorMessage).toMatch(/input token count.*exceeds the maximum/i);
-			expect(isContextOverflow(result.response, model.contextWindow)).toBe(true);
-		}, 120000);
-	});
 
 	// =============================================================================
 	// Uses same API as Google, expects same error pattern
@@ -225,36 +199,10 @@ describe("Context overflow error handling", () => {
 	// Uses ChatGPT Plus/Pro subscription via OAuth
 	// =============================================================================
 
-	describe("OpenAI Codex (OAuth)", () => {
-		it.skipIf(!openaiCodexToken)(
-			"gpt-5.5 - should detect overflow via isContextOverflow",
-			async () => {
-				const model = getModel("openai-codex", "gpt-5.5");
-				const result = await testContextOverflow(model, openaiCodexToken!);
-				logResult(result);
-
-				expect(result.stopReason).toBe("error");
-				expect(isContextOverflow(result.response, model.contextWindow)).toBe(true);
-			},
-			120000,
-		);
-	});
-
 	// =============================================================================
 	// Amazon Bedrock
 	// Expected pattern: "Input is too long for requested model"
 	// =============================================================================
-
-	describe.skipIf(!hasBedrockCredentials())("Amazon Bedrock", () => {
-		it("claude-sonnet-4-5 - should detect overflow via isContextOverflow", async () => {
-			const model = getModel("amazon-bedrock", "global.anthropic.claude-sonnet-4-5-20250929-v1:0");
-			const result = await testContextOverflow(model, "");
-			logResult(result);
-
-			expect(result.stopReason).toBe("error");
-			expect(isContextOverflow(result.response, model.contextWindow)).toBe(true);
-		}, 120000);
-	});
 
 	// =============================================================================
 	// xAI
@@ -336,17 +284,6 @@ describe("Context overflow error handling", () => {
 	// Uses OpenAI-compatible Chat Completions API
 	// =============================================================================
 
-	describe.skipIf(!process.env.TOGETHER_API_KEY)("Together AI", () => {
-		it("Kimi-K2.6 - should detect overflow via isContextOverflow", async () => {
-			const model = getModel("together", "moonshotai/Kimi-K2.6");
-			const result = await testContextOverflow(model, process.env.TOGETHER_API_KEY!);
-			logResult(result);
-
-			expect(result.stopReason).toBe("error");
-			expect(isContextOverflow(result.response, model.contextWindow)).toBe(true);
-		}, 120000);
-	});
-
 	// =============================================================================
 	// z.ai
 	// Special case: may return explicit overflow error text, may accept overflow silently,
@@ -382,18 +319,6 @@ describe("Context overflow error handling", () => {
 	// =============================================================================
 	// Mistral
 	// =============================================================================
-
-	describe.skipIf(!process.env.MISTRAL_API_KEY)("Mistral", () => {
-		it("devstral-medium-latest - should detect overflow via isContextOverflow", async () => {
-			const model = getModel("mistral", "devstral-medium-latest");
-			const result = await testContextOverflow(model, process.env.MISTRAL_API_KEY!);
-			logResult(result);
-
-			expect(result.stopReason).toBe("error");
-			expect(result.errorMessage).toMatch(/too large for model with \d+ maximum context length/i);
-			expect(isContextOverflow(result.response, model.contextWindow)).toBe(true);
-		}, 120000);
-	});
 
 	// =============================================================================
 	// MiniMax
@@ -493,17 +418,6 @@ describe("Context overflow error handling", () => {
 	// =============================================================================
 	// Kimi For Coding
 	// =============================================================================
-
-	describe.skipIf(!process.env.KIMI_API_KEY)("Kimi For Coding", () => {
-		it("kimi-for-coding - should detect overflow via isContextOverflow", async () => {
-			const model = getModel("kimi-coding", "kimi-for-coding");
-			const result = await testContextOverflow(model, process.env.KIMI_API_KEY!);
-			logResult(result);
-
-			expect(result.stopReason).toBe("error");
-			expect(isContextOverflow(result.response, model.contextWindow)).toBe(true);
-		}, 120000);
-	});
 
 	// =============================================================================
 	// Vercel AI Gateway - Unified API for multiple providers

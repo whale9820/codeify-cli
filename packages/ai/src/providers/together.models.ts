@@ -33,10 +33,6 @@ export const TOGETHER_MODELS = values as {
 		id: "deepseek-ai/DeepSeek-V4-Flash-0731";
 		provider: "together";
 	};
-	"deepseek-ai/DeepSeek-V4-Pro": Model<"openai-completions"> & {
-		id: "deepseek-ai/DeepSeek-V4-Pro";
-		provider: "together";
-	};
 	"deepseek-ai/DeepSeek-V4-Pro-0813": Model<"openai-completions"> & {
 		id: "deepseek-ai/DeepSeek-V4-Pro-0813";
 		provider: "together";
@@ -45,20 +41,8 @@ export const TOGETHER_MODELS = values as {
 		id: "deepseek-ai/DeepSeek-V4.1-Flash";
 		provider: "together";
 	};
-	"google/gemma-4-31B-it": Model<"openai-completions"> & {
-		id: "google/gemma-4-31B-it";
-		provider: "together";
-	};
 	"meta-llama/Llama-3.3-70B-Instruct-Turbo": Model<"openai-completions"> & {
 		id: "meta-llama/Llama-3.3-70B-Instruct-Turbo";
-		provider: "together";
-	};
-	"moonshotai/Kimi-K2.6": Model<"openai-completions"> & {
-		id: "moonshotai/Kimi-K2.6";
-		provider: "together";
-	};
-	"moonshotai/Kimi-K2.7-Code": Model<"openai-completions"> & {
-		id: "moonshotai/Kimi-K2.7-Code";
 		provider: "together";
 	};
 	"moonshotai/Kimi-K3": Model<"openai-completions"> & {
@@ -71,10 +55,6 @@ export const TOGETHER_MODELS = values as {
 	};
 	"openai/gpt-oss-120b": Model<"openai-completions"> & {
 		id: "openai/gpt-oss-120b";
-		provider: "together";
-	};
-	"openai/gpt-oss-20b": Model<"openai-completions"> & {
-		id: "openai/gpt-oss-20b";
 		provider: "together";
 	};
 	"thinkingmachines/Inkling": Model<"openai-completions"> & {

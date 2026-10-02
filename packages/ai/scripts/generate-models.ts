@@ -2445,9 +2445,21 @@ async function generateModels() {
 		applyOpenAIToolSearchMetadata(model);
 	}
 
+	const REMOVED_PROVIDERS = new Set(["amazon-bedrock", "azure-openai-responses", "google", "google-vertex", "mistral", "openai-codex"]);
+	const REMOVED_APIS = new Set([
+		"bedrock-converse-stream",
+		"azure-openai-responses",
+		"google-generative-ai",
+		"google-vertex",
+		"mistral-conversations",
+		"openai-codex-responses",
+		"pi-messages",
+	]);
+
 	// Group by provider and deduplicate by model ID
 	const providers: Record<string, Record<string, Model<any>>> = {};
 	for (const model of allModels) {
+		if (REMOVED_PROVIDERS.has(model.provider) || REMOVED_APIS.has(model.api)) continue;
 		if (!providers[model.provider]) {
 			providers[model.provider] = {};
 		}

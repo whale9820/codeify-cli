@@ -17,6 +17,10 @@ export const XAI_MODELS = values as {
 		id: "grok-4.6";
 		provider: "xai";
 	};
+	"grok-4.7": Model<"openai-completions"> & {
+		id: "grok-4.7";
+		provider: "xai";
+	};
 	"grok-build-0.1": Model<"openai-completions"> & {
 		id: "grok-build-0.1";
 		provider: "xai";

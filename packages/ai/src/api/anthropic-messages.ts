@@ -1417,11 +1417,7 @@ function mapStopReason(
 		case "refusal":
 			return {
 				stopReason: "error",
-				errorMessage: [
-					SAFEGUARD_BLOCK_MESSAGE,
-					stopDetails?.category ? ` (${stopDetails.category})` : "",
-					`: ${stopDetails?.explanation || "the model refused to complete this request"}. Rephrase the request or switch models to continue.`,
-				].join(""),
+				errorMessage: `${SAFEGUARD_BLOCK_MESSAGE}${stopDetails?.category ? ` (${stopDetails.category})` : ""}: ${stopDetails?.explanation || "the model refused to complete this request."} Rephrase the request or switch models to continue.`,
 			};
 		case "pause_turn": // Stop is good enough -> resubmit
 			return { stopReason: "stop" };

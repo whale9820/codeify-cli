@@ -29,12 +29,20 @@ export const GITHUB_COPILOT_MODELS = values as {
 		id: "claude-opus-5";
 		provider: "github-copilot";
 	};
+	"claude-opus-5.5": Model<"anthropic-messages"> & {
+		id: "claude-opus-5.5";
+		provider: "github-copilot";
+	};
 	"claude-sonnet-4.6": Model<"anthropic-messages"> & {
 		id: "claude-sonnet-4.6";
 		provider: "github-copilot";
 	};
 	"claude-sonnet-5": Model<"anthropic-messages"> & {
 		id: "claude-sonnet-5";
+		provider: "github-copilot";
+	};
+	"claude-sonnet-5.5": Model<"anthropic-messages"> & {
+		id: "claude-sonnet-5.5";
 		provider: "github-copilot";
 	};
 	"gemini-3.5-flash": Model<"openai-completions"> & {
@@ -97,12 +105,28 @@ export const GITHUB_COPILOT_MODELS = values as {
 		id: "gpt-6-astra";
 		provider: "github-copilot";
 	};
+	"gpt-6-luna": Model<"openai-completions"> & {
+		id: "gpt-6-luna";
+		provider: "github-copilot";
+	};
+	"gpt-6-sol": Model<"openai-completions"> & {
+		id: "gpt-6-sol";
+		provider: "github-copilot";
+	};
+	"gpt-6.1-sol": Model<"openai-completions"> & {
+		id: "gpt-6.1-sol";
+		provider: "github-copilot";
+	};
 	"grok-4.5": Model<"openai-completions"> & {
 		id: "grok-4.5";
 		provider: "github-copilot";
 	};
 	"grok-4.6": Model<"openai-completions"> & {
 		id: "grok-4.6";
+		provider: "github-copilot";
+	};
+	"grok-4.7": Model<"openai-completions"> & {
+		id: "grok-4.7";
 		provider: "github-copilot";
 	};
 	"kimi-k2.7-code": Model<"openai-completions"> & {

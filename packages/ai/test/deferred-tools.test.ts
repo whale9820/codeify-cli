@@ -172,7 +172,7 @@ function openAIToolNames(payload: OpenAIPayload): string[] {
 	return (payload.tools ?? []).map((tool) => tool.name ?? tool.function?.name ?? "");
 }
 
-function makeCodexToken(): string {
+function _makeCodexToken(): string {
 	return `header.${btoa(JSON.stringify({ "https://api.openai.com/auth": { chatgpt_account_id: "account" } }))}.signature`;
 }
 
@@ -427,25 +427,6 @@ describe("deferred tools", () => {
 
 		expect(openAIToolNames(payload)).toEqual(["base_tool", "late_tool"]);
 		expect(payload.input?.some((item) => item.type === "tool_search_output")).toBe(false);
-	});
-
-	it("uses tool search only for supported Codex models", async () => {
-		const context = makeContext([makeTool("base_tool"), makeTool("late_tool")]);
-		const supported = await capturePayload<OpenAIPayload>(
-			getModel("openai-codex", "gpt-5.4"),
-			context,
-			makeCodexToken(),
-		);
-		const unsupported = await capturePayload<OpenAIPayload>(
-			getModel("openai-codex", "gpt-5.3-codex-spark"),
-			context,
-			makeCodexToken(),
-		);
-
-		expect(openAIToolNames(supported)).toEqual(["base_tool"]);
-		expect(supported.input?.some((item) => item.type === "tool_search_output")).toBe(true);
-		expect(openAIToolNames(unsupported)).toEqual(["base_tool", "late_tool"]);
-		expect(unsupported.input?.some((item) => item.type === "tool_search_output")).toBe(false);
 	});
 
 	it("leaves providers without deferred loading unchanged", async () => {

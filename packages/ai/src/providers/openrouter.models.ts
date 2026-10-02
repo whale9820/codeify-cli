@@ -4,7 +4,7 @@
 import values from "./data/openrouter.json" with { type: "json" };
 import type { Model } from "../types.ts";
 
-export const OPENROUTER_MODELS = values as unknown as {
+export const OPENROUTER_MODELS = values as {
 	"aion-labs/aion-2.0": Model<"openai-completions"> & {
 		id: "aion-labs/aion-2.0";
 		provider: "openrouter";
@@ -15,6 +15,14 @@ export const OPENROUTER_MODELS = values as unknown as {
 	};
 	"aion-labs/aion-3.0-mini": Model<"openai-completions"> & {
 		id: "aion-labs/aion-3.0-mini";
+		provider: "openrouter";
+	};
+	"aion-labs/aion-3.5": Model<"openai-completions"> & {
+		id: "aion-labs/aion-3.5";
+		provider: "openrouter";
+	};
+	"aion-labs/aion-3.5-mini": Model<"openai-completions"> & {
+		id: "aion-labs/aion-3.5-mini";
 		provider: "openrouter";
 	};
 	"amazon/nova-2-lite-v1": Model<"openai-completions"> & {
@@ -35,10 +43,6 @@ export const OPENROUTER_MODELS = values as unknown as {
 	};
 	"amazon/nova-pro-v1": Model<"openai-completions"> & {
 		id: "amazon/nova-pro-v1";
-		provider: "openrouter";
-	};
-	"anthropic/claude-3-haiku": Model<"openai-completions"> & {
-		id: "anthropic/claude-3-haiku";
 		provider: "openrouter";
 	};
 	"anthropic/claude-fable-5": Model<"openai-completions"> & {
@@ -63,10 +67,6 @@ export const OPENROUTER_MODELS = values as unknown as {
 	};
 	"anthropic/claude-haiku-4.5:batch": Model<"openai-completions"> & {
 		id: "anthropic/claude-haiku-4.5:batch";
-		provider: "openrouter";
-	};
-	"anthropic/claude-opus-4": Model<"openai-completions"> & {
-		id: "anthropic/claude-opus-4";
 		provider: "openrouter";
 	};
 	"anthropic/claude-opus-4.1": Model<"openai-completions"> & {
@@ -113,6 +113,14 @@ export const OPENROUTER_MODELS = values as unknown as {
 		id: "anthropic/claude-opus-5";
 		provider: "openrouter";
 	};
+	"anthropic/claude-opus-5.5": Model<"openai-completions"> & {
+		id: "anthropic/claude-opus-5.5";
+		provider: "openrouter";
+	};
+	"anthropic/claude-opus-5.5:batch": Model<"openai-completions"> & {
+		id: "anthropic/claude-opus-5.5:batch";
+		provider: "openrouter";
+	};
 	"anthropic/claude-opus-5:batch": Model<"openai-completions"> & {
 		id: "anthropic/claude-opus-5:batch";
 		provider: "openrouter";
@@ -141,8 +149,20 @@ export const OPENROUTER_MODELS = values as unknown as {
 		id: "anthropic/claude-sonnet-5";
 		provider: "openrouter";
 	};
+	"anthropic/claude-sonnet-5.5": Model<"openai-completions"> & {
+		id: "anthropic/claude-sonnet-5.5";
+		provider: "openrouter";
+	};
+	"anthropic/claude-sonnet-5.5:batch": Model<"openai-completions"> & {
+		id: "anthropic/claude-sonnet-5.5:batch";
+		provider: "openrouter";
+	};
 	"anthropic/claude-sonnet-5:batch": Model<"openai-completions"> & {
 		id: "anthropic/claude-sonnet-5:batch";
+		provider: "openrouter";
+	};
+	"apodex/apodex-1.1-mini:free": Model<"openai-completions"> & {
+		id: "apodex/apodex-1.1-mini:free";
 		provider: "openrouter";
 	};
 	"arcee-ai/trinity-large-thinking": Model<"openai-completions"> & {
@@ -175,6 +195,10 @@ export const OPENROUTER_MODELS = values as unknown as {
 	};
 	"bytedance-seed/seed-2.0-mini": Model<"openai-completions"> & {
 		id: "bytedance-seed/seed-2.0-mini";
+		provider: "openrouter";
+	};
+	"cohere/command-a-plus": Model<"openai-completions"> & {
+		id: "cohere/command-a-plus";
 		provider: "openrouter";
 	};
 	"cohere/command-r-08-2024": Model<"openai-completions"> & {
@@ -229,16 +253,8 @@ export const OPENROUTER_MODELS = values as unknown as {
 		id: "deepseek/deepseek-v4-flash-0731";
 		provider: "openrouter";
 	};
-	"deepseek/deepseek-v4-flash-0731:batch": Model<"openai-completions"> & {
-		id: "deepseek/deepseek-v4-flash-0731:batch";
-		provider: "openrouter";
-	};
 	"deepseek/deepseek-v4-flash-vision-exp": Model<"openai-completions"> & {
 		id: "deepseek/deepseek-v4-flash-vision-exp";
-		provider: "openrouter";
-	};
-	"deepseek/deepseek-v4-flash-vision-exp:batch": Model<"openai-completions"> & {
-		id: "deepseek/deepseek-v4-flash-vision-exp:batch";
 		provider: "openrouter";
 	};
 	"deepseek/deepseek-v4-pro": Model<"openai-completions"> & {
@@ -249,16 +265,20 @@ export const OPENROUTER_MODELS = values as unknown as {
 		id: "deepseek/deepseek-v4-pro-0813";
 		provider: "openrouter";
 	};
-	"deepseek/deepseek-v4-pro-0813:batch": Model<"openai-completions"> & {
-		id: "deepseek/deepseek-v4-pro-0813:batch";
-		provider: "openrouter";
-	};
 	"deepseek/deepseek-v4.1-flash": Model<"openai-completions"> & {
 		id: "deepseek/deepseek-v4.1-flash";
 		provider: "openrouter";
 	};
+	"deepseek/deepseek-v4.1-flash:batch": Model<"openai-completions"> & {
+		id: "deepseek/deepseek-v4.1-flash:batch";
+		provider: "openrouter";
+	};
 	"dots-studio/dots-3-note-preview:free": Model<"openai-completions"> & {
 		id: "dots-studio/dots-3-note-preview:free";
+		provider: "openrouter";
+	};
+	"fireworks/ember-1": Model<"openai-completions"> & {
+		id: "fireworks/ember-1";
 		provider: "openrouter";
 	};
 	"google/gemini-2.5-flash": Model<"openai-completions"> & {
@@ -283,10 +303,6 @@ export const OPENROUTER_MODELS = values as unknown as {
 	};
 	"google/gemini-2.5-pro-preview": Model<"openai-completions"> & {
 		id: "google/gemini-2.5-pro-preview";
-		provider: "openrouter";
-	};
-	"google/gemini-2.5-pro-preview-05-06": Model<"openai-completions"> & {
-		id: "google/gemini-2.5-pro-preview-05-06";
 		provider: "openrouter";
 	};
 	"google/gemini-2.5-pro:batch": Model<"openai-completions"> & {
@@ -389,10 +405,6 @@ export const OPENROUTER_MODELS = values as unknown as {
 		id: "google/gemma-4-31b-it";
 		provider: "openrouter";
 	};
-	"google/gemma-4-31b-it:batch": Model<"openai-completions"> & {
-		id: "google/gemma-4-31b-it:batch";
-		provider: "openrouter";
-	};
 	"google/gemma-4-31b-it:free": Model<"openai-completions"> & {
 		id: "google/gemma-4-31b-it:free";
 		provider: "openrouter";
@@ -417,10 +429,6 @@ export const OPENROUTER_MODELS = values as unknown as {
 		id: "inclusionai/ling-3.0-flash-fin";
 		provider: "openrouter";
 	};
-	"inclusionai/ling-3.0-flash-fin:free": Model<"openai-completions"> & {
-		id: "inclusionai/ling-3.0-flash-fin:free";
-		provider: "openrouter";
-	};
 	"inclusionai/ling-3.0-flash-sante:free": Model<"openai-completions"> & {
 		id: "inclusionai/ling-3.0-flash-sante:free";
 		provider: "openrouter";
@@ -429,12 +437,8 @@ export const OPENROUTER_MODELS = values as unknown as {
 		id: "inclusionai/ling-3.0-flash-vl";
 		provider: "openrouter";
 	};
-	"inclusionai/ling-3.0-flash-vl:free": Model<"openai-completions"> & {
-		id: "inclusionai/ling-3.0-flash-vl:free";
-		provider: "openrouter";
-	};
-	"kwaipilot/kat-coder-pro-v2": Model<"openai-completions"> & {
-		id: "kwaipilot/kat-coder-pro-v2";
+	"inclusionai/ling-3.1-flash": Model<"openai-completions"> & {
+		id: "inclusionai/ling-3.1-flash";
 		provider: "openrouter";
 	};
 	"kwaipilot/kat-coder-pro-v2.5": Model<"openai-completions"> & {
@@ -471,10 +475,6 @@ export const OPENROUTER_MODELS = values as unknown as {
 	};
 	"meta/muse-glimmer-30b": Model<"openai-completions"> & {
 		id: "meta/muse-glimmer-30b";
-		provider: "openrouter";
-	};
-	"meta/muse-glimmer-30b:batch": Model<"openai-completions"> & {
-		id: "meta/muse-glimmer-30b:batch";
 		provider: "openrouter";
 	};
 	"meta/muse-spark-1.1": Model<"openai-completions"> & {
@@ -519,10 +519,6 @@ export const OPENROUTER_MODELS = values as unknown as {
 	};
 	"minimax/minimax-m3": Model<"openai-completions"> & {
 		id: "minimax/minimax-m3";
-		provider: "openrouter";
-	};
-	"minimax/minimax-m3:batch": Model<"openai-completions"> & {
-		id: "minimax/minimax-m3:batch";
 		provider: "openrouter";
 	};
 	"mistralai/codestral-2508": Model<"openai-completions"> & {
@@ -605,6 +601,10 @@ export const OPENROUTER_MODELS = values as unknown as {
 		id: "mistralai/mistral-small-2603:batch";
 		provider: "openrouter";
 	};
+	"mistralai/mistral-small-3.1-24b-instruct": Model<"openai-completions"> & {
+		id: "mistralai/mistral-small-3.1-24b-instruct";
+		provider: "openrouter";
+	};
 	"mistralai/mistral-small-3.2-24b-instruct": Model<"openai-completions"> & {
 		id: "mistralai/mistral-small-3.2-24b-instruct";
 		provider: "openrouter";
@@ -649,12 +649,8 @@ export const OPENROUTER_MODELS = values as unknown as {
 		id: "moonshotai/kimi-k3:batch";
 		provider: "openrouter";
 	};
-	"nex-agi/nex-n2.5-mini:free": Model<"openai-completions"> & {
-		id: "nex-agi/nex-n2.5-mini:free";
-		provider: "openrouter";
-	};
-	"nex-agi/nex-n2.5-pro:free": Model<"openai-completions"> & {
-		id: "nex-agi/nex-n2.5-pro:free";
+	"nex-agi/nex-n2.5-pro": Model<"openai-completions"> & {
+		id: "nex-agi/nex-n2.5-pro";
 		provider: "openrouter";
 	};
 	"nvidia/nemotron-3-nano-30b-a3b": Model<"openai-completions"> & {
@@ -711,10 +707,6 @@ export const OPENROUTER_MODELS = values as unknown as {
 	};
 	"openai/gpt-4-turbo": Model<"openai-completions"> & {
 		id: "openai/gpt-4-turbo";
-		provider: "openrouter";
-	};
-	"openai/gpt-4-turbo-preview": Model<"openai-completions"> & {
-		id: "openai/gpt-4-turbo-preview";
 		provider: "openrouter";
 	};
 	"openai/gpt-4-turbo:batch": Model<"openai-completions"> & {
@@ -969,6 +961,46 @@ export const OPENROUTER_MODELS = values as unknown as {
 		id: "openai/gpt-6-astra:batch";
 		provider: "openrouter";
 	};
+	"openai/gpt-6-luna": Model<"openai-completions"> & {
+		id: "openai/gpt-6-luna";
+		provider: "openrouter";
+	};
+	"openai/gpt-6-luna-pro": Model<"openai-completions"> & {
+		id: "openai/gpt-6-luna-pro";
+		provider: "openrouter";
+	};
+	"openai/gpt-6-luna-pro:batch": Model<"openai-completions"> & {
+		id: "openai/gpt-6-luna-pro:batch";
+		provider: "openrouter";
+	};
+	"openai/gpt-6-luna:batch": Model<"openai-completions"> & {
+		id: "openai/gpt-6-luna:batch";
+		provider: "openrouter";
+	};
+	"openai/gpt-6-sol": Model<"openai-completions"> & {
+		id: "openai/gpt-6-sol";
+		provider: "openrouter";
+	};
+	"openai/gpt-6-sol-pro": Model<"openai-completions"> & {
+		id: "openai/gpt-6-sol-pro";
+		provider: "openrouter";
+	};
+	"openai/gpt-6-sol-pro:batch": Model<"openai-completions"> & {
+		id: "openai/gpt-6-sol-pro:batch";
+		provider: "openrouter";
+	};
+	"openai/gpt-6-sol:batch": Model<"openai-completions"> & {
+		id: "openai/gpt-6-sol:batch";
+		provider: "openrouter";
+	};
+	"openai/gpt-6.1-sol": Model<"openai-completions"> & {
+		id: "openai/gpt-6.1-sol";
+		provider: "openrouter";
+	};
+	"openai/gpt-6.1-sol-pro": Model<"openai-completions"> & {
+		id: "openai/gpt-6.1-sol-pro";
+		provider: "openrouter";
+	};
 	"openai/gpt-audio": Model<"openai-completions"> & {
 		id: "openai/gpt-audio";
 		provider: "openrouter";
@@ -991,6 +1023,10 @@ export const OPENROUTER_MODELS = values as unknown as {
 	};
 	"openai/gpt-oss-20b": Model<"openai-completions"> & {
 		id: "openai/gpt-oss-20b";
+		provider: "openrouter";
+	};
+	"openai/gpt-oss-20b:batch": Model<"openai-completions"> & {
+		id: "openai/gpt-oss-20b:batch";
 		provider: "openrouter";
 	};
 	"openai/gpt-oss-safeguard-20b": Model<"openai-completions"> & {
@@ -1053,6 +1089,10 @@ export const OPENROUTER_MODELS = values as unknown as {
 		id: "openrouter/fusion";
 		provider: "openrouter";
 	};
+	"perceptron/perceptron-mk1.5": Model<"openai-completions"> & {
+		id: "perceptron/perceptron-mk1.5";
+		provider: "openrouter";
+	};
 	"poolside/laguna-s-2.1": Model<"openai-completions"> & {
 		id: "poolside/laguna-s-2.1";
 		provider: "openrouter";
@@ -1067,6 +1107,10 @@ export const OPENROUTER_MODELS = values as unknown as {
 	};
 	"poolside/laguna-xs-2.1:free": Model<"openai-completions"> & {
 		id: "poolside/laguna-xs-2.1:free";
+		provider: "openrouter";
+	};
+	"prism-ml/ternary-bonsai-2-27b": Model<"openai-completions"> & {
+		id: "prism-ml/ternary-bonsai-2-27b";
 		provider: "openrouter";
 	};
 	"qwen/qwen-2.5-72b-instruct": Model<"openai-completions"> & {
@@ -1205,10 +1249,6 @@ export const OPENROUTER_MODELS = values as unknown as {
 		id: "qwen/qwen3.5-9b";
 		provider: "openrouter";
 	};
-	"qwen/qwen3.5-9b:batch": Model<"openai-completions"> & {
-		id: "qwen/qwen3.5-9b:batch";
-		provider: "openrouter";
-	};
 	"qwen/qwen3.5-flash-02-23": Model<"openai-completions"> & {
 		id: "qwen/qwen3.5-flash-02-23";
 		provider: "openrouter";
@@ -1257,12 +1297,12 @@ export const OPENROUTER_MODELS = values as unknown as {
 		id: "qwen/qwen3.8-2.4t-a95b";
 		provider: "openrouter";
 	};
-	"qwen/qwen3.8-2.4t-a95b:batch": Model<"openai-completions"> & {
-		id: "qwen/qwen3.8-2.4t-a95b:batch";
-		provider: "openrouter";
-	};
 	"qwen/qwen3.8-27b": Model<"openai-completions"> & {
 		id: "qwen/qwen3.8-27b";
+		provider: "openrouter";
+	};
+	"qwen/qwen3.8-27b:free": Model<"openai-completions"> & {
+		id: "qwen/qwen3.8-27b:free";
 		provider: "openrouter";
 	};
 	"qwen/qwen3.8-flash": Model<"openai-completions"> & {
@@ -1271,6 +1311,14 @@ export const OPENROUTER_MODELS = values as unknown as {
 	};
 	"qwen/qwen3.8-max-0902": Model<"openai-completions"> & {
 		id: "qwen/qwen3.8-max-0902";
+		provider: "openrouter";
+	};
+	"qwen/qwen3.8-max-prime": Model<"openai-completions"> & {
+		id: "qwen/qwen3.8-max-prime";
+		provider: "openrouter";
+	};
+	"qwen/qwen3.8-omni-flash": Model<"openai-completions"> & {
+		id: "qwen/qwen3.8-omni-flash";
 		provider: "openrouter";
 	};
 	"rekaai/reka-edge": Model<"openai-completions"> & {
@@ -1301,6 +1349,10 @@ export const OPENROUTER_MODELS = values as unknown as {
 		id: "sao10k/l3.1-euryale-70b";
 		provider: "openrouter";
 	};
+	"stealth/space-bunny-alpha": Model<"openai-completions"> & {
+		id: "stealth/space-bunny-alpha";
+		provider: "openrouter";
+	};
 	"stepfun/step-3.5-flash": Model<"openai-completions"> & {
 		id: "stepfun/step-3.5-flash";
 		provider: "openrouter";
@@ -1321,10 +1373,6 @@ export const OPENROUTER_MODELS = values as unknown as {
 		id: "tencent/hy4-preview";
 		provider: "openrouter";
 	};
-	"thedrummer/unslopnemo-12b": Model<"openai-completions"> & {
-		id: "thedrummer/unslopnemo-12b";
-		provider: "openrouter";
-	};
 	"thinkingmachines/inkling": Model<"openai-completions"> & {
 		id: "thinkingmachines/inkling";
 		provider: "openrouter";
@@ -1333,20 +1381,28 @@ export const OPENROUTER_MODELS = values as unknown as {
 		id: "thinkingmachines/inkling-small";
 		provider: "openrouter";
 	};
-	"thinkingmachines/inkling-small:batch": Model<"openai-completions"> & {
-		id: "thinkingmachines/inkling-small:batch";
-		provider: "openrouter";
-	};
 	"thinkingmachines/inkling-small:free": Model<"openai-completions"> & {
 		id: "thinkingmachines/inkling-small:free";
 		provider: "openrouter";
 	};
-	"thinkingmachines/inkling:batch": Model<"openai-completions"> & {
-		id: "thinkingmachines/inkling:batch";
-		provider: "openrouter";
-	};
 	"thinkingmachines/inkling:free": Model<"openai-completions"> & {
 		id: "thinkingmachines/inkling:free";
+		provider: "openrouter";
+	};
+	"typesafe/jev-router": Model<"openai-completions"> & {
+		id: "typesafe/jev-router";
+		provider: "openrouter";
+	};
+	"unbiased/pareto": Model<"openai-completions"> & {
+		id: "unbiased/pareto";
+		provider: "openrouter";
+	};
+	"unbiased/pareto-26.10-preview": Model<"openai-completions"> & {
+		id: "unbiased/pareto-26.10-preview";
+		provider: "openrouter";
+	};
+	"upstage/solar-mini4": Model<"openai-completions"> & {
+		id: "upstage/solar-mini4";
 		provider: "openrouter";
 	};
 	"upstage/solar-pro-3": Model<"openai-completions"> & {
@@ -1377,6 +1433,10 @@ export const OPENROUTER_MODELS = values as unknown as {
 		id: "x-ai/grok-4.6";
 		provider: "openrouter";
 	};
+	"x-ai/grok-4.7": Model<"openai-completions"> & {
+		id: "x-ai/grok-4.7";
+		provider: "openrouter";
+	};
 	"x-ai/grok-build-0.1": Model<"openai-completions"> & {
 		id: "x-ai/grok-build-0.1";
 		provider: "openrouter";
@@ -1387,6 +1447,18 @@ export const OPENROUTER_MODELS = values as unknown as {
 	};
 	"xiaomi/mimo-v2.5-pro": Model<"openai-completions"> & {
 		id: "xiaomi/mimo-v2.5-pro";
+		provider: "openrouter";
+	};
+	"xiaomi/mimo-v2.6-flash": Model<"openai-completions"> & {
+		id: "xiaomi/mimo-v2.6-flash";
+		provider: "openrouter";
+	};
+	"xiaomi/mimo-v2.6-pro": Model<"openai-completions"> & {
+		id: "xiaomi/mimo-v2.6-pro";
+		provider: "openrouter";
+	};
+	"xiaomi/mimo-v2.6-pro-ultraspeed": Model<"openai-completions"> & {
+		id: "xiaomi/mimo-v2.6-pro-ultraspeed";
 		provider: "openrouter";
 	};
 	"z-ai/glm-4.5": Model<"openai-completions"> & {
@@ -1433,10 +1505,6 @@ export const OPENROUTER_MODELS = values as unknown as {
 		id: "z-ai/glm-5.2";
 		provider: "openrouter";
 	};
-	"z-ai/glm-5.2:batch": Model<"openai-completions"> & {
-		id: "z-ai/glm-5.2:batch";
-		provider: "openrouter";
-	};
 	"z-ai/glm-5.3": Model<"openai-completions"> & {
 		id: "z-ai/glm-5.3";
 		provider: "openrouter";
@@ -1447,6 +1515,14 @@ export const OPENROUTER_MODELS = values as unknown as {
 	};
 	"z-ai/glm-5.3-flash:batch": Model<"openai-completions"> & {
 		id: "z-ai/glm-5.3-flash:batch";
+		provider: "openrouter";
+	};
+	"z-ai/glm-5.3-flashx": Model<"openai-completions"> & {
+		id: "z-ai/glm-5.3-flashx";
+		provider: "openrouter";
+	};
+	"z-ai/glm-5.3-prime": Model<"openai-completions"> & {
+		id: "z-ai/glm-5.3-prime";
 		provider: "openrouter";
 	};
 	"z-ai/glm-5.3:batch": Model<"openai-completions"> & {
@@ -1471,6 +1547,14 @@ export const OPENROUTER_MODELS = values as unknown as {
 	};
 	"~anthropic/claude-sonnet-latest": Model<"openai-completions"> & {
 		id: "~anthropic/claude-sonnet-latest";
+		provider: "openrouter";
+	};
+	"~deepseek/deepseek-flash-latest": Model<"openai-completions"> & {
+		id: "~deepseek/deepseek-flash-latest";
+		provider: "openrouter";
+	};
+	"~deepseek/deepseek-pro-latest": Model<"openai-completions"> & {
+		id: "~deepseek/deepseek-pro-latest";
 		provider: "openrouter";
 	};
 	"~deepseek/deepseek-v4-flash-latest": Model<"openai-completions"> & {

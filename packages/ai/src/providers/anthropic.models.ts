@@ -45,6 +45,10 @@ export const ANTHROPIC_MODELS = values as {
 		id: "claude-opus-5";
 		provider: "anthropic";
 	};
+	"claude-opus-5-5": Model<"anthropic-messages"> & {
+		id: "claude-opus-5-5";
+		provider: "anthropic";
+	};
 	"claude-sonnet-4-5": Model<"anthropic-messages"> & {
 		id: "claude-sonnet-4-5";
 		provider: "anthropic";
@@ -59,6 +63,10 @@ export const ANTHROPIC_MODELS = values as {
 	};
 	"claude-sonnet-5": Model<"anthropic-messages"> & {
 		id: "claude-sonnet-5";
+		provider: "anthropic";
+	};
+	"claude-sonnet-5-5": Model<"anthropic-messages"> & {
+		id: "claude-sonnet-5-5";
 		provider: "anthropic";
 	};
 };

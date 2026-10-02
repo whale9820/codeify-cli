@@ -221,7 +221,9 @@ describe("Anthropic raw SSE parsing", () => {
 		const result = await stream.result();
 
 		expect(result.stopReason).toBe("error");
-		expect(result.errorMessage).toBe(explanation);
+		expect(result.errorMessage).toBe(
+			`Blocked by model safeguards (cyber): ${explanation} Rephrase the request or switch models to continue.`,
+		);
 	});
 
 	it("treats message_delta without usage as a no-op for usage accumulation", async () => {

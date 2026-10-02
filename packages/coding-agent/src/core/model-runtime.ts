@@ -155,15 +155,13 @@ export class ModelRuntime implements Models {
 				? builtinProviderCatalog
 						.builtinProviders()
 						.map((provider) =>
-							provider.id === "radius"
-								? provider
-								: withRemoteCatalog(
-										provider,
-										options.catalogBaseUrl,
-										builtinProviderCatalog.getBuiltinModelDataUrl(
-											provider.id as builtinProviderCatalog.BuiltinProvider,
-										),
-									),
+							withRemoteCatalog(
+								provider,
+								options.catalogBaseUrl,
+								builtinProviderCatalog.getBuiltinModelDataUrl(
+									provider.id as builtinProviderCatalog.BuiltinProvider,
+								),
+							),
 						)
 				: [];
 		const runtime = new ModelRuntime(
@@ -181,7 +179,6 @@ export class ModelRuntime implements Models {
 		for (const backend of runtime.overrides.list()) {
 			runtime.registerProvider(overrideProviderId(backend.name), overrideProviderConfig(backend, runtime.overrides));
 		}
-		runtime.configureRadiusProviders();
 		runtime.rebuildProviders();
 		const refreshFromNetwork = runtime.modelNetworkEnabled && options.allowModelNetwork === true;
 		const controller = refreshFromNetwork ? new AbortController() : undefined;
@@ -198,23 +195,6 @@ export class ModelRuntime implements Models {
 
 	getOverrideStore(): OverrideStore {
 		return this.overrides;
-	}
-
-	private configureRadiusProviders(): void {
-		this.builtins.clear();
-		for (const [providerId, provider] of this.defaultBuiltins) this.builtins.set(providerId, provider);
-		for (const providerId of this.config.getProviderIds()) {
-			const config = this.config.getProvider(providerId);
-			if (config?.oauth !== "radius" || !config.baseUrl) continue;
-			this.builtins.set(
-				providerId,
-				builtinProviderCatalog.radiusProvider({
-					id: providerId,
-					name: config.name ?? providerId,
-					gateway: config.baseUrl.replace(/\/v1\/?$/u, ""),
-				}),
-			);
-		}
 	}
 
 	private providerIds(): Set<string> {
@@ -544,7 +524,6 @@ export class ModelRuntime implements Models {
 
 	async reloadConfig(): Promise<void> {
 		this.config = await ModelConfig.load(this.modelsPath);
-		this.configureRadiusProviders();
 		this.rebuildProviders();
 		await this.refresh({ allowNetwork: this.modelNetworkEnabled });
 	}

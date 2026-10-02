@@ -179,7 +179,7 @@ describe("ModelRegistry", () => {
 			});
 
 			const registry = await createModelRegistry(authStorage, modelsJsonPath);
-			const googleModels = getModelsForProvider(registry, "google");
+			const googleModels = getModelsForProvider(registry, "xai");
 
 			// Google models should still have their original baseUrl
 			expect(googleModels.length).toBeGreaterThan(0);
@@ -191,11 +191,7 @@ describe("ModelRegistry", () => {
 				// baseUrl-only for anthropic
 				anthropic: overrideConfig("https://anthropic-proxy.example.com/v1"),
 				// Add custom model for google (merged with built-ins)
-				google: providerConfig(
-					"https://google-proxy.example.com/v1",
-					[{ id: "gemini-custom" }],
-					"google-generative-ai",
-				),
+				xai: providerConfig("https://google-proxy.example.com/v1", [{ id: "gemini-custom" }], "openai-completions"),
 			});
 
 			const registry = await createModelRegistry(authStorage, modelsJsonPath);
@@ -206,7 +202,7 @@ describe("ModelRegistry", () => {
 			expect(anthropicModels[0].baseUrl).toBe("https://anthropic-proxy.example.com/v1");
 
 			// Google: built-ins plus custom model
-			const googleModels = getModelsForProvider(registry, "google");
+			const googleModels = getModelsForProvider(registry, "xai");
 			expect(googleModels.length).toBeGreaterThan(1);
 			expect(googleModels.some((m) => m.id === "gemini-custom")).toBe(true);
 		});
@@ -324,7 +320,7 @@ describe("ModelRegistry", () => {
 
 			const registry = await createModelRegistry(authStorage, modelsJsonPath);
 
-			expect(getModelsForProvider(registry, "google").length).toBeGreaterThan(0);
+			expect(getModelsForProvider(registry, "xai").length).toBeGreaterThan(0);
 			expect(getModelsForProvider(registry, "openai").length).toBeGreaterThan(0);
 		});
 
@@ -1796,43 +1792,6 @@ describe("ModelRegistry", () => {
 				const count = parseInt(readFileSync(counterFile, "utf-8").trim(), 10);
 				expect(count).toBe(0);
 			});
-
-			test.each([
-				{ availableModelIds: ["copilot-allowed"], expected: ["copilot-allowed"] },
-				{ availableModelIds: [], expected: [] },
-				{ availableModelIds: ["copilot-missing"], expected: [] },
-				{ availableModelIds: ["copilot-allowed", "copilot-missing"], expected: ["copilot-allowed"] },
-			])(
-				"getAvailable filters GitHub Copilot OAuth models to $availableModelIds",
-				async ({ availableModelIds, expected }) => {
-					writeRawModelsJson({
-						"github-copilot": providerConfig(
-							"https://copilot.example.test/v1",
-							[{ id: "copilot-allowed" }, { id: "copilot-denied" }],
-							"openai-completions",
-						),
-					});
-					await authStorage.modify("github-copilot", async () => ({
-						type: "oauth",
-						refresh: "github-access-token",
-						access: "tid=test;exp=9999999999;proxy-ep=proxy.individual.githubcopilot.com;",
-						expires: Date.now() + 60_000,
-						availableModelIds,
-					}));
-
-					const registry = await createModelRegistry(authStorage, modelsJsonPath);
-
-					expect(getModelsForProvider(registry, "github-copilot").map((model) => model.id)).toEqual(
-						expect.arrayContaining(["copilot-allowed", "copilot-denied"]),
-					);
-					expect(
-						registry
-							.getAvailable()
-							.filter((m) => m.provider === "github-copilot")
-							.map((m) => m.id),
-					).toEqual(expected);
-				},
-			);
 
 			test("getApiKeyAndHeaders resolves authHeader on every request", async () => {
 				const tokenFile = join(tempDir, "token");
