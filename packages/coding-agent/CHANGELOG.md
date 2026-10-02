@@ -41,6 +41,7 @@
 
 ### Fixed
 
+- Background task completions now render as a compact `●` block with the task id, status, and a collapsed `⎿` output preview instead of a full-width colored box.
 - Fixed model catalog refresh for custom `/override` backends: refreshing (at startup and in `/model`) never contacted the backend, so models added or removed there were not picked up while the UI still said "Model catalogs refreshed". Each override backend now refreshes from its own `GET /models`, saves the result, and reports a failing backend as a refresh error.
 - Fixed the `background_task` tool never being offered to the model in real sessions: it was registered but not in the default active tool set built by `createAgentSession`, so the agent said it had no background task tool and the system prompt never mentioned `/tasks` or Ctrl+B.
 - Make Copilot availability tests independent of catalog changes and isolate the faux-provider test harness from real providers and ambient API keys.

@@ -102,6 +102,7 @@ import { killTrackedDetachedChildren } from "../../utils/shell.ts";
 import { ensureTool } from "../../utils/tools-manager.ts";
 import { ArminComponent } from "./components/armin.ts";
 import { AssistantMessageComponent } from "./components/assistant-message.ts";
+import { BackgroundTaskMessageComponent } from "./components/background-task-message.ts";
 import { BashExecutionComponent } from "./components/bash-execution.ts";
 import { BorderedLoader } from "./components/bordered-loader.ts";
 import { BranchSummaryMessageComponent } from "./components/branch-summary-message.ts";
@@ -2309,7 +2310,10 @@ export class InteractiveMode {
 			}
 			case "custom": {
 				if (message.display) {
-					const component = new CustomMessageComponent(message, undefined, this.getMarkdownThemeWithSettings());
+					const component =
+						message.customType === "background_task"
+							? new BackgroundTaskMessageComponent(message)
+							: new CustomMessageComponent(message, undefined, this.getMarkdownThemeWithSettings());
 					component.setExpanded(this.toolOutputExpanded);
 					this.chatContainer.addChild(component);
 				}
