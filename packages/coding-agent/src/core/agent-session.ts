@@ -86,6 +86,8 @@ import { createSyntheticSourceInfo, type SourceInfo } from "./source-info.ts";
 import { type BuildSystemPromptOptions, buildSystemPrompt } from "./system-prompt.ts";
 import { createBackgroundTaskToolDefinition } from "./tools/background-task.ts";
 import { type BashOperations, createLocalBashOperations } from "./tools/bash.ts";
+import { createBrowserToolDefinition } from "./tools/browser.ts";
+import { BrowserBridge } from "./tools/browser-bridge.ts";
 import { createCodeifyModelToolDefinition } from "./tools/codeify-model.ts";
 import { type ContextUsageSnapshot, createContextUsageToolDefinition } from "./tools/context-usage.ts";
 import { createUpdateGoalToolDefinition } from "./tools/goal.ts";
@@ -328,6 +330,7 @@ export class AgentSession {
 	private _baseToolDefinitions: Map<string, ToolDefinition> = new Map();
 	private _cwd: string;
 	private _initialActiveToolNames?: string[];
+	private _browserBridge = new BrowserBridge();
 	private _allowedToolNames?: Set<string>;
 	private _excludedToolNames?: Set<string>;
 	private _baseToolsOverride?: Record<string, AgentTool>;
@@ -671,6 +674,7 @@ export class AgentSession {
 			// Dispose must succeed even if an abort hook throws.
 		}
 
+		this._browserBridge.dispose();
 		this._disconnectFromAgent();
 		this._eventListeners = [];
 		cleanupSessionResources(this.sessionId);
@@ -1955,6 +1959,9 @@ export class AgentSession {
 			});
 		}
 		if (!this._baseToolsOverride) {
+			baseToolDefinitions.browser = createBrowserToolDefinition(this._cwd, this._browserBridge, {
+				autoResizeImages: () => this.settingsManager.getImageAutoResize(),
+			});
 			baseToolDefinitions.context_usage = createContextUsageToolDefinition({
 				getSnapshot: () => this.getContextUsageSnapshot(),
 				requestCompaction: (rationale) => {
@@ -2015,7 +2022,7 @@ export class AgentSession {
 
 		const defaultActiveToolNames = this._baseToolsOverride
 			? Object.keys(this._baseToolsOverride)
-			: ["read", "bash", "edit", "write", "context_usage", "update_goal", "background_task"];
+			: ["read", "bash", "edit", "write", "browser", "context_usage", "update_goal", "background_task"];
 		const baseActiveToolNames = [...(options.activeToolNames ?? defaultActiveToolNames)];
 		if (this.settingsManager.getSmartModelUsage()) baseActiveToolNames.push("codeify_model");
 		this._refreshToolRegistry({ activeToolNames: baseActiveToolNames });

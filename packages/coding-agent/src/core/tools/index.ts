@@ -10,6 +10,13 @@ export {
 	createLocalBashOperations,
 } from "./bash.ts";
 export {
+	type BrowserToolDetails,
+	type BrowserToolInput,
+	type BrowserToolOptions,
+	createBrowserToolDefinition,
+} from "./browser.ts";
+export { BrowserBridge, type BrowserBridgeResult } from "./browser-bridge.ts";
+export {
 	type CodeifyModelToolDetails,
 	type CodeifyModelToolInput,
 	type CodeifyModelToolOptions,

@@ -4,6 +4,7 @@ import { getTextOutput as getRenderedTextOutput } from "../../../core/tools/rend
 import type { ToolDefinition, ToolRenderContext } from "../../../core/tools/types.ts";
 import { convertToPng } from "../../../utils/image-convert.ts";
 import { theme } from "../theme/theme.ts";
+import { PrefixedComponent } from "./prefixed.ts";
 
 export interface ToolExecutionOptions {
 	showImages?: boolean;
@@ -65,8 +66,8 @@ export class ToolExecutionComponent extends Container {
 		// Always create all shell variants. contentBox is used for default renderer-based composition.
 		// selfRenderContainer is used when the tool renders its own framing.
 		// contentText is reserved for generic fallback rendering when no tool definition exists.
-		this.contentBox = new Box(1, 1, (text: string) => theme.bg("toolPendingBg", text));
-		this.contentText = new Text("", 1, 1, (text: string) => theme.bg("toolPendingBg", text));
+		this.contentBox = new Box(0, 0);
+		this.contentText = new Text("", 0, 0);
 		this.selfRenderContainer = new Container();
 
 		if (this.hasRendererDefinition()) {
@@ -251,34 +252,33 @@ export class ToolExecutionComponent extends Container {
 	}
 
 	private updateDisplay(): void {
-		const bgFn = this.isPartial
-			? (text: string) => theme.bg("toolPendingBg", text)
-			: this.result?.isError
-				? (text: string) => theme.bg("toolErrorBg", text)
-				: (text: string) => theme.bg("toolSuccessBg", text);
+		const isSelfShell = this.getRenderShell() === "self";
+		const dotColor = this.isPartial ? "dim" : this.result?.isError ? "error" : "success";
+		const bullet = `${theme.fg(dotColor, "●")} `;
+		const wrapCall = (component: Component): Component =>
+			isSelfShell ? component : new PrefixedComponent(component, bullet, "  ");
+		const wrapResult = (component: Component): Component =>
+			isSelfShell ? component : new PrefixedComponent(component, `  ${theme.fg("dim", "⎿")}  `, "     ", true);
 
 		let hasContent = false;
 		this.hideComponent = false;
 		if (this.hasRendererDefinition()) {
 			const renderContainer = this.getRenderShell() === "self" ? this.selfRenderContainer : this.contentBox;
-			if (renderContainer instanceof Box) {
-				renderContainer.setBgFn(bgFn);
-			}
 			renderContainer.clear();
 
 			const callRenderer = this.getCallRenderer();
 			if (!callRenderer) {
-				renderContainer.addChild(this.createCallFallback());
+				renderContainer.addChild(wrapCall(this.createCallFallback()));
 				hasContent = true;
 			} else {
 				try {
 					const component = callRenderer(this.args, theme, this.getRenderContext(this.callRendererComponent));
 					this.callRendererComponent = component;
-					renderContainer.addChild(component);
+					renderContainer.addChild(wrapCall(component));
 					hasContent = true;
 				} catch {
 					this.callRendererComponent = undefined;
-					renderContainer.addChild(this.createCallFallback());
+					renderContainer.addChild(wrapCall(this.createCallFallback()));
 					hasContent = true;
 				}
 			}
@@ -288,7 +288,7 @@ export class ToolExecutionComponent extends Container {
 				if (!resultRenderer) {
 					const component = this.createResultFallback();
 					if (component) {
-						renderContainer.addChild(component);
+						renderContainer.addChild(wrapResult(component));
 						hasContent = true;
 					}
 				} else {
@@ -300,20 +300,19 @@ export class ToolExecutionComponent extends Container {
 							this.getRenderContext(this.resultRendererComponent),
 						);
 						this.resultRendererComponent = component;
-						renderContainer.addChild(component);
+						renderContainer.addChild(wrapResult(component));
 						hasContent = true;
 					} catch {
 						this.resultRendererComponent = undefined;
 						const component = this.createResultFallback();
 						if (component) {
-							renderContainer.addChild(component);
+							renderContainer.addChild(wrapResult(component));
 							hasContent = true;
 						}
 					}
 				}
 			}
 		} else {
-			this.contentText.setCustomBgFn(bgFn);
 			this.contentText.setText(this.formatToolExecution());
 			hasContent = true;
 		}

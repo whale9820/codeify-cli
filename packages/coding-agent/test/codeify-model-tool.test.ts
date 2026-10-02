@@ -144,7 +144,7 @@ describe("codeify_model tool", () => {
 			],
 			(_selected, context, options) => {
 				expect(options?.apiKey).toBeUndefined();
-				expect(context.systemPrompt).toContain("fully agentic delegated Codeify CLI coding agent");
+				expect(context.systemPrompt).toContain("fully agentic delegated coding agent working inside Codeify CLI");
 				expect(context.systemPrompt).toContain("Only inspect notes.txt");
 			},
 		);

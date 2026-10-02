@@ -251,7 +251,7 @@ function selectDelegatedTools(
 function delegatedSystemPrompt(cwd: string, restrictions: string | undefined, toolNames: readonly string[]): string {
 	const scope = restrictions?.trim() || "Complete only the assigned task and do not expand its scope.";
 	return [
-		"You are a fully agentic delegated Codeify CLI coding agent.",
+		"You are a fully agentic delegated coding agent working inside Codeify CLI.",
 		`Your working directory is ${cwd}.`,
 		`You may use only these tools: ${toolNames.length > 0 ? toolNames.join(", ") : "none"}.`,
 		"The main agent selected your model, tools, and restrictions. They are mandatory.",

@@ -260,6 +260,9 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 	if (!options.noTools && !options.tools && !excludedToolNameSet?.has("update_goal")) {
 		initialActiveToolNames.push("update_goal");
 	}
+	if (!options.noTools && !options.tools && !excludedToolNameSet?.has("browser")) {
+		initialActiveToolNames.push("browser");
+	}
 
 	if (options.customTools) {
 		for (const tool of options.customTools) {
