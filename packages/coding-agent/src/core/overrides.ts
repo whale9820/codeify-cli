@@ -4,6 +4,7 @@ import {
 	CODEIFY_PROVIDER_ID,
 	type CodeifyModel,
 	type CodeifyModelDefinition,
+	routeModels,
 	toModelDefinition,
 } from "./codeify-provider.ts";
 import type { RuntimeProviderConfig } from "./provider-composer.ts";
@@ -85,18 +86,18 @@ export function overrideProviderConfig(backend: OverrideBackend, store?: Overrid
 		baseUrl: backend.baseUrl,
 		api: "openai-responses",
 		apiKey: escapeConfigValue(backend.apiKey),
-		models: backend.models,
+		models: routeModels(backend.models, backend.baseUrl),
 		refreshModels: store
 			? async (context) => {
 					const current = store.get(backend.name) ?? backend;
-					if (!context.allowNetwork) return current.models;
+					if (!context.allowNetwork) return routeModels(current.models, current.baseUrl);
 					const probe = await probeOverrideBackend(current.baseUrl, current.apiKey, context.signal);
 					if (!probe.ok) throw new Error(`Could not refresh ${backend.name}: ${probe.error}`);
 					// An empty list is more likely a quirk of the backend than a real wipe; keep what we have.
-					if (probe.models.length === 0) return current.models;
+					if (probe.models.length === 0) return routeModels(current.models, current.baseUrl);
 					const models = mergeProbedModels(current.models, probe.models);
 					store.upsert({ ...current, models });
-					return models;
+					return routeModels(models, current.baseUrl);
 				}
 			: undefined,
 	};
