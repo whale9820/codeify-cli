@@ -1158,10 +1158,15 @@ export class InteractiveMode {
 		}
 
 		const sectionHeader = (name: string, color: ThemeColor = "mdHeading") => theme.fg(color, `[${name}]`);
-		const formatCompactList = (items: string[], options?: { sort?: boolean }): string => {
+		const formatCompactList = (items: string[], options?: { sort?: boolean; limit?: number }): string => {
 			const labels = items.map((item) => item.trim()).filter((item) => item.length > 0);
 			if (options?.sort !== false) {
 				labels.sort((a, b) => a.localeCompare(b));
+			}
+			const limit = options?.limit;
+			if (limit !== undefined && labels.length > limit) {
+				const remaining = labels.length - limit;
+				return theme.fg("dim", `  ${labels.slice(0, limit).join(", ")} and ${remaining} more`);
 			}
 			return theme.fg("dim", `  ${labels.join(", ")}`);
 		};
@@ -1224,7 +1229,10 @@ export class InteractiveMode {
 				const skillList = this.formatScopeGroups(groups, {
 					formatPath: (item) => this.formatDisplayPath(item.path),
 				});
-				const skillCompactList = formatCompactList(skills.map((skill) => skill.name));
+				const skillCompactList = formatCompactList(
+					skills.map((skill) => skill.name),
+					{ limit: 10 },
+				);
 				addLoadedSection("Skills", skillCompactList, skillList);
 			}
 
@@ -1380,8 +1388,9 @@ export class InteractiveMode {
 		this.activeStatusIndicator?.dispose();
 		this.activeStatusIndicator = undefined;
 		this.statusContainer.clear();
-		if (hadActiveStatusIndicator && this.ui.getClearOnShrink()) {
-			this.statusContainer.addChild(this.idleStatus);
+		if (hadActiveStatusIndicator) {
+			// Keep a blank line between the last response and the input bar.
+			this.statusContainer.addChild(this.ui.getClearOnShrink() ? this.idleStatus : new Spacer(1));
 		}
 	}
 

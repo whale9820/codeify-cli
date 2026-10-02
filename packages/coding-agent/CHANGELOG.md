@@ -18,6 +18,8 @@
 
 ### Changed
 
+- Limited the startup `[Skills]` list to the first 10 skills followed by "and N more"; expanding still shows all.
+- Keep a blank line between the last agent response and the input bar after a turn finishes.
 - Show `--help` and `--version` before loading settings or creating a session runtime.
 - Start interactive and RPC sessions from the cached model catalog instead of blocking on API discovery. Refresh in the background while preserving synchronous discovery for print mode, model listing, and explicit model selection.
 - Measure startup until the UI is ready rather than including terminal cleanup, and restore per-phase timing output in the profiling script.
