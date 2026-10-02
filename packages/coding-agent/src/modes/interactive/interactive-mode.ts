@@ -83,7 +83,7 @@ import { BUILTIN_SLASH_COMMANDS } from "../../core/slash-commands.ts";
 import type { SourceInfo } from "../../core/source-info.ts";
 import type { TruncationResult } from "../../core/tools/truncate.ts";
 import { hasTrustRequiringProjectResources, ProjectTrustStore } from "../../core/trust-manager.ts";
-import { getUsageCostBreakdown } from "../../core/usage-totals.ts";
+import { getLatestCacheHitRate, getUsageCostBreakdown } from "../../core/usage-totals.ts";
 import { copyToClipboard, readClipboardText } from "../../utils/clipboard.ts";
 import { extensionForImageMimeType, readClipboardImage } from "../../utils/clipboard-image.ts";
 import { parseGitUrl } from "../../utils/git.ts";
@@ -144,6 +144,7 @@ import {
 	theme,
 } from "./theme/theme.ts";
 import { InteractiveThemeController } from "./theme/theme-controller.ts";
+import { formatUsageReport } from "./usage-report.ts";
 
 /** Interface for components that can be expanded/collapsed */
 interface Expandable {
@@ -438,7 +439,6 @@ export class InteractiveMode {
 		this.editorContainer.addChild(this.editor as Component);
 		this.footerDataProvider = new FooterDataProvider(this.sessionManager.getCwd());
 		this.footer = new FooterComponent(this.session, this.footerDataProvider);
-		this.footer.setAutoCompactEnabled(this.session.autoCompactionEnabled);
 
 		// Load hide thinking block setting
 		this.hideThinkingBlock = this.settingsManager.getHideThinkingBlock();
@@ -1268,7 +1268,6 @@ export class InteractiveMode {
 	private applyRuntimeSettings(): void {
 		configureHttpDispatcher(this.settingsManager.getHttpIdleTimeoutMs());
 		this.footer.setSession(this.session);
-		this.footer.setAutoCompactEnabled(this.session.autoCompactionEnabled);
 		this.footerDataProvider.setCwd(this.sessionManager.getCwd());
 		this.hideThinkingBlock = this.settingsManager.getHideThinkingBlock();
 		this.outputPad = this.settingsManager.getOutputPad();
@@ -1683,6 +1682,11 @@ export class InteractiveMode {
 			}
 			if (text === "/session") {
 				this.handleSessionCommand();
+				this.editor.setText("");
+				return;
+			}
+			if (text === "/usage") {
+				this.handleUsageCommand();
 				this.editor.setText("");
 				return;
 			}
@@ -3312,7 +3316,6 @@ export class InteractiveMode {
 				{
 					onAutoCompactChange: (enabled) => {
 						this.session.setAutoCompactionEnabled(enabled);
-						this.footer.setAutoCompactEnabled(enabled);
 					},
 					onShowImagesChange: (enabled) => {
 						this.settingsManager.setShowImages(enabled);
@@ -4729,6 +4732,25 @@ export class InteractiveMode {
 		}
 		this.chatContainer.addChild(new Spacer(1));
 		this.chatContainer.addChild(new Text(theme.fg("dim", `Session name set: ${sessionName ?? name}`), 1, 0));
+		this.ui.requestRender();
+	}
+
+	private handleUsageCommand(): void {
+		const stats = this.session.getSessionStats();
+		const entries = this.sessionManager.getEntries();
+		const report = formatUsageReport({
+			tokens: stats.tokens,
+			cost: stats.cost,
+			assistantMessages: stats.assistantMessages,
+			context: this.session.getContextUsage(),
+			autoCompact: this.session.autoCompactionEnabled,
+			breakdown: getUsageCostBreakdown(entries),
+			latestCacheHitRate: getLatestCacheHitRate(entries),
+			cacheWaste: computeCacheWaste(entries, this.session.modelRuntime),
+			modelId: this.session.model?.id,
+		});
+		this.chatContainer.addChild(new Spacer(1));
+		this.chatContainer.addChild(new Text(report, 1, 0));
 		this.ui.requestRender();
 	}
 
