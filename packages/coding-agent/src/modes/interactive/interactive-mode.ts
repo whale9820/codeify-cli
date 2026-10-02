@@ -3614,6 +3614,27 @@ export class InteractiveMode {
 			probe = { ok: true, models: [toModelDefinition({ id: modelId })] };
 		}
 
+		const codeifyModels = this.session.modelRuntime
+			.getModels()
+			.filter((model) => model.provider === CODEIFY_PROVIDER_ID);
+		probe = {
+			ok: true,
+			models: probe.models.map((definition) => {
+				const inherited = codeifyModels.find((model) => model.id === definition.id);
+				if (!inherited) return definition;
+				return {
+					...definition,
+					reasoning: inherited.reasoning,
+					thinkingLevelMap: inherited.thinkingLevelMap,
+					input: inherited.input,
+					cost: inherited.cost,
+					contextWindow: inherited.contextWindow,
+					maxTokens: inherited.maxTokens,
+					compat: inherited.compat,
+				};
+			}),
+		};
+
 		let name = existing?.name;
 		while (true) {
 			const nameInput = await this.showInputDialog(
