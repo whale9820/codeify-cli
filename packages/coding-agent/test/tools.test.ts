@@ -613,6 +613,7 @@ describe("Coding Agent Tools", () => {
 					shell: shellPath,
 					args: ["-s"],
 					commandTransport: "stdin",
+					kind: "bash",
 				});
 			} finally {
 				process.chdir(originalCwd);
