@@ -68,3 +68,14 @@ export function getUsageCostBreakdown(entries: SessionEntry[]): UsageCostBreakdo
 		.filter((entry) => entry.cost > 0 || entry.tokens > 0)
 		.sort((a, b) => b.cost - a.cost);
 }
+
+export function getLatestCacheHitRate(entries: SessionEntry[]): number | undefined {
+	let rate: number | undefined;
+	for (const entry of entries) {
+		if (entry.type !== "message" || entry.message.role !== "assistant") continue;
+		const usage = entry.message.usage;
+		const promptTokens = usage.input + usage.cacheRead + usage.cacheWrite;
+		rate = promptTokens > 0 ? (usage.cacheRead / promptTokens) * 100 : undefined;
+	}
+	return rate;
+}

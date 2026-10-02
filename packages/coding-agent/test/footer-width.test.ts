@@ -151,77 +151,39 @@ describe("FooterComponent width handling", () => {
 		}
 	});
 
-	it("includes summary and tool result usage in the total cost", () => {
+	it("shows only the directory on the first line and the model on the second", () => {
 		const session = createSession({
 			sessionName: "",
-			usage: {
-				input: 100,
-				output: 10,
-				cacheRead: 0,
-				cacheWrite: 0,
-				cost: { total: 0.5 },
-			},
-			branchUsage: {
-				input: 20,
-				output: 5,
-				cacheRead: 0,
-				cacheWrite: 0,
-				cost: { total: 0.25 },
-			},
-			compactionUsage: {
-				input: 5,
-				output: 2,
-				cacheRead: 0,
-				cacheWrite: 0,
-				cost: { total: 0.125 },
-			},
-			toolUsage: {
-				input: 15,
-				output: 3,
-				cacheRead: 0,
-				cacheWrite: 0,
-				cost: { total: 0.375 },
-			},
-		});
-		const footer = new FooterComponent(session, createFooterData(1));
-
-		const statsLine = stripAnsi(footer.render(120)[1]);
-		expect(statsLine).toContain("$1.250");
-	});
-
-	it("shows the latest cache hit rate when cache usage is present", () => {
-		const session = createSession({
-			sessionName: "",
+			modelId: "gpt-test",
+			reasoning: true,
+			thinkingLevel: "high",
 			usage: {
 				input: 100,
 				output: 10,
 				cacheRead: 50,
 				cacheWrite: 50,
-				cost: { total: 0.001 },
-			},
-		});
-		const footer = new FooterComponent(session, createFooterData(1));
-
-		const statsLine = stripAnsi(footer.render(120)[1]);
-		expect(statsLine).toContain("100 · 10 · 50 · 50 · 25%");
-	});
-
-	it("shows Kimi Coding costs without a subscription marker", () => {
-		const session = createSession({
-			sessionName: "",
-			provider: "kimi-coding",
-			usage: {
-				input: 100,
-				output: 10,
-				cacheRead: 0,
-				cacheWrite: 0,
 				cost: { total: 1.234 },
 			},
 		});
 		const footer = new FooterComponent(session, createFooterData(1));
 
-		const statsLine = stripAnsi(footer.render(120)[1]);
-		expect(statsLine).toContain("$1.234");
-		expect(statsLine).not.toContain("(sub)");
+		const [pwdLine, modelLine] = footer.render(80).map((line) => stripAnsi(line));
+		expect(pwdLine).toContain("/tmp/project (main)");
+		expect(modelLine.trim()).toBe("gpt-test • high");
+		expect(modelLine.endsWith("gpt-test • high")).toBe(true);
+		expect(modelLine).not.toContain("$");
+		expect(modelLine).not.toContain("%");
+	});
+
+	it("shows background tasks on the left of the model line", () => {
+		const session = createSession({ sessionName: "" }) as unknown as {
+			getBackgroundTasks: () => Array<{ status: string }>;
+		};
+		session.getBackgroundTasks = () => [{ status: "running" }, { status: "running" }, { status: "done" }];
+		const footer = new FooterComponent(session as unknown as AgentSession, createFooterData(1));
+
+		const modelLine = stripAnsi(footer.render(80)[1]);
+		expect(modelLine.startsWith("2 background")).toBe(true);
+		expect(modelLine.trimEnd().endsWith("test-model")).toBe(true);
 	});
 });
