@@ -114,12 +114,12 @@ export class FooterComponent implements Component {
 
 		// Build stats line
 		const statsParts = [];
-		if (usageTotals.input) statsParts.push(`${formatTokens(usageTotals.input)} in`);
-		if (usageTotals.output) statsParts.push(`${formatTokens(usageTotals.output)} out`);
-		if (usageTotals.cacheRead) statsParts.push(`${formatTokens(usageTotals.cacheRead)} cached`);
-		if (usageTotals.cacheWrite) statsParts.push(`${formatTokens(usageTotals.cacheWrite)} cache writes`);
+		if (usageTotals.input) statsParts.push(formatTokens(usageTotals.input));
+		if (usageTotals.output) statsParts.push(formatTokens(usageTotals.output));
+		if (usageTotals.cacheRead) statsParts.push(formatTokens(usageTotals.cacheRead));
+		if (usageTotals.cacheWrite) statsParts.push(formatTokens(usageTotals.cacheWrite));
 		if ((usageTotals.cacheRead > 0 || usageTotals.cacheWrite > 0) && latestCacheHitRate !== undefined) {
-			statsParts.push(`${latestCacheHitRate.toFixed(0)}% cache hit`);
+			statsParts.push(`${latestCacheHitRate.toFixed(0)}%`);
 		}
 
 		// Kimi Coding is subscription-backed despite using API-key authentication.

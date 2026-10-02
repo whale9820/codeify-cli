@@ -203,7 +203,7 @@ describe("FooterComponent width handling", () => {
 		const footer = new FooterComponent(session, createFooterData(1));
 
 		const statsLine = stripAnsi(footer.render(120)[1]);
-		expect(statsLine).toContain("25% cache hit");
+		expect(statsLine).toContain("100 · 10 · 50 · 50 · 25%");
 	});
 
 	it("shows Kimi Coding costs without a subscription marker", () => {
