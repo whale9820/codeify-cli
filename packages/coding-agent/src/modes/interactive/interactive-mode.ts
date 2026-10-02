@@ -3728,7 +3728,7 @@ export class InteractiveMode {
 			runtime.unregisterProvider(overrideProviderId(existing.name));
 		}
 		store.upsert(backend, existing?.name);
-		runtime.registerProvider(id, overrideProviderConfig(backend));
+		runtime.registerProvider(id, overrideProviderConfig(backend, store));
 		await runtime.refresh({ allowNetwork: false });
 		await this.switchToOverrideBackend(backend);
 	}

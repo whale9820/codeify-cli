@@ -179,7 +179,7 @@ export class ModelRuntime implements Models {
 			runtime.registerProvider("codeify", codeifyProvider());
 		}
 		for (const backend of runtime.overrides.list()) {
-			runtime.registerProvider(overrideProviderId(backend.name), overrideProviderConfig(backend));
+			runtime.registerProvider(overrideProviderId(backend.name), overrideProviderConfig(backend, runtime.overrides));
 		}
 		runtime.configureRadiusProviders();
 		runtime.rebuildProviders();
