@@ -151,7 +151,7 @@ describe("FooterComponent width handling", () => {
 		}
 	});
 
-	it("shows only the directory on the first line and the model on the second", () => {
+	it("renders a single row with the directory on the left and the model on the right", () => {
 		const session = createSession({
 			sessionName: "",
 			modelId: "gpt-test",
@@ -167,23 +167,35 @@ describe("FooterComponent width handling", () => {
 		});
 		const footer = new FooterComponent(session, createFooterData(1));
 
-		const [pwdLine, modelLine] = footer.render(80).map((line) => stripAnsi(line));
-		expect(pwdLine).toContain("/tmp/project (main)");
-		expect(modelLine.trim()).toBe("gpt-test • high");
-		expect(modelLine.endsWith("gpt-test • high")).toBe(true);
-		expect(modelLine).not.toContain("$");
-		expect(modelLine).not.toContain("%");
+		const lines = footer.render(80).map((line) => stripAnsi(line));
+		expect(lines).toHaveLength(1);
+		expect(lines[0]).toHaveLength(80);
+		expect(lines[0].startsWith("/tmp/project (main)")).toBe(true);
+		expect(lines[0].endsWith("gpt-test • high")).toBe(true);
+		expect(lines[0]).not.toContain("$");
+		expect(lines[0]).not.toContain("%");
 	});
 
-	it("shows background tasks on the left of the model line", () => {
+	it("shows background tasks after the directory", () => {
 		const session = createSession({ sessionName: "" }) as unknown as {
 			getBackgroundTasks: () => Array<{ status: string }>;
 		};
 		session.getBackgroundTasks = () => [{ status: "running" }, { status: "running" }, { status: "done" }];
 		const footer = new FooterComponent(session as unknown as AgentSession, createFooterData(1));
 
-		const modelLine = stripAnsi(footer.render(80)[1]);
-		expect(modelLine.startsWith("2 background")).toBe(true);
-		expect(modelLine.trimEnd().endsWith("test-model")).toBe(true);
+		const lines = footer.render(80).map((line) => stripAnsi(line));
+		expect(lines).toHaveLength(1);
+		expect(lines[0]).toContain("/tmp/project (main) · 2 background");
+		expect(lines[0].trimEnd().endsWith("test-model")).toBe(true);
+	});
+
+	it("truncates the directory before the model on narrow terminals", () => {
+		const session = createSession({ sessionName: "a-very-long-session-name".repeat(3), modelId: "gpt-test" });
+		const footer = new FooterComponent(session, createFooterData(1));
+
+		const lines = footer.render(40).map((line) => stripAnsi(line));
+		expect(lines).toHaveLength(1);
+		expect(visibleWidth(lines[0])).toBeLessThanOrEqual(40);
+		expect(lines[0].endsWith("gpt-test")).toBe(true);
 	});
 });

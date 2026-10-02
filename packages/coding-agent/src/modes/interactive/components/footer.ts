@@ -86,13 +86,6 @@ export class FooterComponent implements Component {
 			indicatorParts.push(theme.bold(theme.fg("warning", "experimental")));
 		}
 
-		let indicators = indicatorParts.join(" · ");
-		let indicatorsWidth = visibleWidth(indicators);
-		if (indicatorsWidth > width) {
-			indicators = truncateToWidth(indicators, width, "...");
-			indicatorsWidth = visibleWidth(indicators);
-		}
-
 		const modelSlug = state.model?.id || "no-model";
 		let rightSide = modelSlug;
 		if (state.model?.reasoning) {
@@ -101,11 +94,16 @@ export class FooterComponent implements Component {
 		}
 
 		const minPadding = 2;
-		const availableForRight = indicatorsWidth > 0 ? width - indicatorsWidth - minPadding : width;
-		const shownRight = availableForRight > 0 ? truncateToWidth(rightSide, availableForRight, "") : "";
-		const padding = " ".repeat(Math.max(0, width - indicatorsWidth - visibleWidth(shownRight)));
+		const rightWidth = visibleWidth(rightSide);
+		const left = [theme.fg("dim", pwd), ...indicatorParts].join(theme.fg("dim", " · "));
+		const availableForLeft = width - rightWidth - minPadding;
 
-		const pwdLine = truncateToWidth(theme.fg("dim", pwd), width, theme.fg("dim", "..."));
-		return [pwdLine, indicators + theme.fg("dim", padding + shownRight)];
+		if (availableForLeft < 1) {
+			return [truncateToWidth(theme.fg("dim", rightSide), width, theme.fg("dim", "..."))];
+		}
+
+		const shownLeft = truncateToWidth(left, availableForLeft, theme.fg("dim", "..."));
+		const padding = " ".repeat(Math.max(0, width - visibleWidth(shownLeft) - rightWidth));
+		return [shownLeft + theme.fg("dim", padding + rightSide)];
 	}
 }
