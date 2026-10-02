@@ -29,7 +29,7 @@ export class UserMessageComponent extends Container {
 
 	private rebuild(): void {
 		this.clear();
-		const contentBox = new Box(this.outputPad, 0, (content: string) => theme.bg("userMessageBg", content));
+		const contentBox = new Box(this.outputPad, 0);
 		contentBox.addChild(
 			new PrefixedComponent(
 				new Markdown(
@@ -42,7 +42,7 @@ export class UserMessageComponent extends Container {
 					},
 					{ preserveOrderedListMarkers: true, preserveBackslashEscapes: true },
 				),
-				`${theme.fg("userMessageText", theme.bold(">"))} `,
+				`${theme.fg("muted", ">")} `,
 				"  ",
 			),
 		);
