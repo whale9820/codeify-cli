@@ -36,6 +36,7 @@ import { AssistantMessageEventStream } from "../utils/event-stream.ts";
 import { headersToRecord } from "../utils/headers.ts";
 import { parseJsonWithRepair, parseStreamingJson } from "../utils/json-parse.ts";
 import { getProviderEnvValue } from "../utils/provider-env.ts";
+import { SAFEGUARD_BLOCK_MESSAGE } from "../utils/retry.ts";
 import { sanitizeSurrogates } from "../utils/sanitize-unicode.ts";
 
 import { buildCopilotDynamicHeaders, hasCopilotVisionInput } from "./github-copilot-headers.ts";
@@ -1416,14 +1417,21 @@ function mapStopReason(
 		case "refusal":
 			return {
 				stopReason: "error",
-				errorMessage: stopDetails?.explanation || `The model refused to complete the request`,
+				errorMessage: [
+					SAFEGUARD_BLOCK_MESSAGE,
+					stopDetails?.category ? ` (${stopDetails.category})` : "",
+					`: ${stopDetails?.explanation || "the model refused to complete this request"}. Rephrase the request or switch models to continue.`,
+				].join(""),
 			};
 		case "pause_turn": // Stop is good enough -> resubmit
 			return { stopReason: "stop" };
 		case "stop_sequence":
 			return { stopReason: "stop" }; // We don't supply stop sequences, so this should never happen
-		case "sensitive": // Content flagged by safety filters (not yet in SDK types)
-			return { stopReason: "error" };
+		case "sensitive":
+			return {
+				stopReason: "error",
+				errorMessage: `${SAFEGUARD_BLOCK_MESSAGE}: content was flagged by safety filters. Rephrase the request or switch models to continue.`,
+			};
 		default:
 			// Handle unknown stop reasons gracefully (API may add new values)
 			throw new Error(`Unhandled stop reason: ${reason}`);

@@ -2470,6 +2470,16 @@ export class AgentSession {
 		}
 	}
 
+	async revertLastTurn(): Promise<{ editorText: string } | undefined> {
+		await this.abort();
+		const lastUser = this.getUserMessagesForForking().at(-1);
+		if (!lastUser) return undefined;
+		this.pauseGoal();
+		const result = await this.navigateTree(lastUser.entryId);
+		if (result.cancelled) return undefined;
+		return { editorText: result.editorText ?? lastUser.text };
+	}
+
 	/**
 	 * Get all user messages from session for fork selector.
 	 */

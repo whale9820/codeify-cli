@@ -25,6 +25,11 @@ const NON_RETRYABLE_PROVIDER_LIMIT_ERROR_PATTERN = buildProviderErrorPattern([
 
 export const NETWORK_UNSTABLE_ERROR_MESSAGE = "network unstable please try again";
 export const MALFORMED_JSON_MAX_RETRIES = 3;
+export const SAFEGUARD_BLOCK_MESSAGE = "Blocked by Claude safeguards";
+
+export function isSafeguardBlock(errorMessage: string | undefined): boolean {
+	return errorMessage?.startsWith(SAFEGUARD_BLOCK_MESSAGE) ?? false;
+}
 
 const MALFORMED_JSON_ERROR_PATTERN =
 	/expected ':' after property name in json|expected ',' or '}' after property value in json|expected ',' or ']' after array element in json|unterminated string in json|unterminated string starting at|expected double-quoted property name in json|expecting property name enclosed in double quotes|expecting ',' delimiter|expecting ':' delimiter|expecting value: line|jsondecodeerror|illegal trailing comma|trailing comma before end|server_tool_stream_failed/i;

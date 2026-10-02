@@ -50,6 +50,6 @@ codeify -p "Review this codebase"
 cat README.md | codeify -p "Summarize this text"
 ```
 
-Inside the TUI, `/model`, `/thinking`, `/effort`, `/settings`, `/resume`, `/new`, `/tree`, `/fork`, `/export`, `/reload`, `/hotkeys`, `/login`, `/logout`, and `/quit` are available. Use `/thinking` or `/effort` to change reasoning effort. Ctrl+C and Escape cancel the active operation; press Ctrl+C twice to leave.
+Inside the TUI, `/model`, `/thinking`, `/effort`, `/settings`, `/resume`, `/new`, `/tree`, `/fork`, `/revert`, `/export`, `/reload`, `/hotkeys`, `/login`, `/logout`, and `/quit` are available. Use `/thinking` or `/effort` to change reasoning effort. Ctrl+C and Escape cancel the active operation; press Ctrl+C twice to leave.
 
 See [Using Codeify](usage.md) for the complete command and option reference.
