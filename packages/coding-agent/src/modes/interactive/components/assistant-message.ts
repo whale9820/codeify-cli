@@ -2,6 +2,7 @@ import {
 	type AssistantMessage,
 	type CitationSource,
 	isMalformedJsonError,
+	isSafeguardBlock,
 	NETWORK_UNSTABLE_ERROR_MESSAGE,
 	renderInlineCitations,
 	type ServerToolUse,
@@ -255,6 +256,9 @@ export class AssistantMessageComponent extends Container {
 				);
 			}
 			this.contentContainer.addChild(this.errorDetails);
+		} else if (message.stopReason === "error" && isSafeguardBlock(message.errorMessage)) {
+			this.contentContainer.addChild(new Spacer(1));
+			this.contentContainer.addChild(new Text(theme.fg("error", message.errorMessage!), this.outputPad, 0));
 		} else if (!hasToolCalls) {
 			if (message.stopReason === "aborted") {
 				const abortMessage =

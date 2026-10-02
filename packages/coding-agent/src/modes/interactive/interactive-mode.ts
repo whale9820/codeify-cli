@@ -17,6 +17,7 @@ import {
 	buildCitationSources,
 	isMalformedJsonError,
 	isReconnectableProviderError,
+	isSafeguardBlock,
 	NETWORK_UNSTABLE_ERROR_MESSAGE,
 } from "codeify-ai";
 import type {
@@ -1766,6 +1767,11 @@ export class InteractiveMode {
 				await this.handleCloneCommand();
 				return;
 			}
+			if (text === "/revert") {
+				this.editor.setText("");
+				await this.handleRevertCommand();
+				return;
+			}
 			if (text === "/tree") {
 				this.showTreeSelector();
 				this.editor.setText("");
@@ -3044,7 +3050,13 @@ export class InteractiveMode {
 			const reason = (last as AssistantMessage).stopReason;
 			if (reason === "aborted" || reason === "error") {
 				this.session.pauseGoal();
-				this.showStatus("Goal paused after interruption. Use /goal resume to continue.");
+				if (isSafeguardBlock((last as AssistantMessage).errorMessage)) {
+					this.showWarning(
+						"Goal paused: Claude safeguards blocked the last response. Rephrase, /revert, or switch models.",
+					);
+				} else {
+					this.showStatus("Goal paused after interruption. Use /goal resume to continue.");
+				}
 				return;
 			}
 		}
@@ -4011,6 +4023,22 @@ export class InteractiveMode {
 			);
 			return { component: selector, focus: selector.getMessageList() };
 		});
+	}
+
+	private async handleRevertCommand(): Promise<void> {
+		try {
+			const result = await this.session.revertLastTurn();
+			if (!result) {
+				this.showStatus("Nothing to revert");
+				return;
+			}
+			this.chatContainer.clear();
+			this.renderInitialMessages();
+			this.editor.setText(result.editorText);
+			this.showStatus("Reverted the last turn. Edit your prompt and resend, or use /tree to get it back.");
+		} catch (error) {
+			this.showError(error instanceof Error ? error.message : String(error));
+		}
 	}
 
 	private async handleCloneCommand(): Promise<void> {

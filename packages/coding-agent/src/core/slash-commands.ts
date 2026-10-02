@@ -43,6 +43,7 @@ export const BUILTIN_SLASH_COMMANDS: ReadonlyArray<BuiltinSlashCommand> = [
 	{ name: "hotkeys", description: "Show all keyboard shortcuts" },
 	{ name: "fork", description: "Create a new fork from a previous user message" },
 	{ name: "clone", description: "Duplicate the current session at the current position" },
+	{ name: "revert", description: "Undo the last turn and restore your last prompt to the editor" },
 	{ name: "tree", description: "Navigate session tree (switch branches)" },
 	{ name: "trust", description: "Save project trust decision for future sessions" },
 	{ name: "override", description: "Manage custom backends", argumentHint: "<add|edit|delete|use>" },
