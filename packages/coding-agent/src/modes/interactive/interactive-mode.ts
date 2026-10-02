@@ -83,7 +83,7 @@ import { BUILTIN_SLASH_COMMANDS } from "../../core/slash-commands.ts";
 import type { SourceInfo } from "../../core/source-info.ts";
 import type { TruncationResult } from "../../core/tools/truncate.ts";
 import { hasTrustRequiringProjectResources, ProjectTrustStore } from "../../core/trust-manager.ts";
-import { getLatestCacheHitRate, getUsageCostBreakdown } from "../../core/usage-totals.ts";
+import { getUsageCostBreakdown } from "../../core/usage-totals.ts";
 import { copyToClipboard, readClipboardText } from "../../utils/clipboard.ts";
 import { extensionForImageMimeType, readClipboardImage } from "../../utils/clipboard-image.ts";
 import { parseGitUrl } from "../../utils/git.ts";
@@ -4736,19 +4736,7 @@ export class InteractiveMode {
 	}
 
 	private handleUsageCommand(): void {
-		const stats = this.session.getSessionStats();
-		const entries = this.sessionManager.getEntries();
-		const report = formatUsageReport({
-			tokens: stats.tokens,
-			cost: stats.cost,
-			assistantMessages: stats.assistantMessages,
-			context: this.session.getContextUsage(),
-			autoCompact: this.session.autoCompactionEnabled,
-			breakdown: getUsageCostBreakdown(entries),
-			latestCacheHitRate: getLatestCacheHitRate(entries),
-			cacheWaste: computeCacheWaste(entries, this.session.modelRuntime),
-			modelId: this.session.model?.id,
-		});
+		const report = formatUsageReport({ tokens: this.session.getSessionStats().tokens });
 		this.chatContainer.addChild(new Spacer(1));
 		this.chatContainer.addChild(new Text(report, 1, 0));
 		this.ui.requestRender();
