@@ -1,6 +1,11 @@
 import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
-import { CODEIFY_PROVIDER_ID } from "./codeify-provider.ts";
+import {
+	CODEIFY_PROVIDER_ID,
+	type CodeifyModel,
+	type CodeifyModelDefinition,
+	toModelDefinition,
+} from "./codeify-provider.ts";
 import type { RuntimeProviderConfig } from "./provider-composer.ts";
 
 export const OVERRIDE_PROVIDER_PREFIX = "override-";
@@ -10,7 +15,7 @@ export interface OverrideBackend {
 	name: string;
 	baseUrl: string;
 	apiKey: string;
-	models: string[];
+	models: CodeifyModelDefinition[];
 }
 
 interface OverrideFile {
@@ -19,7 +24,7 @@ interface OverrideFile {
 
 export interface ProbeResult {
 	ok: boolean;
-	models: string[];
+	models: CodeifyModelDefinition[];
 	error?: string;
 }
 
@@ -63,16 +68,7 @@ export function overrideProviderConfig(backend: OverrideBackend): RuntimeProvide
 		baseUrl: backend.baseUrl,
 		api: "openai-responses",
 		apiKey: escapeConfigValue(backend.apiKey),
-		models: backend.models.map((id) => ({
-			id,
-			name: id,
-			api: "openai-responses",
-			reasoning: false,
-			input: ["text"],
-			cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-			contextWindow: 128_000,
-			maxTokens: 16_384,
-		})),
+		models: backend.models,
 	};
 }
 
@@ -89,12 +85,20 @@ export class OverrideStore {
 		if (!this.path || !existsSync(this.path)) return [];
 		try {
 			const parsed = JSON.parse(readFileSync(this.path, "utf8")) as Partial<OverrideFile>;
-			return (parsed.backends ?? []).filter(
-				(backend): backend is OverrideBackend =>
-					typeof backend?.name === "string" &&
-					typeof backend.baseUrl === "string" &&
-					typeof backend.apiKey === "string" &&
-					Array.isArray(backend.models),
+			return (parsed.backends ?? []).flatMap((backend) =>
+				typeof backend?.name === "string" &&
+				typeof backend.baseUrl === "string" &&
+				typeof backend.apiKey === "string" &&
+				Array.isArray(backend.models)
+					? [
+							{
+								...backend,
+								models: (backend.models as Array<string | CodeifyModelDefinition>).map((model) =>
+									typeof model === "string" ? toModelDefinition({ id: model }) : model,
+								),
+							},
+						]
+					: [],
 			);
 		} catch {
 			return [];
@@ -157,11 +161,13 @@ export async function probeOverrideBackend(
 				error: `GET /models returned ${response.status}${detail ? `: ${detail}` : ""}`,
 			};
 		}
-		const payload = (await response.json()) as { data?: Array<{ id?: unknown }> };
+		const payload = (await response.json()) as { data?: CodeifyModel[] };
 		if (!Array.isArray(payload.data)) {
 			return { ok: false, models: [], error: "GET /models did not return a model list." };
 		}
-		const models = payload.data.flatMap((entry) => (typeof entry.id === "string" && entry.id ? [entry.id] : []));
+		const models = payload.data
+			.filter((entry) => typeof entry.id === "string" && entry.id.length > 0)
+			.map((entry) => toModelDefinition(entry));
 		return { ok: true, models };
 	} catch (error) {
 		return { ok: false, models: [], error: error instanceof Error ? error.message : String(error) };
