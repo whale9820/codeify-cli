@@ -291,6 +291,8 @@ export class AgentSession {
 	private _unsubscribeAgent?: () => void;
 	private _eventListeners: AgentSessionEventListener[] = [];
 	private _isAgentRunActive = false;
+	private _abortRequested = false;
+	private _wakeTaskWaiter: (() => void) | undefined;
 	private _idleWaitPromise: Promise<void> | undefined;
 	private _resolveIdleWait: (() => void) | undefined;
 
@@ -915,15 +917,30 @@ export class AgentSession {
 
 	private async _runAgentPrompt(messages: AgentMessage | AgentMessage[]): Promise<void> {
 		this._isAgentRunActive = true;
+		this._abortRequested = false;
 		try {
 			await this.agent.prompt(messages);
-			while (await this._handlePostAgentRun()) {
+			while ((await this._handlePostAgentRun()) || (await this._waitForBackgroundTasks())) {
 				await this.agent.continue();
 			}
 		} finally {
 			this._flushPendingBashMessages();
 			await this._emitAgentSettled();
 		}
+	}
+
+	private async _waitForBackgroundTasks(): Promise<boolean> {
+		while (!this._abortRequested && this._backgroundTasks.runningCount() > 0 && !this.agent.hasQueuedMessages()) {
+			await new Promise<void>((resolve) => {
+				const timer = setTimeout(resolve, 250);
+				this._wakeTaskWaiter = () => {
+					clearTimeout(timer);
+					resolve();
+				};
+			});
+			this._wakeTaskWaiter = undefined;
+		}
+		return !this._abortRequested && this.agent.hasQueuedMessages();
 	}
 
 	private async _handlePostAgentRun(): Promise<boolean> {
@@ -1275,6 +1292,8 @@ export class AgentSession {
 	 */
 	async abort(): Promise<void> {
 		this.abortRetry();
+		this._abortRequested = true;
+		this._wakeTaskWaiter?.();
 		this.agent.abort();
 		await this.waitForIdle();
 	}
@@ -2037,6 +2056,7 @@ export class AgentSession {
 			baseToolDefinitions.update_goal = createUpdateGoalToolDefinition({
 				getGoal: () => this._goal,
 				completeGoal: (summary) => this.completeGoal(summary),
+				blockGoal: (reason) => this.blockGoal(reason),
 			});
 		}
 
@@ -2624,6 +2644,7 @@ export class AgentSession {
 	}
 
 	private _reportBackgroundTask(task: BackgroundTask): void {
+		this._wakeTaskWaiter?.();
 		if (task.status === "stopped") return;
 		const output = this._backgroundTasks.readOutput(task.id) ?? { text: "", droppedChars: 0 };
 		void this.sendCustomMessage(
@@ -2656,7 +2677,7 @@ export class AgentSession {
 
 	resumeGoal(): boolean {
 		if (this._goal?.status !== "paused") return false;
-		this._goal = { ...this._goal, status: "active", continuations: 0, stalls: 0 };
+		this._goal = { ...this._goal, status: "active", continuations: 0, stalls: 0, summary: undefined };
 		this._emit({ type: "goal_updated", goal: this._goal });
 		return true;
 	}
@@ -2666,6 +2687,12 @@ export class AgentSession {
 		this._goal = undefined;
 		this._emit({ type: "goal_updated", goal: undefined });
 		return true;
+	}
+
+	blockGoal(reason?: string): void {
+		if (this._goal?.status !== "active") return;
+		this._goal = { ...this._goal, status: "paused", summary: reason };
+		this._emit({ type: "goal_updated", goal: this._goal });
 	}
 
 	completeGoal(summary?: string): void {

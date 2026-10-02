@@ -5,11 +5,15 @@ import type { Goal } from "../goal.ts";
 import { defineTool, type ToolDefinition } from "./types.ts";
 
 const updateGoalSchema = Type.Object({
-	status: Type.Literal("complete", {
-		description: 'Set to "complete" only when the goal is fully achieved and verified.',
+	status: Type.Union([Type.Literal("complete"), Type.Literal("blocked")], {
+		description:
+			'"complete" only when the goal is fully achieved and verified. "blocked" when you cannot continue without input or a decision from the user.',
 	}),
 	summary: Type.Optional(
-		Type.String({ description: "Short summary of what was accomplished and how it was verified." }),
+		Type.String({
+			description:
+				"For complete: what was accomplished and how it was verified. For blocked: what you need from the user.",
+		}),
 	),
 });
 
@@ -22,6 +26,7 @@ export interface UpdateGoalToolDetails {
 export interface UpdateGoalOperations {
 	getGoal: () => Goal | undefined;
 	completeGoal: (summary: string | undefined) => void;
+	blockGoal: (reason: string | undefined) => void;
 }
 
 export function createUpdateGoalToolDefinition(
@@ -31,11 +36,12 @@ export function createUpdateGoalToolDefinition(
 		name: "update_goal",
 		label: "Goal",
 		description: [
-			"Mark the user's active goal as complete.",
+			"Finish work on the user's active goal, either as complete or as blocked.",
 			"",
-			"Use this only when a goal set with /goal is fully achieved and you have verified the result. Do not call it to give up or pause; if blocked, explain the blocker to the user instead.",
+			'Use status "complete" only when a goal set with /goal is fully achieved and you have verified the result. Use status "blocked" when you cannot make further progress without input or a decision from the user; this pauses the goal and hands control back to them. Never keep working or keep stopping silently when blocked.',
 		].join("\n"),
-		promptSnippet: "Mark the active /goal objective complete once it is achieved and verified.",
+		promptSnippet:
+			'Finish the active /goal objective: status "complete" once achieved and verified, or "blocked" when you need input from the user.',
 		parameters: updateGoalSchema,
 		async execute(_toolCallId, params, _signal): Promise<AgentToolResult<UpdateGoalToolDetails>> {
 			const goal = ops.getGoal();
@@ -43,6 +49,15 @@ export function createUpdateGoalToolDefinition(
 				return {
 					content: [{ type: "text", text: "There is no active goal to complete." }],
 					details: {},
+				};
+			}
+			if (params.status === "blocked") {
+				ops.blockGoal(params.summary);
+				return {
+					content: [
+						{ type: "text", text: "Goal paused as blocked. Explain to the user what you need, then stop." },
+					],
+					details: { goal: ops.getGoal() },
 				};
 			}
 			ops.completeGoal(params.summary);
@@ -54,7 +69,7 @@ export function createUpdateGoalToolDefinition(
 		renderCall(args, theme) {
 			const suffix = args?.summary ? ` · ${args.summary}` : "";
 			return new Text(
-				`${theme.fg("toolTitle", theme.bold("goal complete"))}${theme.fg("toolOutput", suffix)}`,
+				`${theme.fg("toolTitle", theme.bold(args?.status === "blocked" ? "goal blocked" : "goal complete"))}${theme.fg("toolOutput", suffix)}`,
 				0,
 				0,
 			);

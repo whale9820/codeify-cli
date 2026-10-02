@@ -66,7 +66,7 @@ describe("Codeify install script", () => {
 		});
 		expect(calls).toContainEqual({
 			command: "C:\\Windows\\System32\\cmd.exe",
-			args: ["/d", "/s", "/c", "npm.cmd ci --omit=dev --ignore-scripts"],
+			args: ["/d", "/s", "/c", "npm.cmd ci --omit=dev --ignore-scripts --loglevel=error"],
 		});
 		expect(calls.some((call) => call.args.some((arg) => arg.endsWith("build-lowmem.mjs")))).toBe(true);
 		expect(calls.some((call) => call.command === "npm.cmd")).toBe(false);
@@ -130,7 +130,7 @@ describe("Codeify install script", () => {
 		expect(writeFileSync).toHaveBeenCalledWith(expect.stringContaining(".codeify-archive-install"), "", "ascii");
 		expect(calls).toContainEqual({
 			command: "C:\\Windows\\System32\\cmd.exe",
-			args: ["/d", "/s", "/c", "npm.cmd ci --omit=dev --ignore-scripts"],
+			args: ["/d", "/s", "/c", "npm.cmd ci --omit=dev --ignore-scripts --loglevel=error"],
 		});
 		expect(calls.some((call) => call.command === "git" && call.args.includes("clone"))).toBe(false);
 		expect(
@@ -190,13 +190,13 @@ describe("Codeify install script", () => {
 
 		expect(calls).toContainEqual({
 			command: "C:\\Windows\\System32\\cmd.exe",
-			args: ["/d", "/s", "/c", "npm.cmd install --omit=dev --ignore-scripts"],
+			args: ["/d", "/s", "/c", "npm.cmd install --omit=dev --ignore-scripts --loglevel=error"],
 		});
 		expect(calls).toContainEqual({
 			command: "git",
-			args: ["-C", "C:\\Users\\test\\AppData\\Local/CodeifyCLI", "pull", "--ff-only", "origin", "main"],
+			args: ["-C", "C:\\Users\\test\\AppData\\Local/CodeifyCLI", "pull", "--quiet", "--ff-only", "origin", "main"],
 		});
-		expect(calls.some((call) => call.args.at(-1) === "npm.cmd ci --ignore-scripts")).toBe(false);
+		expect(calls.some((call) => call.args.at(-1) === "npm.cmd ci --ignore-scripts --loglevel=error")).toBe(false);
 	});
 
 	it("removes Unix dependencies before updating the source checkout", () => {
@@ -249,7 +249,7 @@ describe("Codeify install script", () => {
 		expect(rmSync).toHaveBeenCalledWith(`${installHome}/node_modules`, { force: true, recursive: true });
 		expect(calls).toContainEqual({
 			command: "git",
-			args: ["-C", installHome, "pull", "--ff-only", "origin", "main"],
+			args: ["-C", installHome, "pull", "--quiet", "--ff-only", "origin", "main"],
 		});
 	});
 

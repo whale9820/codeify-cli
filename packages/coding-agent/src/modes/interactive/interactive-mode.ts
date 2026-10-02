@@ -2122,6 +2122,8 @@ export class InteractiveMode {
 			case "goal_updated":
 				if (event.goal?.status === "complete") {
 					this.showStatus(`Goal complete: ${event.goal.summary ?? event.goal.objective}`);
+				} else if (event.goal?.status === "paused" && event.goal.summary) {
+					this.showStatus(`Goal blocked: ${event.goal.summary}. Use /goal resume to continue.`);
 				}
 				break;
 
