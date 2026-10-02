@@ -106,6 +106,12 @@ export function buildSystemPrompt(options: BuildSystemPromptOptions): string {
 		}
 	}
 
+	if (tools.includes("background_task")) {
+		addGuideline(
+			"Background tasks: the user manages them with /tasks (list, follow live output, view output, stop, clear) and can press Ctrl+B while a bash command is running to move it to the background. When a bash result says the user moved the command to the background as task <id>, it is still running: do not rerun it, do not wait or poll, and continue with other useful work or tell the user it is running. Its final result arrives later as a background task message; react to it then. To inspect a task, use background_task output (sinceLast for only new output, filter for a regex) and stop to cancel it. Stop tasks you started that are no longer needed.",
+		);
+	}
+
 	// Always include these
 	addGuideline("Be concise in your responses");
 	addGuideline("Show file paths clearly when working with files");

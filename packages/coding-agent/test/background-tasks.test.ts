@@ -125,6 +125,7 @@ describe("background_task tool", () => {
 			list: vi.fn(() => [task]),
 			get: vi.fn((id: string) => (id === "bg1" ? task : undefined)),
 			readOutput: vi.fn(() => ({ text: "out", droppedChars: 0 })),
+			readNewOutput: vi.fn(() => ({ text: "new\nerror: x\n", droppedChars: 0 })),
 			stop: vi.fn(() => true),
 		};
 		const definition = createBackgroundTaskToolDefinition(ops);
@@ -145,6 +146,16 @@ describe("background_task tool", () => {
 		expect(text).toContain("do not wait");
 	});
 
+	it("reads only new output and applies a line filter", async () => {
+		const { ops, run } = setup();
+		const text = await run({ action: "output", id: "bg1", sinceLast: true, filter: "^error" });
+
+		expect(ops.readNewOutput).toHaveBeenCalledWith("bg1");
+		expect(text).toContain("error: x");
+		expect(text).not.toContain("new\n");
+		await expect(run({ action: "output", id: "bg1", filter: "(" })).rejects.toThrow(/Invalid filter/);
+	});
+
 	it("rejects start without a command or task", async () => {
 		const { run } = setup();
 		await expect(run({ action: "start" })).rejects.toThrow(/command or a task/);
@@ -161,5 +172,69 @@ describe("background_task tool", () => {
 		await run({ action: "stop", id: "bg1" });
 		expect(ops.stop).toHaveBeenCalledWith("bg1");
 		await expect(run({ action: "output", id: "nope" })).rejects.toThrow(/Unknown/);
+	});
+});
+
+describe("BackgroundTaskManager.adopt", () => {
+	it("tracks an already-running process, keeps its prior output, and reports completion", async () => {
+		const finished = vi.fn<(task: BackgroundTask) => void>();
+		const manager = new BackgroundTaskManager(finished);
+		const gate = deferred<{ exitCode: number }>();
+		const { task, append } = manager.adopt({
+			kind: "command",
+			description: "npm run dev",
+			initialOutput: "before\n",
+			controller: new AbortController(),
+			completion: gate.promise,
+		});
+
+		append("after\n");
+		expect(manager.readOutput(task.id)?.text).toBe("before\nafter\n");
+		gate.resolve({ exitCode: 0 });
+		await vi.waitFor(() => expect(finished).toHaveBeenCalledOnce());
+		expect(manager.get(task.id)?.status).toBe("completed");
+	});
+
+	it("stop aborts the adopted controller", async () => {
+		const manager = new BackgroundTaskManager(() => {});
+		const controller = new AbortController();
+		const gate = deferred<{ exitCode: number | null }>();
+		controller.signal.addEventListener("abort", () => gate.reject(new Error("aborted")));
+		const { task } = manager.adopt({ kind: "command", description: "x", controller, completion: gate.promise });
+		expect(manager.stop(task.id)).toBe(true);
+		await vi.waitFor(() => expect(manager.get(task.id)?.status).toBe("stopped"));
+	});
+
+	it("clearFinished removes only finished tasks", async () => {
+		const manager = new BackgroundTaskManager(() => {});
+		const gate = deferred<{ exitCode: number }>();
+		manager.start({ kind: "command", description: "done", run: async () => ({ exitCode: 0 }) });
+		const running = manager.start({ kind: "command", description: "live", run: () => gate.promise });
+		await vi.waitFor(() => expect(manager.list().some((task) => task.status === "completed")).toBe(true));
+		expect(manager.clearFinished()).toBe(1);
+		expect(manager.list().map((task) => task.id)).toEqual([running.id]);
+		gate.resolve({ exitCode: 0 });
+	});
+});
+
+describe("BackgroundTaskManager.readNewOutput", () => {
+	it("returns only output since the previous read", () => {
+		const manager = new BackgroundTaskManager(() => {});
+		let append: (text: string) => void = () => {};
+		const task = manager.start({
+			kind: "command",
+			description: "x",
+			run: async (context) => {
+				append = context.append;
+				context.append("one\n");
+				return new Promise(() => {});
+			},
+		});
+
+		expect(manager.readNewOutput(task.id)?.text).toBe("one\n");
+		expect(manager.readNewOutput(task.id)?.text).toBe("");
+		append("two\n");
+		expect(manager.readNewOutput(task.id)?.text).toBe("two\n");
+		expect(manager.readOutput(task.id)?.text).toBe("one\ntwo\n");
 	});
 });

@@ -2090,6 +2090,29 @@ describe("Editor component", () => {
 	});
 
 	describe("Autocomplete", () => {
+		it("opens the argument dropdown as soon as a space follows a slash command", async () => {
+			const editor = new Editor(createTestTUI(), defaultEditorTheme);
+			const seen: string[] = [];
+			editor.setAutocompleteProvider({
+				getSuggestions: async (lines, _cursorLine, cursorCol) => {
+					const text = (lines[0] || "").slice(0, cursorCol);
+					seen.push(text);
+					if (text === "/tasks ") {
+						return { items: [{ value: "list", label: "list" }], prefix: "" };
+					}
+					return null;
+				},
+				applyCompletion,
+			});
+
+			// Simulate a pasted/typed command name that did not leave a menu open, then a space.
+			editor.setText("/tasks");
+			editor.handleInput(" ");
+			await flushAutocomplete();
+			assert.ok(seen.includes("/tasks "));
+			assert.strictEqual(editor.isShowingAutocomplete(), true);
+		});
+
 		it("auto-applies single force-file suggestion without showing menu", async () => {
 			const editor = new Editor(createTestTUI(), defaultEditorTheme);
 

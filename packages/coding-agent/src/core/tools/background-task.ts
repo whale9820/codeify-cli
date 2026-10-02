@@ -23,6 +23,17 @@ const backgroundTaskSchema = Type.Object({
 	description: Type.Optional(Type.String({ description: "Short label shown to the user for a started task" })),
 	timeout: Type.Optional(Type.Number({ description: "Timeout in seconds for a command task" })),
 	id: Type.Optional(Type.String({ description: "Task ID for output and stop" })),
+	sinceLast: Type.Optional(
+		Type.Boolean({
+			description:
+				"output only: return just the output produced since the last output read of this task, instead of everything captured",
+		}),
+	),
+	filter: Type.Optional(
+		Type.String({
+			description: "output only: regular expression; only matching lines are returned (like grep)",
+		}),
+	),
 });
 
 export type BackgroundTaskToolInput = Static<typeof backgroundTaskSchema>;
@@ -44,6 +55,7 @@ export interface BackgroundTaskOperations {
 	list: () => BackgroundTask[];
 	get: (id: string) => BackgroundTask | undefined;
 	readOutput: (id: string) => { text: string; droppedChars: number } | undefined;
+	readNewOutput: (id: string) => { text: string; droppedChars: number } | undefined;
 	stop: (id: string) => boolean;
 }
 
@@ -60,7 +72,7 @@ export function createBackgroundTaskToolDefinition(
 		description: [
 			"Run work in the background so the conversation stays free while it runs.",
 			"",
-			'Actions: "start" launches a shell command (command) or a delegated agent (model and task) and returns immediately with a task ID; "list" shows all tasks; "output" reads the captured output of a task; "stop" cancels a running task.',
+			'Actions: "start" launches a shell command (command) or a delegated agent (model and task) and returns immediately with a task ID; "list" shows all tasks; "output" reads the captured output of a task (sinceLast: true returns only new output since the last read, filter: a regex to keep matching lines); "stop" cancels a running task.',
 			"When a background task finishes, its result is delivered back to you automatically as a new message. Do not poll or sleep waiting for it.",
 		].join("\n"),
 		promptSnippet:
@@ -113,11 +125,25 @@ export function createBackgroundTaskToolDefinition(
 				case "output": {
 					if (!params.id) throw new Error("output requires an id.");
 					const task = ops.get(params.id);
-					const output = ops.readOutput(params.id);
+					const output = params.sinceLast ? ops.readNewOutput(params.id) : ops.readOutput(params.id);
 					if (!task || !output) throw new Error(`Unknown background task: ${params.id}`);
+					let body = output.text;
+					if (params.filter) {
+						let pattern: RegExp;
+						try {
+							pattern = new RegExp(params.filter);
+						} catch {
+							throw new Error(`Invalid filter regular expression: ${params.filter}`);
+						}
+						body = body
+							.split("\n")
+							.filter((line) => pattern.test(line))
+							.join("\n");
+					}
 					const dropped =
 						output.droppedChars > 0 ? `[${output.droppedChars} earlier characters were dropped]\n` : "";
-					return text(`${formatTaskLine(task)}\n${dropped}${output.text || "(no output yet)"}`, {
+					const empty = params.sinceLast ? "(no new output)" : "(no output yet)";
+					return text(`${formatTaskLine(task)}\n${dropped}${body || empty}`, {
 						action: "output",
 						task,
 					});

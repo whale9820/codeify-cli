@@ -15,6 +15,7 @@ import {
 	trackDetachedChildPid,
 	untrackDetachedChildPid,
 } from "../../utils/shell.ts";
+import type { BackgroundTask, BackgroundTaskAdoptOptions } from "../background-tasks.ts";
 import { OutputAccumulator } from "./output-accumulator.ts";
 import { resolveToCwd } from "./path-utils.ts";
 import { getTextOutput, invalidArgText, str } from "./render-utils.ts";
@@ -158,7 +159,19 @@ function resolveSpawnContext(command: string, cwd: string, spawnHook?: BashSpawn
 	return spawnHook ? spawnHook(baseContext) : baseContext;
 }
 
+/**
+ * Lets a foreground bash command be moved to the background while it runs.
+ */
+export interface BashBackgroundHost {
+	/** Called when a foreground command starts. `requested` resolves if the user asks to background it. */
+	watch: (command: string) => { requested: Promise<void>; dispose: () => void };
+	/** Take over the still-running command as a background task. */
+	adopt: (options: BackgroundTaskAdoptOptions) => { task: BackgroundTask; append: (text: string) => void };
+}
+
 export interface BashToolOptions {
+	/** Enables moving running commands to the background (Ctrl+B in interactive mode) */
+	background?: BashBackgroundHost;
 	/** Custom operations for command execution. Default: local shell */
 	operations?: BashOperations;
 	/** Command prefix prepended to every command (for example shell setup commands) */
@@ -214,6 +227,7 @@ function rebuildBashResultRenderComponent(
 	showImages: boolean,
 	startedAt: number | undefined,
 	endedAt: number | undefined,
+	backgroundable: boolean,
 ): void {
 	const state = component.state;
 	component.clear();
@@ -282,7 +296,11 @@ function rebuildBashResultRenderComponent(
 	if (startedAt !== undefined) {
 		const label = options.isPartial ? "Elapsed" : "Took";
 		const endTime = endedAt ?? Date.now();
-		component.addChild(new Text(`\n${theme.fg("muted", `${label} ${formatDuration(endTime - startedAt)}`)}`, 0, 0));
+		const backgroundHint =
+			backgroundable && options.isPartial ? ` (${keyHint("app.tools.background", "to run in background")})` : "";
+		component.addChild(
+			new Text(`\n${theme.fg("muted", `${label} ${formatDuration(endTime - startedAt)}${backgroundHint}`)}`, 0, 0),
+		);
 	}
 }
 
@@ -319,6 +337,19 @@ function prepareBashArguments(input: unknown): BashToolInput {
 	} as BashToolInput;
 }
 
+function describeNonBashShell(shellPath: string | undefined): string {
+	if (process.platform !== "win32") return "";
+	try {
+		const { kind } = getShellConfig(shellPath);
+		if (kind === "powershell")
+			return " Note: bash is not installed here, so commands run in PowerShell; use PowerShell syntax.";
+		if (kind === "cmd") return " Note: bash is not installed here, so commands run in cmd.exe; use cmd syntax.";
+	} catch {
+		// Resolution errors surface when a command runs.
+	}
+	return "";
+}
+
 export function createBashToolDefinition(
 	cwd: string,
 	options?: BashToolOptions,
@@ -326,10 +357,12 @@ export function createBashToolDefinition(
 	const ops = options?.operations ?? createLocalBashOperations({ shellPath: options?.shellPath });
 	const commandPrefix = options?.commandPrefix;
 	const spawnHook = options?.spawnHook;
+	const backgroundHost = options?.background;
+	const shellNote = describeNonBashShell(options?.shellPath);
 	return {
 		name: "bash",
 		label: "bash",
-		description: `Execute a bash command in the current working directory. Returns stdout and stderr. Output is truncated to last ${DEFAULT_MAX_LINES} lines or ${DEFAULT_MAX_BYTES / 1024}KB (whichever is hit first). If truncated, full output is saved to a temp file. Optionally provide a timeout in seconds.`,
+		description: `Execute a bash command in the current working directory. Returns stdout and stderr. Output is truncated to last ${DEFAULT_MAX_LINES} lines or ${DEFAULT_MAX_BYTES / 1024}KB (whichever is hit first). If truncated, full output is saved to a temp file. Optionally provide a timeout in seconds.${shellNote}`,
 		promptSnippet: "Execute bash commands (ls, grep, find, etc.)",
 		parameters: bashSchema,
 		prepareArguments: prepareBashArguments,
@@ -385,7 +418,17 @@ export function createBashToolDefinition(
 				onUpdate({ content: [], details: undefined });
 			}
 
+			// After the command is moved to the background, output flows to the task instead.
+			let detached = false;
+			let forwardToTask: ((text: string) => void) | undefined;
+			let detachBuffer = "";
+
 			const handleData = (data: Buffer) => {
+				if (detached) {
+					if (forwardToTask) forwardToTask(data.toString("utf-8"));
+					else detachBuffer += data.toString("utf-8");
+					return;
+				}
 				if (!acceptingOutput) return;
 				output.append(data);
 				scheduleOutputUpdate();
@@ -423,16 +466,58 @@ export function createBashToolDefinition(
 
 			const appendStatus = (text: string, status: string) => `${text ? `${text}\n\n` : ""}${status}`;
 
+			const watch = backgroundHost?.watch(command);
+			const execController = new AbortController();
+			const forwardAbort = () => execController.abort();
+			if (signal) {
+				if (signal.aborted) forwardAbort();
+				else signal.addEventListener("abort", forwardAbort, { once: true });
+			}
+
 			try {
 				let exitCode: number | null;
 				try {
-					const result = await ops.exec(spawnContext.command, spawnContext.cwd, {
+					const execPromise = ops.exec(spawnContext.command, spawnContext.cwd, {
 						onData: handleData,
-						signal,
+						signal: execController.signal,
 						timeout,
 						env: spawnContext.env,
 					});
-					exitCode = result.exitCode;
+					const outcome = await Promise.race([
+						execPromise.then((result) => ({ backgrounded: false as const, exitCode: result.exitCode })),
+						...(watch ? [watch.requested.then(() => ({ backgrounded: true as const }))] : []),
+					]);
+					if (outcome.backgrounded && backgroundHost) {
+						detached = true;
+						// The agent aborting its turn must no longer kill a command the user kept alive.
+						signal?.removeEventListener("abort", forwardAbort);
+						acceptingOutput = false;
+						output.finish();
+						clearUpdateTimer();
+						const snapshot = output.snapshot({ persistIfTruncated: true });
+						const adopted = backgroundHost.adopt({
+							kind: "command",
+							description: command,
+							initialOutput: snapshot.content,
+							controller: execController,
+							completion: execPromise.then((result) => ({ exitCode: result.exitCode })),
+						});
+						forwardToTask = adopted.append;
+						forwardToTask(detachBuffer);
+						detachBuffer = "";
+						await output.closeTempFile();
+						const tail = snapshot.content.trimEnd();
+						return {
+							content: [
+								{
+									type: "text",
+									text: `The user moved this command to the background as task ${adopted.task.id}. It is still running; its result will be delivered to you automatically when it finishes, so do not wait for it. Use background_task with action "output" and id ${adopted.task.id} to read more output, or "stop" to cancel it.${tail ? `\n\nOutput so far:\n${tail}` : ""}`,
+								},
+							],
+							details: undefined,
+						};
+					}
+					exitCode = outcome.backgrounded ? null : outcome.exitCode;
 				} catch (err) {
 					const snapshot = await finishOutput();
 					const { text } = formatOutput(snapshot, "");
@@ -454,6 +539,8 @@ export function createBashToolDefinition(
 				return { content: [{ type: "text", text: outputText }], details };
 			} finally {
 				clearUpdateTimer();
+				watch?.dispose();
+				if (!detached) signal?.removeEventListener("abort", forwardAbort);
 			}
 		},
 		renderCall(args, _theme, context) {
@@ -487,6 +574,7 @@ export function createBashToolDefinition(
 				context.showImages,
 				state.startedAt,
 				state.endedAt,
+				backgroundHost !== undefined,
 			);
 			component.invalidate();
 			return component;

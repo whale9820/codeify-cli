@@ -55,7 +55,7 @@ export const TUI_KEYBINDINGS = {
 	"tui.editor.cursorUp": { defaultKeys: "up", description: "Move cursor up" },
 	"tui.editor.cursorDown": { defaultKeys: "down", description: "Move cursor down" },
 	"tui.editor.cursorLeft": {
-		defaultKeys: ["left", "ctrl+b"],
+		defaultKeys: "left",
 		description: "Move cursor left",
 	},
 	"tui.editor.cursorRight": {
