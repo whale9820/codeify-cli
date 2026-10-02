@@ -81,6 +81,7 @@ function createSession(options: {
 		getBackgroundTasks: () => [],
 		modelRuntime: {
 			isUsingOAuth: () => false,
+			getProvider: () => undefined,
 		},
 	};
 
@@ -185,7 +186,7 @@ describe("FooterComponent width handling", () => {
 
 		const lines = footer.render(80).map((line) => stripAnsi(line));
 		expect(lines).toHaveLength(1);
-		expect(lines[0]).toContain("/tmp/project (main) · 2 background");
+		expect(lines[0]).toContain("/tmp/project (main) • test · 2 background");
 		expect(lines[0].trimEnd().endsWith("test-model")).toBe(true);
 	});
 
