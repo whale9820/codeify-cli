@@ -1,3 +1,4 @@
+import { type Component, visibleWidth, wrapTextWithAnsi } from "codeify-tui";
 import * as Diff from "diff";
 import { theme } from "../theme/theme.ts";
 
@@ -70,15 +71,20 @@ export interface RenderDiffOptions {
 	filePath?: string;
 }
 
-/**
- * Render a diff string with colored lines and intra-line change highlighting.
- * - Context lines: dim/gray
- * - Removed lines: red, with inverse on changed tokens
- * - Added lines: green, with inverse on changed tokens
- */
-export function renderDiff(diffText: string, _options: RenderDiffOptions = {}): string {
+export type DiffLineKind = "added" | "removed" | "context";
+
+export interface DiffLine {
+	text: string;
+	kind: DiffLineKind;
+}
+
+function formatDiffRow(lineNum: string, sign: string, content: string): string {
+	return `${lineNum} ${sign} ${content}`;
+}
+
+export function renderDiffLines(diffText: string, _options: RenderDiffOptions = {}): DiffLine[] {
 	const lines = diffText.split("\n");
-	const result: string[] = [];
+	const result: DiffLine[] = [];
 
 	let i = 0;
 	while (i < lines.length) {
@@ -86,13 +92,12 @@ export function renderDiff(diffText: string, _options: RenderDiffOptions = {}): 
 		const parsed = parseDiffLine(line);
 
 		if (!parsed) {
-			result.push(theme.fg("toolDiffContext", line));
+			result.push({ text: theme.fg("toolDiffContext", line), kind: "context" });
 			i++;
 			continue;
 		}
 
 		if (parsed.prefix === "-") {
-			// Collect consecutive removed lines
 			const removedLines: { lineNum: string; content: string }[] = [];
 			while (i < lines.length) {
 				const p = parseDiffLine(lines[i]);
@@ -101,7 +106,6 @@ export function renderDiff(diffText: string, _options: RenderDiffOptions = {}): 
 				i++;
 			}
 
-			// Collect consecutive added lines
 			const addedLines: { lineNum: string; content: string }[] = [];
 			while (i < lines.length) {
 				const p = parseDiffLine(lines[i]);
@@ -110,8 +114,6 @@ export function renderDiff(diffText: string, _options: RenderDiffOptions = {}): 
 				i++;
 			}
 
-			// Only do intra-line diffing when there's exactly one removed and one added line
-			// (indicating a single line modification). Otherwise, show lines as-is.
 			if (removedLines.length === 1 && addedLines.length === 1) {
 				const removed = removedLines[0];
 				const added = addedLines[0];
@@ -121,27 +123,85 @@ export function renderDiff(diffText: string, _options: RenderDiffOptions = {}): 
 					replaceTabs(added.content),
 				);
 
-				result.push(theme.fg("toolDiffRemoved", `-${removed.lineNum} ${removedLine}`));
-				result.push(theme.fg("toolDiffAdded", `+${added.lineNum} ${addedLine}`));
+				result.push({
+					text: theme.fg("toolDiffRemoved", formatDiffRow(removed.lineNum, "-", removedLine)),
+					kind: "removed",
+				});
+				result.push({
+					text: theme.fg("toolDiffAdded", formatDiffRow(added.lineNum, "+", addedLine)),
+					kind: "added",
+				});
 			} else {
-				// Show all removed lines first, then all added lines
 				for (const removed of removedLines) {
-					result.push(theme.fg("toolDiffRemoved", `-${removed.lineNum} ${replaceTabs(removed.content)}`));
+					result.push({
+						text: theme.fg("toolDiffRemoved", formatDiffRow(removed.lineNum, "-", replaceTabs(removed.content))),
+						kind: "removed",
+					});
 				}
 				for (const added of addedLines) {
-					result.push(theme.fg("toolDiffAdded", `+${added.lineNum} ${replaceTabs(added.content)}`));
+					result.push({
+						text: theme.fg("toolDiffAdded", formatDiffRow(added.lineNum, "+", replaceTabs(added.content))),
+						kind: "added",
+					});
 				}
 			}
 		} else if (parsed.prefix === "+") {
-			// Standalone added line
-			result.push(theme.fg("toolDiffAdded", `+${parsed.lineNum} ${replaceTabs(parsed.content)}`));
+			result.push({
+				text: theme.fg("toolDiffAdded", formatDiffRow(parsed.lineNum, "+", replaceTabs(parsed.content))),
+				kind: "added",
+			});
 			i++;
 		} else {
-			// Context line
-			result.push(theme.fg("toolDiffContext", ` ${parsed.lineNum} ${replaceTabs(parsed.content)}`));
+			result.push({
+				text: theme.fg("toolDiffContext", formatDiffRow(parsed.lineNum, " ", replaceTabs(parsed.content))),
+				kind: "context",
+			});
 			i++;
 		}
 	}
 
-	return result.join("\n");
+	return result;
+}
+
+export function renderDiff(diffText: string, options: RenderDiffOptions = {}): string {
+	return renderDiffLines(diffText, options)
+		.map((line) => line.text)
+		.join("\n");
+}
+
+export function summarizeDiff(diffText: string): { additions: number; removals: number } {
+	let additions = 0;
+	let removals = 0;
+	for (const line of diffText.split("\n")) {
+		const parsed = parseDiffLine(line);
+		if (parsed?.prefix === "+") additions++;
+		else if (parsed?.prefix === "-") removals++;
+	}
+	return { additions, removals };
+}
+
+export class DiffComponent implements Component {
+	private lines: DiffLine[];
+
+	constructor(diffText: string) {
+		this.lines = renderDiffLines(diffText);
+	}
+
+	invalidate(): void {}
+
+	render(width: number): string[] {
+		const out: string[] = [];
+		for (const line of this.lines) {
+			const bg = line.kind === "added" ? "toolSuccessBg" : line.kind === "removed" ? "toolErrorBg" : undefined;
+			for (const row of wrapTextWithAnsi(line.text, Math.max(1, width))) {
+				if (!bg) {
+					out.push(row);
+					continue;
+				}
+				const padding = " ".repeat(Math.max(0, width - visibleWidth(row)));
+				out.push(theme.bg(bg, row + padding));
+			}
+		}
+		return out;
+	}
 }

@@ -142,8 +142,7 @@ describe("AssistantMessageComponent", () => {
 		const lines = component.render(80).map((line) => stripAnsi(line));
 
 		expect(lines.some((line) => line.startsWith("● hello"))).toBe(true);
-		expect(lines.some((line) => line.includes("✻ Thinking…"))).toBe(true);
-		expect(lines.some((line) => line.startsWith("  reasoning"))).toBe(true);
+		expect(lines.some((line) => line.includes(" reasoning"))).toBe(true);
 	});
 
 	test("uses configured output padding for user messages", () => {

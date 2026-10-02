@@ -78,6 +78,7 @@ function createSession(options: {
 			getCwd: () => "/tmp/project",
 		},
 		getContextUsage: () => ({ contextWindow: 200_000, percent: 12.3 }),
+		getBackgroundTasks: () => [],
 		modelRuntime: {
 			isUsingOAuth: () => false,
 		},
@@ -202,7 +203,7 @@ describe("FooterComponent width handling", () => {
 		const footer = new FooterComponent(session, createFooterData(1));
 
 		const statsLine = stripAnsi(footer.render(120)[1]);
-		expect(statsLine).toContain("CH25.0%");
+		expect(statsLine).toContain("25% cache hit");
 	});
 
 	it("shows Kimi Coding costs without a subscription marker", () => {
