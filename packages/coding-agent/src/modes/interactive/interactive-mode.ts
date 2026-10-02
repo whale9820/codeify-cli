@@ -81,6 +81,7 @@ import {
 	type OverrideBackend,
 	overrideProviderConfig,
 	overrideProviderId,
+	type ProbeResult,
 	probeOverrideBackend,
 	validateOverrideName,
 } from "../../core/overrides.ts";
@@ -128,6 +129,7 @@ import { SettingsSelectorComponent } from "./components/settings-selector.ts";
 import { SkillInvocationMessageComponent } from "./components/skill-invocation-message.ts";
 import {
 	BranchSummaryStatusIndicator,
+	CheckStatusIndicator,
 	CompactionStatusIndicator,
 	IdleStatus,
 	ReconnectStatusIndicator,
@@ -3595,17 +3597,21 @@ export class InteractiveMode {
 			return;
 		}
 
-		this.showStatus("Testing the Responses API...");
-		let probe = await probeOverrideBackend(baseUrl, apiKey);
-		if (!probe.ok && probe.models.length === 0) {
-			const modelId = (await this.showInputDialog("Model id to test with"))?.trim();
-			if (!modelId) return;
-			probe = await probeOverrideBackend(baseUrl, apiKey, undefined, modelId);
-			if (probe.ok) probe = { ok: true, models: [modelId] };
+		this.showStatusIndicator(new CheckStatusIndicator(this.ui, "Checking backend..."));
+		let probe: ProbeResult;
+		try {
+			probe = await probeOverrideBackend(baseUrl, apiKey);
+		} finally {
+			this.clearStatusIndicator("check");
 		}
 		if (!probe.ok) {
 			this.showError(`Backend check failed: ${probe.error}`);
 			return;
+		}
+		if (probe.models.length === 0) {
+			const modelId = (await this.showInputDialog("No models listed. Model id to use"))?.trim();
+			if (!modelId) return;
+			probe = { ok: true, models: [modelId] };
 		}
 
 		let name = existing?.name;
