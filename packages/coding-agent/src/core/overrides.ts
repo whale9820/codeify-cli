@@ -142,50 +142,28 @@ export async function probeOverrideBackend(
 	baseUrl: string,
 	apiKey: string,
 	signal?: AbortSignal,
-	modelHint?: string,
 ): Promise<ProbeResult> {
-	const headers = { Accept: "application/json", Authorization: `Bearer ${apiKey}` };
 	const timeout = AbortSignal.timeout(30_000);
-	const combined = signal ? AbortSignal.any([signal, timeout]) : timeout;
-	let models: string[] = [];
 	try {
-		const response = await fetch(joinUrl(baseUrl, "/models"), { headers, signal: combined });
-		if (response.ok) {
-			const payload = (await response.json()) as { data?: Array<{ id?: unknown }> };
-			models = (payload.data ?? []).flatMap((entry) => (typeof entry.id === "string" && entry.id ? [entry.id] : []));
-		}
-	} catch {
-		models = [];
-	}
-	const model = modelHint ?? models[0];
-	if (!model) {
-		return {
-			ok: false,
-			models,
-			error: "No models were listed at /models, so the Responses API could not be tested.",
-		};
-	}
-	try {
-		const response = await fetch(joinUrl(baseUrl, "/responses"), {
-			method: "POST",
-			headers: { ...headers, "Content-Type": "application/json" },
-			body: JSON.stringify({ model, input: "Say ok", max_output_tokens: 16, stream: false, store: false }),
-			signal: combined,
+		const response = await fetch(joinUrl(baseUrl, "/models"), {
+			headers: { Accept: "application/json", Authorization: `Bearer ${apiKey}` },
+			signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
 		});
 		if (!response.ok) {
 			const detail = (await response.text()).slice(0, 200).trim();
 			return {
 				ok: false,
-				models,
-				error: `POST /responses returned ${response.status}${detail ? `: ${detail}` : ""}`,
+				models: [],
+				error: `GET /models returned ${response.status}${detail ? `: ${detail}` : ""}`,
 			};
 		}
-		const payload = (await response.json()) as { object?: unknown; output?: unknown };
-		if (payload.object !== "response" && !Array.isArray(payload.output)) {
-			return { ok: false, models, error: "POST /responses did not return an OpenAI Responses payload." };
+		const payload = (await response.json()) as { data?: Array<{ id?: unknown }> };
+		if (!Array.isArray(payload.data)) {
+			return { ok: false, models: [], error: "GET /models did not return a model list." };
 		}
+		const models = payload.data.flatMap((entry) => (typeof entry.id === "string" && entry.id ? [entry.id] : []));
 		return { ok: true, models };
 	} catch (error) {
-		return { ok: false, models, error: error instanceof Error ? error.message : String(error) };
+		return { ok: false, models: [], error: error instanceof Error ? error.message : String(error) };
 	}
 }
