@@ -41,6 +41,7 @@
 
 ### Fixed
 
+- Fixed the `background_task` tool never being offered to the model in real sessions: it was registered but not in the default active tool set built by `createAgentSession`, so the agent said it had no background task tool and the system prompt never mentioned `/tasks` or Ctrl+B.
 - Make Copilot availability tests independent of catalog changes and isolate the faux-provider test harness from real providers and ambient API keys.
 - Treat empty Codeify thinking modality lists (`supported_reasoning_efforts`, `thinking_levels`, and the other catalog aliases) as empty instead of inventing low-through-max effort options.
 - Render OpenAI web search citation markers as source links, using the same `([domain](url))` form as a same-turn citation.
