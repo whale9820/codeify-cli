@@ -1,9 +1,10 @@
 import type { AgentTool } from "codeify-agent-core";
-import { Container, Text } from "codeify-tui";
+import { type Component, Container, Text } from "codeify-tui";
 import { mkdir as fsMkdir, writeFile as fsWriteFile } from "fs/promises";
 import { dirname } from "path";
 import { type Static, Type } from "typebox";
 import { keyHint } from "../../modes/interactive/components/keybinding-hints.ts";
+import { PrefixedComponent } from "../../modes/interactive/components/prefixed.ts";
 import { getLanguageFromPath, highlightCode, type Theme } from "../../modes/interactive/theme/theme.ts";
 import { withFileMutationQueue } from "./file-mutation-queue.ts";
 import { resolveToCwd } from "./path-utils.ts";
@@ -47,12 +48,41 @@ type WriteHighlightCache = {
 	highlightedLines: string[];
 };
 
-class WriteCallRenderComponent extends Text {
-	cache?: WriteHighlightCache;
+type WriteRenderState = {
+	callComponent?: WriteCallRenderComponent;
+};
 
-	constructor() {
-		super("", 0, 0);
+class WriteCallRenderComponent extends Container {
+	cache?: WriteHighlightCache;
+	status: "dim" | "success" | "error" = "dim";
+	title = "";
+	body: string | undefined;
+
+	rebuild(theme: Theme): void {
+		this.clear();
+		const dot = theme.fg(this.status, "●");
+		this.addChild(new PrefixedComponent(new Text(this.title, 0, 0), `${dot} `, "  "));
+		if (this.body) {
+			this.addChild(withResultPrefix(new Text(this.body, 0, 0), theme));
+		}
 	}
+}
+
+function withResultPrefix(component: Component, theme: Theme): Component {
+	return new PrefixedComponent(component, `  ${theme.fg("dim", "⎿")}  `, "     ");
+}
+
+function getWriteCallRenderComponent(state: WriteRenderState, lastComponent: unknown): WriteCallRenderComponent {
+	if (lastComponent instanceof WriteCallRenderComponent) {
+		state.callComponent = lastComponent;
+		return lastComponent;
+	}
+	if (state.callComponent) {
+		return state.callComponent;
+	}
+	const component = new WriteCallRenderComponent();
+	state.callComponent = component;
+	return component;
 }
 
 const WRITE_PARTIAL_FULL_HIGHLIGHT_LINES = 50;
@@ -128,20 +158,27 @@ function trimTrailingEmptyLines(lines: string[]): string[] {
 	return lines.slice(0, end);
 }
 
-function formatWriteCall(
+function formatWriteTitle(
+	args: { path?: string; file_path?: string; content?: string } | undefined,
+	theme: Theme,
+	cwd: string,
+): string {
+	const pathDisplay = renderToolPath(str(args?.file_path ?? args?.path), theme, cwd);
+	return `${theme.fg("toolTitle", theme.bold("Write"))}(${pathDisplay})`;
+}
+
+function formatWriteBody(
 	args: { path?: string; file_path?: string; content?: string } | undefined,
 	options: ToolRenderResultOptions,
 	theme: Theme,
 	cache: WriteHighlightCache | undefined,
-	cwd: string,
-): string {
+): string | undefined {
 	const rawPath = str(args?.file_path ?? args?.path);
 	const fileContent = str(args?.content);
-	const pathDisplay = renderToolPath(rawPath, theme, cwd);
-	let text = `${theme.fg("toolTitle", theme.bold("Write"))}(${pathDisplay})`;
+	let text: string | undefined;
 
 	if (fileContent === null) {
-		text += `\n\n${theme.fg("error", "[invalid content arg - expected string]")}`;
+		text = theme.fg("error", "[invalid content arg - expected string]");
 	} else if (fileContent) {
 		const lang = rawPath ? getLanguageFromPath(rawPath) : undefined;
 		const renderedLines = lang
@@ -152,7 +189,7 @@ function formatWriteCall(
 		const maxLines = options.expanded ? lines.length : 10;
 		const displayLines = lines.slice(0, maxLines);
 		const remaining = lines.length - maxLines;
-		text += `\n\n${displayLines.map((line) => (lang ? line : theme.fg("toolOutput", replaceTabs(line)))).join("\n")}`;
+		text = displayLines.map((line) => (lang ? line : theme.fg("toolOutput", replaceTabs(line)))).join("\n");
 		if (remaining > 0) {
 			text += `${theme.fg("muted", `\n... (${remaining} more lines, ${totalLines} total,`)} ${keyHint("app.tools.expand", "to expand")}${theme.fg("muted", ")")}`;
 		}
@@ -175,7 +212,7 @@ function formatWriteResult(
 	if (!output) {
 		return undefined;
 	}
-	return `\n${theme.fg("error", output)}`;
+	return theme.fg("error", output);
 }
 
 function prepareWriteArguments(input: unknown): WriteToolInput {
@@ -218,7 +255,7 @@ function prepareWriteArguments(input: unknown): WriteToolInput {
 export function createWriteToolDefinition(
 	cwd: string,
 	options?: WriteToolOptions,
-): ToolDefinition<typeof writeSchema, undefined> {
+): ToolDefinition<typeof writeSchema, undefined, WriteRenderState> {
 	const ops = options?.operations ?? defaultWriteOperations;
 	return {
 		name: "write",
@@ -228,6 +265,7 @@ export function createWriteToolDefinition(
 		promptSnippet: "Create or overwrite files",
 		promptGuidelines: ["Use write only for new files or complete rewrites."],
 		parameters: writeSchema,
+		renderShell: "self",
 		prepareArguments: prepareWriteArguments,
 		async execute(
 			_toolCallId,
@@ -266,8 +304,7 @@ export function createWriteToolDefinition(
 			const renderArgs = args as { path?: string; file_path?: string; content?: string } | undefined;
 			const rawPath = str(renderArgs?.file_path ?? renderArgs?.path);
 			const fileContent = str(renderArgs?.content);
-			const component =
-				(context.lastComponent as WriteCallRenderComponent | undefined) ?? new WriteCallRenderComponent();
+			const component = getWriteCallRenderComponent(context.state, context.lastComponent);
 			if (fileContent !== null) {
 				component.cache = context.argsComplete
 					? rebuildWriteHighlightCacheFull(rawPath, fileContent)
@@ -275,27 +312,30 @@ export function createWriteToolDefinition(
 			} else {
 				component.cache = undefined;
 			}
-			component.setText(
-				formatWriteCall(
-					renderArgs,
-					{ expanded: context.expanded, isPartial: context.isPartial },
-					theme,
-					component.cache,
-					context.cwd,
-				),
+			component.title = formatWriteTitle(renderArgs, theme, context.cwd);
+			component.body = formatWriteBody(
+				renderArgs,
+				{ expanded: context.expanded, isPartial: context.isPartial },
+				theme,
+				component.cache,
 			);
+			component.rebuild(theme);
 			return component;
 		},
 		renderResult(result, _options, theme, context) {
-			const output = formatWriteResult({ ...result, isError: context.isError }, theme);
-			if (!output) {
-				const component = (context.lastComponent as Container | undefined) ?? new Container();
-				component.clear();
-				return component;
+			const callComponent = context.state.callComponent;
+			const status = context.isError ? "error" : "success";
+			if (callComponent && callComponent.status !== status) {
+				callComponent.status = status;
+				callComponent.rebuild(theme);
 			}
-			const text = (context.lastComponent as Text | undefined) ?? new Text("", 0, 0);
-			text.setText(output);
-			return text;
+			const component = (context.lastComponent as Container | undefined) ?? new Container();
+			component.clear();
+			const output = formatWriteResult({ ...result, isError: context.isError }, theme);
+			if (output) {
+				component.addChild(withResultPrefix(new Text(output, 0, 0), theme));
+			}
+			return component;
 		},
 	};
 }
