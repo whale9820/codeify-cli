@@ -10,7 +10,7 @@ export const CODEIFY_PROVIDER_ID = "codeify";
 export const CODEIFY_BASE_URL = process.env.CODEIFY_BASE_URL ?? "https://codeify.cc/v1";
 export const CODEIFY_MODEL_REFRESH_INTERVAL_MS = 4 * 60 * 60 * 1000;
 
-type CodeifyModel = {
+export type CodeifyModel = {
 	id: string;
 	name?: string;
 	display_name?: string;
@@ -92,7 +92,7 @@ type CodeifyModel = {
 	};
 };
 
-type CodeifyModelDefinition = NonNullable<RuntimeProviderConfig["models"]>[number];
+export type CodeifyModelDefinition = NonNullable<RuntimeProviderConfig["models"]>[number];
 
 type StoredCodeifyModel = Model<"openai-responses"> & {
 	inputModalities?: string[];
@@ -330,7 +330,7 @@ function resolveMaxTokens(model: CodeifyModel): number {
 	return positiveNumber(raw) ?? 32_768;
 }
 
-function toModelDefinition(model: CodeifyModel): CodeifyModelDefinition {
+export function toModelDefinition(model: CodeifyModel): CodeifyModelDefinition {
 	const reasoning = supportsReasoning(model.id, model);
 	const contextWindow = resolveContextWindow(model);
 	const maxTokens = resolveMaxTokens(model);

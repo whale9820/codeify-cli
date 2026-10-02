@@ -61,7 +61,7 @@ import {
 	computeCacheWaste,
 	detectCacheMiss,
 } from "../../core/cache-stats.ts";
-import { CODEIFY_PROVIDER_ID } from "../../core/codeify-provider.ts";
+import { CODEIFY_PROVIDER_ID, toModelDefinition } from "../../core/codeify-provider.ts";
 import { CODEIFY_DEFAULT_MODEL } from "../../core/defaults.ts";
 import { FooterDataProvider } from "../../core/footer-data-provider.ts";
 import {
@@ -3611,7 +3611,7 @@ export class InteractiveMode {
 		if (probe.models.length === 0) {
 			const modelId = (await this.showInputDialog("No models listed. Model id to use"))?.trim();
 			if (!modelId) return;
-			probe = { ok: true, models: [modelId] };
+			probe = { ok: true, models: [toModelDefinition({ id: modelId })] };
 		}
 
 		let name = existing?.name;
@@ -3644,7 +3644,10 @@ export class InteractiveMode {
 	private async switchToOverrideBackend(backend: OverrideBackend): Promise<void> {
 		const id = overrideProviderId(backend.name);
 		const current = this.session.model;
-		const modelId = current?.provider === id && backend.models.includes(current.id) ? current.id : backend.models[0];
+		const modelId =
+			current?.provider === id && backend.models.some((entry) => entry.id === current.id)
+				? current.id
+				: backend.models[0]?.id;
 		const model = modelId ? this.session.modelRuntime.getModel(id, modelId) : undefined;
 		if (!model) {
 			this.showError(`${backend.name} has no usable models`);
