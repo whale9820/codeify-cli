@@ -342,16 +342,11 @@ const version = run(process.execPath, [cliPath, "--version"], installHome, true)
 writeFileSync(completionPath, `${version}\n`, "utf8");
 
 console.log("");
-console.log(`Codeify CLI ${version} is ready.`);
+console.log(`Codeify CLI ${version} installed successfully.`);
 if (!pathEntries.includes(binDirectory)) {
-	if (isWindows) {
-		console.log("Restart your terminal, then run: codeify");
-	} else {
-		console.log(`Add ${binDirectory} to PATH, then run: codeify`);
-	}
-} else {
-	console.log("Run: codeify");
+	console.log(isWindows ? "Restart your terminal to pick up the new PATH." : `Add ${binDirectory} to PATH first.`);
 }
+console.log("Run: codeify");
 
 installSucceeded = true;
 } catch (error) {
