@@ -36,6 +36,7 @@ import type {
 import type { AssistantMessageEventStream } from "../utils/event-stream.ts";
 import { shortHash } from "../utils/hash.ts";
 import { parseStreamingJson } from "../utils/json-parse.ts";
+import { SAFEGUARD_BLOCK_MESSAGE } from "../utils/retry.ts";
 import { sanitizeSurrogates } from "../utils/sanitize-unicode.ts";
 import { transformMessages } from "./transform-messages.ts";
 
@@ -410,6 +411,7 @@ export async function processResponsesStream<TApi extends Api>(
 	options?: OpenAIResponsesStreamOptions,
 ): Promise<void> {
 	let sawTerminalResponseEvent = false;
+	let safeguardBlockMessage: string | undefined;
 	const outputSlots = new Map<number, ResponsesOutputSlot>();
 	const reasoningBlocksById = new Map<string, ThinkingContent>();
 	const getSlot = <TType extends ResponsesOutputSlot["type"]>(
@@ -594,6 +596,13 @@ export async function processResponsesStream<TApi extends Api>(
 		}
 		// Map status to stop reason
 		output.stopReason = mapStopReason(response?.status);
+		const incompleteReason = response?.incomplete_details?.reason as string | undefined;
+		if (incompleteReason === "content_filter") {
+			safeguardBlockMessage ??= `${SAFEGUARD_BLOCK_MESSAGE}: the response was cut off by the provider's content filter. Rephrase the request or switch models to continue.`;
+		}
+		if (safeguardBlockMessage) {
+			throw new Error(safeguardBlockMessage);
+		}
 		if (output.content.some((b) => b.type === "toolCall") && output.stopReason === "stop") {
 			output.stopReason = "toolUse";
 		}
@@ -645,6 +654,7 @@ export async function processResponsesStream<TApi extends Api>(
 				partial: output,
 			});
 		} else if (event.type === "response.refusal.delta") {
+			safeguardBlockMessage ??= `${SAFEGUARD_BLOCK_MESSAGE}: the model refused to complete this request. Rephrase the request or switch models to continue.`;
 			const slot = getOrCreateTextSlot(event.output_index);
 			if (!slot) continue;
 			slot.block.text += event.delta;
@@ -736,7 +746,7 @@ export async function processResponsesStream<TApi extends Api>(
 		} else if (event.type === "response.completed" || event.type === "response.incomplete") {
 			finalizeResponse(event.response);
 		} else if (event.type === "error") {
-			throw new Error(`Error Code ${event.code}: ${event.message}` || "Unknown error");
+			throw new Error(withSafeguardPrefix(`Error Code ${event.code}: ${event.message}`, event.code));
 		} else if (event.type === "response.failed") {
 			sawTerminalResponseEvent = true;
 			const error = event.response?.error;
@@ -746,12 +756,19 @@ export async function processResponsesStream<TApi extends Api>(
 				: details?.reason
 					? `incomplete: ${details.reason}`
 					: "Unknown error (no error details in response)";
-			throw new Error(msg);
+			throw new Error(withSafeguardPrefix(msg, error?.code));
 		}
 	}
 	if (!sawTerminalResponseEvent) {
 		throw new Error("OpenAI Responses stream ended before a terminal response event");
 	}
+}
+
+const SAFEGUARD_ERROR_CODE_PATTERN = /content.?filter|policy|safety|moderation|flagged|cyber|refus/i;
+
+function withSafeguardPrefix(message: string, code: string | null | undefined): string {
+	if (!SAFEGUARD_ERROR_CODE_PATTERN.test(`${code ?? ""} ${message}`)) return message;
+	return `${SAFEGUARD_BLOCK_MESSAGE}: ${message}. Rephrase the request or switch models to continue.`;
 }
 
 function mapStopReason(status: OpenAI.Responses.ResponseStatus | undefined): StopReason {
