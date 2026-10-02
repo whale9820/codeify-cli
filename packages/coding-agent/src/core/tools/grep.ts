@@ -78,13 +78,13 @@ function formatGrepCall(
 	const limit = args?.limit;
 	const invalidArg = invalidArgText(theme);
 	let text =
-		theme.fg("toolTitle", theme.bold("grep")) +
-		" " +
-		(pattern === null ? invalidArg : theme.fg("accent", `/${pattern || ""}/`)) +
-		theme.fg("toolOutput", ` in ${path === null ? invalidArg : path}`);
-	if (glob) text += theme.fg("toolOutput", ` (${glob})`);
-	if (limit !== undefined) text += theme.fg("toolOutput", ` limit ${limit}`);
-	return text;
+		theme.fg("toolTitle", theme.bold("Search")) +
+		"(" +
+		(pattern === null ? invalidArg : theme.fg("accent", `"${pattern || ""}"`)) +
+		theme.fg("toolOutput", `, path: ${path === null ? invalidArg : path}`);
+	if (glob) text += theme.fg("toolOutput", `, glob: ${glob}`);
+	if (limit !== undefined) text += theme.fg("toolOutput", `, limit: ${limit}`);
+	return `${text})`;
 }
 
 function formatGrepResult(

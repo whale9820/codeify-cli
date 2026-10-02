@@ -69,14 +69,14 @@ function formatFindCall(
 	const limit = args?.limit;
 	const invalidArg = invalidArgText(theme);
 	let text =
-		theme.fg("toolTitle", theme.bold(toolName)) +
-		" " +
+		theme.fg("toolTitle", theme.bold(toolName === "find" ? "Search" : toolName)) +
+		"(" +
 		(pattern === null ? invalidArg : theme.fg("accent", pattern || "")) +
-		theme.fg("toolOutput", ` in ${path === null ? invalidArg : path}`);
+		theme.fg("toolOutput", `, path: ${path === null ? invalidArg : path}`);
 	if (limit !== undefined) {
-		text += theme.fg("toolOutput", ` (limit ${limit})`);
+		text += theme.fg("toolOutput", `, limit: ${limit}`);
 	}
-	return text;
+	return `${text})`;
 }
 
 function formatFindResult(

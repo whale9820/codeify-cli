@@ -68,8 +68,8 @@ export function createWebSearchToolDefinition(
 			};
 		},
 		renderCall(args, theme) {
-			const query = args?.query ? ` "${args.query}"` : "";
-			return new Text(theme.fg("toolTitle", "web_search") + theme.fg("muted", query));
+			const query = args?.query ? `"${args.query}"` : "";
+			return new Text(`${theme.fg("toolTitle", theme.bold("Web Search"))}(${query})`);
 		},
 		renderResult(result, _options: ToolRenderResultOptions, theme) {
 			const query = result.details?.query ? ` for "${result.details.query}"` : "";

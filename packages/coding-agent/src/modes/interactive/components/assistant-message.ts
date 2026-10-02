@@ -10,6 +10,7 @@ import { Container, Markdown, type MarkdownTheme, Spacer, Text } from "codeify-t
 import { separateAdjacentBold, splitWrappedThinking } from "../../../utils/thinking-text.ts";
 import { getMarkdownTheme, theme } from "../theme/theme.ts";
 import { ErrorDetailsComponent } from "./error-details.ts";
+import { PrefixedComponent } from "./prefixed.ts";
 
 const OSC133_ZONE_START = "\x1b]133;A\x07";
 const OSC133_ZONE_END = "\x1b]133;B\x07";
@@ -165,21 +166,36 @@ export class AssistantMessageComponent extends Container {
 						next.kind === "serverToolUse",
 				);
 			if (item.kind === "text") {
-				this.contentContainer.addChild(
-					new Markdown(separateAdjacentBold(item.text.trim()), this.outputPad, 0, this.markdownTheme),
-				);
+				if (item.text.trim()) {
+					this.contentContainer.addChild(
+						new PrefixedComponent(
+							new Markdown(separateAdjacentBold(item.text.trim()), 0, 0, this.markdownTheme),
+							`${theme.fg("text", "●")} `,
+							"  ",
+						),
+					);
+					if (hasVisibleContentAfter) {
+						this.contentContainer.addChild(new Spacer(1));
+					}
+				}
 			} else if (item.kind === "thinking") {
-				// Add spacing only when another visible assistant content block follows.
-				// This avoids a superfluous blank line before separately-rendered tool execution blocks.
-				// Reasoning blocks, including model text wrapped in thinking tags.
-				this.contentContainer.addChild(
-					new Markdown(separateAdjacentBold(item.text), this.outputPad, 0, this.markdownTheme, {
-						color: (text: string) => theme.fg("thinkingText", text),
-						italic: true,
-					}),
-				);
-				if (item.text.trim() && hasVisibleContentAfter) {
-					this.contentContainer.addChild(new Spacer(1));
+				if (item.text.trim()) {
+					this.contentContainer.addChild(
+						new Text(theme.fg("thinkingText", theme.italic("✻ Thinking…")), this.outputPad, 0),
+					);
+					this.contentContainer.addChild(
+						new PrefixedComponent(
+							new Markdown(separateAdjacentBold(item.text.trim()), 0, 0, this.markdownTheme, {
+								color: (text: string) => theme.fg("thinkingText", text),
+								italic: true,
+							}),
+							"  ",
+							"  ",
+						),
+					);
+					if (hasVisibleContentAfter) {
+						this.contentContainer.addChild(new Spacer(1));
+					}
 				}
 			} else {
 				const content = item.block;

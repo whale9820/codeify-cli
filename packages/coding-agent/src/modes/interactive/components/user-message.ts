@@ -1,5 +1,6 @@
 import { Box, Container, Markdown, type MarkdownTheme } from "codeify-tui";
 import { getMarkdownTheme, theme } from "../theme/theme.ts";
+import { PrefixedComponent } from "./prefixed.ts";
 
 const OSC133_ZONE_START = "\x1b]133;A\x07";
 const OSC133_ZONE_END = "\x1b]133;B\x07";
@@ -30,15 +31,19 @@ export class UserMessageComponent extends Container {
 		this.clear();
 		const contentBox = new Box(this.outputPad, 1, (content: string) => theme.bg("userMessageBg", content));
 		contentBox.addChild(
-			new Markdown(
-				this.text,
-				0,
-				0,
-				this.markdownTheme,
-				{
-					color: (content: string) => theme.fg("userMessageText", content),
-				},
-				{ preserveOrderedListMarkers: true, preserveBackslashEscapes: true },
+			new PrefixedComponent(
+				new Markdown(
+					this.text,
+					0,
+					0,
+					this.markdownTheme,
+					{
+						color: (content: string) => theme.fg("userMessageText", content),
+					},
+					{ preserveOrderedListMarkers: true, preserveBackslashEscapes: true },
+				),
+				`${theme.fg("dim", ">")} `,
+				"  ",
 			),
 		);
 		this.addChild(contentBox);
