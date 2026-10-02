@@ -81,16 +81,12 @@ export class FooterComponent implements Component {
 			pwd = `${pwd} • ${providerLabel}`;
 		}
 
+		const runningTasks = this.session.getBackgroundTasks().filter((task) => task.status === "running").length;
+		const taskSuffix = runningTasks > 0 ? `${runningTasks} ${runningTasks === 1 ? "task" : "tasks"}` : "";
+
 		const sessionName = this.session.sessionManager.getSessionName();
-		if (sessionName) {
-			pwd = `${pwd} • ${sessionName}`;
-		}
 
 		const indicatorParts: string[] = [];
-		const runningTasks = this.session.getBackgroundTasks().filter((task) => task.status === "running").length;
-		if (runningTasks > 0) {
-			indicatorParts.push(theme.fg("accent", `${runningTasks} background`));
-		}
 		if (areExperimentalFeaturesEnabled()) {
 			indicatorParts.push(theme.bold(theme.fg("warning", "experimental")));
 		}
@@ -106,7 +102,12 @@ export class FooterComponent implements Component {
 		const innerWidth = Math.max(1, width - margin.length * 2);
 		const minPadding = 2;
 		const rightWidth = visibleWidth(rightSide);
-		const left = [theme.fg("dim", pwd), ...indicatorParts].join(theme.fg("dim", " · "));
+		const leftBase = [theme.fg("dim", pwd)];
+		if (taskSuffix) leftBase.push(theme.fg("accent", taskSuffix));
+		if (sessionName) leftBase.push(theme.fg("dim", sessionName));
+		const left =
+			leftBase.join(theme.fg("dim", " • ")) +
+			(indicatorParts.length > 0 ? theme.fg("dim", " · ") + indicatorParts.join(theme.fg("dim", " · ")) : "");
 		const availableForLeft = innerWidth - rightWidth - minPadding;
 
 		if (availableForLeft < 1) {

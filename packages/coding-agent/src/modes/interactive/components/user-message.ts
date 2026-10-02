@@ -42,7 +42,7 @@ export class UserMessageComponent extends Container {
 					},
 					{ preserveOrderedListMarkers: true, preserveBackslashEscapes: true },
 				),
-				`${theme.fg("muted", ">")} `,
+				`${theme.fg("muted", "❯")} `,
 				"  ",
 			),
 		);

@@ -41,6 +41,7 @@
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 - Background task completions now render as a compact `●` block with the task id, status, and a collapsed `⎿` output preview instead of a full-width colored box.
 - Fixed model catalog refresh for custom `/override` backends: refreshing (at startup and in `/model`) never contacted the backend, so models added or removed there were not picked up while the UI still said "Model catalogs refreshed". Each override backend now refreshes from its own `GET /models`, saves the result, and reports a failing backend as a refresh error.
 - Fixed the `background_task` tool never being offered to the model in real sessions: it was registered but not in the default active tool set built by `createAgentSession`, so the agent said it had no background task tool and the system prompt never mentioned `/tasks` or Ctrl+B.
@@ -102,6 +103,8 @@
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed skill discovery not loading the documented `.agents/skills` locations. `~/.agents/skills` now loads as a user resource, and `.agents/skills` in `cwd` and ancestors up to the git repo root loads as a project resource once the project is trusted, with root `*.md` files ignored in those directories.
 - Fixed the `codeify update` version banner showing a stale target version by checking the GitHub contents API instead of the CDN-cached raw host.
 - Fixed Codeify OAuth opening the authorization page twice and added a compact, styled loopback success page.
@@ -138,6 +141,8 @@
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed compaction and branch summarization to retry transient provider failures using the configured retry policy, with retry lifecycle events exposed to interactive, JSON, RPC, and SDK consumers ([#6901](https://github.com/earendil-works/pi/pull/6901) by [@davidbrai](https://github.com/davidbrai)).
 - Fixed interactive startup waiting for background model catalog refresh while computing the footer provider count.
 - Restored the default stream fallback for extensions using the pre-0.81 agent-core API ([#6915](https://github.com/earendil-works/pi/issues/6915)).
@@ -162,6 +167,8 @@
 - Added usage accounting for tools, compaction, and branch summaries in persisted sessions, footer totals, and session statistics ([#6671](https://github.com/earendil-works/pi/pull/6671) by [@davidbrai](https://github.com/davidbrai)).
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Updated the packaged `brace-expansion` dependency to 5.0.7 ([#6896](https://github.com/earendil-works/pi/pull/6896) by [@davidbrai](https://github.com/davidbrai)).
 - Fixed persisted remote model catalogs from overriding newer bundled catalogs after an upgrade.
@@ -193,6 +200,8 @@
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed inherited Kimi Coding requests to use Anthropic adaptive thinking effort without token budgets, and enabled empty thinking signatures for K3 and `kimi-for-coding`.
 - Fixed inherited Kimi K3 pricing metadata for Moonshot AI and Moonshot AI China.
 - Fixed inherited Kimi Coding K3 thinking-level metadata to expose only the supported `max` level ([#6737](https://github.com/earendil-works/pi/issues/6737)).
@@ -214,6 +223,8 @@
 - Changed xAI login to use a prefilled device-authorization link labeled “Sign in with SuperGrok or X Premium,” and changed the default xAI model to Grok 4.5 ([#6734](https://github.com/earendil-works/pi-mono/pull/6734) by [@Jaaneek](https://github.com/Jaaneek)).
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed inherited Kimi K3 output limits for Vercel AI Gateway and OpenRouter models.
 - Fixed cloning or forking a session before its first assistant response to explain that the session must be saved first.
@@ -255,6 +266,8 @@
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed configured-provider catalog refresh to parse pi.dev's model-ID keyed responses, throttle checks to once per four hours, send the versioned pi user agent, treat unimplemented routes as unavailable overlays, and show concise refresh status in `/model`.
 - Fixed adjacent assistant thinking blocks to render as one thinking section.
 - Fixed inherited OpenAI Codex session IDs longer than 64 characters to meet the API limit ([#6630](https://github.com/earendil-works/pi-mono/issues/6630)).
@@ -282,6 +295,8 @@
 - Added inherited `toolChoice` support for OpenAI and Codex Responses, including required and named tool selection ([#6588](https://github.com/earendil-works/pi-mono/pull/6588) by [@xl0](https://github.com/xl0)).
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed inherited OpenRouter model context windows to use the top provider's actual context length ([#6481](https://github.com/earendil-works/pi-mono/pull/6481) by [@davidbrai](https://github.com/davidbrai)).
 - Fixed inherited OpenRouter OpenAI-compatible session IDs to use the `x-session-id` header instead of OpenAI-specific session-affinity fields ([#6496](https://github.com/earendil-works/pi-mono/pull/6496) by [@petrroll](https://github.com/petrroll)).
@@ -313,6 +328,8 @@
 - Added `~` (home directory) expansion for the `shellPath` setting ([#6470](https://github.com/earendil-works/pi/pull/6470) by [@aaronkyriesenbach](https://github.com/aaronkyriesenbach)).
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed inherited post-compaction output-token budgeting to ignore stale assistant usage from before the compaction boundary ([#6464](https://github.com/earendil-works/pi/issues/6464)).
 - Fixed inherited GPT-5.4 and GPT-5.5 long-context cost accounting while retaining the intentional 272K default context limit for models that require an explicit override.
@@ -347,6 +364,8 @@
 - Added a `showCacheMissNotices` setting and `/settings` toggle for significant prompt-cache miss transcript notices.
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed inherited retry classification for gRPC `ResourceExhausted` provider errors such as NVIDIA NIM transient exhaustion responses ([#6449](https://github.com/earendil-works/pi/pull/6449) by [@davidbrai](https://github.com/davidbrai)).
 - Fixed inherited retry classification for Cloudflare 524 timeout responses ([#6239](https://github.com/earendil-works/pi/issues/6239)).
@@ -415,6 +434,8 @@
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed inherited Claude Sonnet 5 metadata to use adaptive thinking payloads for Anthropic-compatible and Bedrock requests.
 - Fixed inherited generated Xiaomi MiMo model pricing to match current pay-as-you-go pricing from models.dev ([#6138](https://github.com/earendil-works/pi/issues/6138)).
 - Fixed inherited provider HTTP errors to include response bodies instead of opaque SDK messages ([#5832](https://github.com/earendil-works/pi/pull/5832) by [@stephanmck](https://github.com/stephanmck)).
@@ -444,6 +465,8 @@
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed inherited Anthropic-compatible custom models to use explicit compatibility metadata instead of provider-name heuristics for session-affinity headers and unsupported tool-field omissions.
 - Fixed inherited request-scoped `apiKey` and `env` values to participate in provider auth resolution, so providers such as Cloudflare can derive request-specific base URLs from explicit call options ([#6021](https://github.com/earendil-works/pi/issues/6021)).
 - Restored inherited temporary legacy per-API stream aliases such as `streamSimpleOpenAICompletions` on the pi-ai compat entrypoint ([#6016](https://github.com/earendil-works/pi/issues/6016), [#6017](https://github.com/earendil-works/pi/issues/6017)).
@@ -452,6 +475,8 @@
 ## [0.80.1] - 2026-06-23
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed inherited Amazon Bedrock scoped `AWS_PROFILE` endpoint resolution for built-in inference profile endpoints.
 - Fixed inherited Fireworks Anthropic-compatible requests to apply session-affinity and unsupported tool-field defaults for custom Fireworks models.
@@ -466,6 +491,8 @@
 - pi-ai's old global API (`stream`/`complete`/`completeSimple`, `getModel`/`getModels`/`getProviders`, `registerApiProvider`, `getEnvApiKey`, ...) moved off the `@earendil-works/pi-ai` root entrypoint to `@earendil-works/pi-ai/compat`. Extensions are not affected at runtime: the extension loader resolves the pi-ai root to the compat entrypoint (a strict superset), so existing extensions keep working unchanged. Extension sources that typecheck against pi-ai's published types should switch those imports to `@earendil-works/pi-ai/compat` (or migrate to the new `createModels()`/provider-factory API). The compat entrypoint and the loader alias will be removed in a future release with a migration guide.
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed session names to normalize newline characters before storing or displaying labels ([#5999](https://github.com/earendil-works/pi/pull/5999) by [@haoqixu](https://github.com/haoqixu)).
 - Fixed the session selector to order threaded session trees by the latest activity anywhere in each subtree ([#5784](https://github.com/earendil-works/pi/pull/5784) by [@Perlence](https://github.com/Perlence)).
@@ -496,6 +523,8 @@
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed the `find` tool to respect nested git repository boundaries when parent `.gitignore` rules ignore the nested repo ([#5960](https://github.com/earendil-works/pi/issues/5960)).
 - Fixed the usage docs slash command table to include `/trust` and `/import` ([#5959](https://github.com/earendil-works/pi/issues/5959)).
 - Fixed inherited OpenAI-compatible streaming to preserve encrypted `reasoning_details` that arrive before matching tool call deltas ([#5114](https://github.com/earendil-works/pi/issues/5114)).
@@ -517,6 +546,8 @@
 - Added inherited configurable `chat-template` thinking support for OpenAI-compatible providers that use `chat_template_kwargs`, such as DeepSeek models behind vLLM ([#5673](https://github.com/earendil-works/pi/issues/5673)).
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed inherited Fireworks GLM-5.2 metadata to use the OpenAI-compatible Chat Completions endpoint with `reasoning_effort` support ([#5923](https://github.com/earendil-works/pi/issues/5923)).
 - Fixed same-directory session switches to reuse imported extension modules while preserving fresh extension instances and lifecycle events ([#5905](https://github.com/earendil-works/pi/issues/5905)).
@@ -546,6 +577,8 @@
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Updated vulnerable runtime dependencies, including `undici` and the packaged `protobufjs` transitive dependency.
 - Fixed compaction to refuse sessions with no eligible messages instead of producing empty summaries ([#4811](https://github.com/earendil-works/pi/issues/4811)).
 - Fixed successful overflow-triggered auto-compaction to avoid retrying completed assistant responses ([#5720](https://github.com/earendil-works/pi/issues/5720)).
@@ -574,6 +607,8 @@
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed RPC unknown-command errors to include the request id so clients do not hang waiting for a response ([#5868](https://github.com/earendil-works/pi/issues/5868)).
 - Fixed `/model` autocomplete and model selection searches to match provider/model queries regardless of whether the provider or model token is typed first.
 - Fixed the tree navigator to horizontally pan deep entries so the selected item remains readable ([#5830](https://github.com/earendil-works/pi/issues/5830)).
@@ -581,6 +616,8 @@
 ## [0.79.6] - 2026-06-16
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed HTTP dispatcher configuration to preserve a caller's deliberate `fetch` override instead of reinstalling the undici global fetch over it.
 - Fixed inherited OpenCode Go DeepSeek V4 thinking-off requests to send the provider's `thinking: { type: "disabled" }` compatibility parameter.
@@ -606,6 +643,8 @@
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed inherited OpenAI Responses streaming to tolerate null message content from OpenAI-compatible servers before tool calls ([#5819](https://github.com/earendil-works/pi/issues/5819)).
 - Fixed inherited OpenCode DeepSeek V4 thinking requests to avoid sending both `thinking` and `reasoning_effort` ([#5818](https://github.com/earendil-works/pi/issues/5818)).
 - Fixed device-code login to stop opening the browser automatically.
@@ -630,6 +669,8 @@
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed bash tool output collection to keep draining stdout/stderr after the child exits while descendants still write, avoiding truncated late output ([#5753](https://github.com/earendil-works/pi/pull/5753) by [@Mearman](https://github.com/Mearman)).
 - Fixed `/tree` help rendering to show compact wrapped controls instead of truncating them on narrow terminals ([#5055](https://github.com/earendil-works/pi/issues/5055)).
 - Fixed SIGTERM/SIGHUP interactive shutdown to keep signal handlers installed until terminal cleanup completes, preventing `signal-exit` from re-sending the signal and leaving the terminal in raw/Kitty keyboard mode ([#5724](https://github.com/earendil-works/pi/issues/5724)).
@@ -649,6 +690,8 @@
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed inherited OpenAI GPT-5.4/GPT-5.5 and OpenAI Codex GPT-5.4/GPT-5.4 mini/GPT-5.5 context window metadata to use the observed 272k-token Codex backend limit, avoiding a billing hazard from prompts above Codex's accepted limit (reported by [@trethore](https://github.com/trethore)).
 
 ## [0.79.2] - 2026-06-12
@@ -663,6 +706,8 @@
 - Added AWS data retention documentation links to inherited Amazon Bedrock unsupported data retention mode validation errors ([#5561](https://github.com/earendil-works/pi/pull/5561) by [@unexge](https://github.com/unexge)).
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed project trust detection to ignore global `~/.pi/agent` state when running from `$HOME`, and made `pi update` use only saved or explicit project trust without prompting ([#5619](https://github.com/earendil-works/pi/issues/5619)).
 - Fixed experimental first-time setup to skip forked sessions instead of rerunning the setup prompts ([#5627](https://github.com/earendil-works/pi/pull/5627) by [@vegarsti](https://github.com/vegarsti)).
@@ -702,6 +747,8 @@
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed inherited Amazon Bedrock inference profile ARN region resolution to prefer the ARN's embedded region over `AWS_REGION` ([#5527](https://github.com/earendil-works/pi/pull/5527) by [@AJM10565](https://github.com/AJM10565)).
 - Fixed inherited IME hardware cursor positioning while slash-command autocomplete is visible ([#5283](https://github.com/earendil-works/pi/pull/5283) by [@smoosex](https://github.com/smoosex)).
 - Fixed inherited z.ai thinking-off requests to send the provider's `thinking: { type: "disabled" }` compatibility parameter ([#5330](https://github.com/earendil-works/pi/issues/5330)).
@@ -739,6 +786,8 @@
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed package exports by removing the stale `./hooks` subpath that pointed at non-existent build output.
 - Fixed inherited TUI rendering to clear stale lines when content shrinks to zero.
 - Fixed inherited autocomplete suggestions to refresh after editor cursor movement ([#5499](https://github.com/earendil-works/pi/pull/5499) by [@Roman-Galeev](https://github.com/Roman-Galeev)).
@@ -770,6 +819,8 @@
 - Added `ctx.getSystemPromptOptions()` for extension commands to inspect the current base system prompt inputs ([#5306](https://github.com/earendil-works/pi/pull/5306) by [@xl0](https://github.com/xl0)).
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed temporary extension package installs to use a private `~/.pi/agent/tmp/extensions` directory with `0700` permissions instead of `os.tmpdir()/pi-extensions`.
 - Fixed git package source handling to reject unsafe host/path components and keep managed clone paths inside install roots.
@@ -806,6 +857,8 @@
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Clarified the WezTerm/WSL IME hardware cursor docs to state that cursor visibility remains opt-in ([#5200](https://github.com/earendil-works/pi-mono/issues/5200)).
 - Fixed the GitLab Duo custom provider example to use adaptive thinking for Claude models, expose xhigh thinking, and include newer verified model IDs ([#5201](https://github.com/earendil-works/pi-mono/issues/5201)).
 - Fixed Bun release archive creation to install and copy the matching `@mariozechner/clipboard` base package and native sidecars ([#5184](https://github.com/earendil-works/pi-mono/issues/5184)).
@@ -834,6 +887,8 @@
 - Added Claude Opus 4.8 model metadata for Anthropic and updated Opus adaptive-thinking coverage to use it.
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed startup timing output so `readPipedStdin` no longer includes `createAgentSessionRuntime` work ([#4829](https://github.com/earendil-works/pi/issues/4829)).
 - Fixed OpenRouter DeepSeek V4 `xhigh` reasoning metadata to preserve OpenRouter's native effort instead of sending DeepSeek's `max` effort ([#4801](https://github.com/earendil-works/pi/issues/4801)).
@@ -869,6 +924,8 @@
 - Added `excludeFromContext` flag to the `bash` RPC command for parity with the internal `executeBash` API ([#5039](https://github.com/earendil-works/pi/issues/5039)).
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed user message transcript rendering to preserve user-authored ordered-list markers ([#5013](https://github.com/earendil-works/pi/issues/5013)).
 - Fixed self-update commands to bypass npm, pnpm, and Bun minimum release age gates for explicit `pi update` runs ([#4929](https://github.com/earendil-works/pi/issues/4929)).
@@ -910,6 +967,8 @@
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed `pi update` to reconcile git-pinned packages to their configured ref ([#4869](https://github.com/earendil-works/pi/issues/4869)).
 - Fixed package/resource path handling for Windows and glob/pattern resolution ([#4873](https://github.com/earendil-works/pi-mono/pull/4873) by [@mitsuhiko](https://github.com/mitsuhiko)).
 - Fixed config pattern matching to resolve patterns from the correct base directory ([#4898](https://github.com/earendil-works/pi-mono/pull/4898) by [@haoqixu](https://github.com/haoqixu)).
@@ -948,6 +1007,8 @@
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed the system prompt to tell models to resolve pi docs and examples under the absolute package paths before reading topic-specific relative references ([#4752](https://github.com/earendil-works/pi/issues/4752)).
 - Fixed extension `ctx.abort()` during tool-call preflight to stop later confirmations and restore queued interactive input like Escape ([#4276](https://github.com/earendil-works/pi/issues/4276)).
 - Fixed AgentSession retry, compaction, and event settlement to use the awaited agent lifecycle instead of a separate event queue, and added `willRetry` to `agent_end` session events.
@@ -969,11 +1030,15 @@
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed undici 8 HTTP/2 destroyed-session races crashing the Node CLI by preserving the previous HTTP/1.1-only fetch dispatcher behavior ([#4681](https://github.com/earendil-works/pi/issues/4681)).
 
 ## [0.75.2] - 2026-05-18
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed Bun-compiled release binaries failing to start when Bun's built-in undici shim lacks npm undici's `install` export ([#4661](https://github.com/earendil-works/pi-mono/pull/4661) by [@dmasiero](https://github.com/dmasiero)).
 - Fixed Xiaomi MiMo generated model metadata to replay assistant tool-call messages with `reasoning_content` for thinking-mode multi-turn requests, inherited from `@earendil-works/pi-ai` ([#4678](https://github.com/earendil-works/pi/issues/4678)).
@@ -986,6 +1051,8 @@
 ## [0.75.1] - 2026-05-18
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed config selectors to scale their visible row count to terminal height ([#4243](https://github.com/earendil-works/pi-mono/pull/4243) by [@samjonester](https://github.com/samjonester)).
 - Fixed Anthropic-compatible API-key requests to ignore unrelated `ANTHROPIC_AUTH_TOKEN` environment values, avoiding invalid bearer credentials for providers such as Xiaomi MiMo inherited from `@earendil-works/pi-ai` ([#4342](https://github.com/earendil-works/pi/issues/4342)).
@@ -1007,6 +1074,8 @@
 - Raised the minimum supported Node.js version to 22.19.0.
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed compaction summary calls to use custom agent stream functions, preserving proxy-backed LLM routing ([#4484](https://github.com/earendil-works/pi/issues/4484)).
 - Fixed system prompt and context file boundaries to use explicit XML tags instead of Markdown headings, reducing inconsistent boundary ingestion by models ([#4541](https://github.com/earendil-works/pi-mono/pull/4541) by [@herrnel](https://github.com/herrnel)).
@@ -1032,6 +1101,8 @@
 - Added Windows ARM64 standalone binary release artifacts ([#4458](https://github.com/earendil-works/pi/pull/4458) by [@brianmichel](https://github.com/brianmichel)).
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed Node 26 OpenAI-compatible streams timing out after five idle minutes by routing global fetch through pi's undici dispatcher ([#4519](https://github.com/earendil-works/pi/issues/4519)).
 - Fixed pnpm global package installs by resolving the global package root from pnpm's layout.
@@ -1083,6 +1154,8 @@
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed `pi -p` treating prompts that start with YAML frontmatter as extension flags instead of user messages ([#4163](https://github.com/badlogic/pi-mono/issues/4163)).
 - Fixed pending tool results not updating in the live TUI after toggling thinking block visibility while the tool is running ([#4167](https://github.com/badlogic/pi-mono/issues/4167)).
 - Fixed `/copy` reporting success on Linux without writing the clipboard on Wayland-only compositors (Hyprland, Niri, ...) by skipping the X11-only native addon on Linux and routing through `wl-copy`/`xclip`/`xsel` instead ([#4177](https://github.com/badlogic/pi-mono/issues/4177)).
@@ -1117,6 +1190,8 @@
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed generated OpenAI-compatible model metadata for Qwen 3.5/3.6 and MiniMax M2.7, so those models work through the built-in provider catalog ([#4110](https://github.com/badlogic/pi-mono/pull/4110) by [@jsynowiec](https://github.com/jsynowiec)).
 - Fixed Bedrock Claude Opus 4.7 `xhigh` thinking requests by preserving the provider's native effort value.
 - Fixed OpenAI Codex WebSocket transport to fall back to SSE when setup fails before streaming starts, and surface transport diagnostics in the assistant message ([#4133](https://github.com/badlogic/pi-mono/issues/4133)).
@@ -1149,6 +1224,8 @@
 - Added `shouldStopAfterTurn` agent loop callback for post-turn stop control, inherited from `@mariozechner/pi-agent-core`. See [`packages/agent/README.md`](https://github.com/badlogic/pi-mono/blob/main/packages/agent/README.md).
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed the default transport setting to use `auto`, allowing OpenAI Codex to use cached WebSocket context when available ([#4083](https://github.com/badlogic/pi-mono/issues/4083)).
 - Fixed `pi.registerProvider()` to honor per-model `baseUrl` overrides ([#4063](https://github.com/badlogic/pi-mono/issues/4063)).
@@ -1187,6 +1264,8 @@
 - Added a `thinking_level_select` extension event for observing thinking level changes ([#3888](https://github.com/badlogic/pi-mono/issues/3888)).
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed WSL clipboard image paste by passing the PowerShell save path directly instead of through a custom environment variable ([#2469](https://github.com/badlogic/pi-mono/issues/2469)).
 - Fixed Google Vertex Gemini 3 tool call replay for unsigned tool calls ([#4032](https://github.com/badlogic/pi-mono/issues/4032)).
@@ -1233,6 +1312,8 @@
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed config selector scroll indicators to show item counts instead of line counts ([#3820](https://github.com/badlogic/pi-mono/pull/3820) by [@aliou](https://github.com/aliou)).
 - Fixed exported HTML to escape embedded image data and session metadata, preventing crafted session content from injecting markup ([#3819](https://github.com/badlogic/pi-mono/pull/3819) by [@justinpbarnett](https://github.com/justinpbarnett), [#3883](https://github.com/badlogic/pi-mono/pull/3883) by [@justinpbarnett](https://github.com/justinpbarnett)).
 - Fixed Bun-based package manager startup by locating global `node_modules` relative to Bun's install layout ([#3861](https://github.com/badlogic/pi-mono/pull/3861) by [@thirtythreeforty](https://github.com/thirtythreeforty)).
@@ -1246,11 +1327,15 @@
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed HTML export preserving ANSI-renderer trailing padding as extra blank wrapped lines.
 
 ## [0.70.4] - 2026-04-27
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed packaged `pi` startup failing because the session selector imported a source-only utility path.
 
@@ -1271,6 +1356,8 @@
 - Added `ctx.ui.setWorkingVisible()` so extensions can hide the built-in interactive working loader row without reserving layout space, plus a border-status editor example that moves working state into a custom editor border ([#3674](https://github.com/badlogic/pi-mono/issues/3674))
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed duplicate printable characters from Kitty keyboard protocol CSI-u plus raw character input on layouts such as Italian ([#3780](https://github.com/badlogic/pi-mono/issues/3780)).
 - Fixed API-key environment discovery and Bun startup to fall back to `/proc/self/environ` when Bun's sandbox leaves `process.env` empty ([#3801](https://github.com/badlogic/pi-mono/pull/3801) by [@mdsjip](https://github.com/mdsjip)).
@@ -1294,6 +1381,8 @@
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed provider retry/timeout forwarding to omit undefined provider request controls, avoiding downstream SDK validation errors such as `timeout must be an integer` when `retry.provider.timeoutMs` is not configured ([#3627](https://github.com/badlogic/pi-mono/issues/3627))
 
 ## [0.70.1] - 2026-04-24
@@ -1308,6 +1397,8 @@
 - Added DeepSeek to built-in provider setup, default model resolution, and provider documentation.
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed `/copy` to avoid unbounded OSC 52 writes and clipboard races that could break terminal rendering or panic the native clipboard addon ([#3639](https://github.com/badlogic/pi-mono/issues/3639))
 - Fixed extension flag docs to show `pi.getFlag()` using registered flag names without the CLI `--` prefix ([#3614](https://github.com/badlogic/pi-mono/issues/3614))
@@ -1342,6 +1433,8 @@
 - Improved stale extension context errors after session replacement or reload to tell extension authors to avoid captured `pi`/command `ctx` and use `withSession` for post-replacement work.
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed `/model` selector cancellation to request render instead of incorrectly triggering login selector.
 - Changed login, OAuth, and extension selectors for more consistent styling.
@@ -1394,6 +1487,8 @@
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed exported session HTML to sanitize markdown link URLs before rendering them into anchor tags, blocking `javascript:`-style payloads while preserving safe links in shared/exported sessions ([#3532](https://github.com/badlogic/pi-mono/issues/3532))
 - Fixed `ctx.getSystemPrompt()` inside `before_agent_start` to reflect chained system-prompt changes made by earlier `before_agent_start` handlers, and clarified the extension docs around provider-payload rewrites and what `ctx.getSystemPrompt()` does and does not report ([#3539](https://github.com/badlogic/pi-mono/issues/3539))
 - Fixed built-in `google-gemini-cli` model lists and selector entries to include `gemini-3.1-flash-lite-preview`, so Cloud Code Assist users no longer need manual `--model` fallback selection to use it ([#3545](https://github.com/badlogic/pi-mono/issues/3545))
@@ -1412,6 +1507,8 @@
 - Added built-in Fireworks provider support, including `FIREWORKS_API_KEY` setup/docs and the default Fireworks model `accounts/fireworks/models/kimi-k2p6` ([#3519](https://github.com/badlogic/pi-mono/issues/3519))
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed interactive inline tool images to honor configurable `terminal.imageWidthCells` via `/settings`, so tool-output images are no longer hard-capped to 60 terminal cells ([#3508](https://github.com/badlogic/pi-mono/issues/3508))
 - Fixed `sessionDir` in `settings.json` to expand `~`, so portable session-directory settings no longer require a shell wrapper ([#3514](https://github.com/badlogic/pi-mono/issues/3514))
@@ -1455,6 +1552,8 @@
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed `AgentSession` system-prompt option initialization to avoid constructing an invalid empty `BuildSystemPromptOptions`, so `npm run check` passes after `cwd` became mandatory.
 - Fixed shell-path resolution to stop consulting ambient `process.cwd()` state during bash execution, so session/project-specific `shellPath` settings now follow the active coding-agent session cwd instead of the launcher cwd ([#3452](https://github.com/badlogic/pi-mono/issues/3452))
 - Fixed `ctx.ui.setWorkingIndicator()` custom frames to render verbatim instead of forcing the theme accent color, so extensions now own working-indicator coloring when they customize it ([#3467](https://github.com/badlogic/pi-mono/issues/3467))
@@ -1493,6 +1592,8 @@
 - Added Bedrock bearer-token authentication support via `AWS_BEARER_TOKEN_BEDROCK`, enabling coding-agent sessions to use Bedrock Converse without local SigV4 credentials ([#3125](https://github.com/badlogic/pi-mono/pull/3125) by [@wirjo](https://github.com/wirjo))
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed `/scoped-models` Alt+Up/Down to stay a no-op in the implicit `all enabled` state instead of materializing a full explicit enabled-model list and marking the selector dirty ([#3331](https://github.com/badlogic/pi-mono/issues/3331))
 - Fixed Mistral Small 4 default thinking requests to use the model's supported reasoning control, avoiding `400` errors when starting sessions on `mistral-small-2603` and `mistral-small-latest` ([#3338](https://github.com/badlogic/pi-mono/issues/3338))
@@ -1533,6 +1634,8 @@
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed interactive user message rendering to keep bottom padding visible in terminals affected by OSC 133 prompt markers without adding an extra blank line before the following assistant message ([#3090](https://github.com/badlogic/pi-mono/issues/3090))
 - Fixed `--verbose` startup output to begin with expanded startup help and loaded resource listings after the compact startup header change ([#3147](https://github.com/badlogic/pi-mono/issues/3147))
 - Fixed `find` tool returning no results for path-based glob patterns such as `src/**/*.spec.ts` or `some/parent/child/**` by switching fd into full-path mode and normalizing the pattern when it contains a `/` ([#3302](https://github.com/badlogic/pi-mono/issues/3302))
@@ -1543,6 +1646,8 @@
 ## [0.67.5] - 2026-04-16
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed Opus 4.7 adaptive thinking configuration across Anthropic and Bedrock providers by recognizing Opus 4.7 adaptive-thinking support and mapping `xhigh` reasoning to provider-supported effort values ([#3286](https://github.com/badlogic/pi-mono/pull/3286) by [@markusylisiurunen](https://github.com/markusylisiurunen))
 - Fixed Zellij `Shift+Enter` regressions by reverting the Zellij-specific Kitty keyboard query bypass and restoring the previous keyboard negotiation behavior ([#3259](https://github.com/badlogic/pi-mono/issues/3259))
@@ -1568,6 +1673,8 @@
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed markdown strikethrough parsing in interactive rendering and HTML export to require strict double-tilde delimiters (`~~text~~`) with non-whitespace boundaries.
 - Fixed shutdown handling to kill tracked detached `bash` tool child processes on exit signals, preventing orphaned background processes.
 - Fixed flaky `edit-tool-no-full-redraw` TUI tests by waiting for asynchronous preview and preflight error rendering instead of relying on fixed render ticks.
@@ -1588,6 +1695,8 @@
 - Added `renderShell: "self"` for custom and built-in tool renderers so tools can own their outer shell instead of using the default boxed shell. This is useful for stable large previews such as edit diffs ([#3134](https://github.com/badlogic/pi-mono/issues/3134))
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed edit diff previews to stay visible during edit permission dialogs and session replay without reintroducing large-result redraw flicker ([#3134](https://github.com/badlogic/pi-mono/issues/3134))
 - Fixed `/reload` to render a static reload status box instead of an animated spinner, avoiding redraw instability during interactive reloads.
@@ -1614,6 +1723,8 @@
 - Added support for passing inline extension factories to `main()` for embedded integrations and custom entrypoints ([#3099](https://github.com/badlogic/pi-mono/pull/3099) by [@pmateusz](https://github.com/pmateusz))
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed direct OpenAI Responses and Codex SSE requests to align `prompt_cache_key`, `session_id`, and `x-client-request-id` values with the same session-derived identifier, improving prompt cache affinity for append-only sessions ([#3018](https://github.com/badlogic/pi-mono/pull/3018) by [@steipete](https://github.com/steipete))
 - Fixed streaming-only `partialJson` scratch buffers leaking into persisted OpenAI Responses tool calls, which could corrupt follow-up payloads on resumed conversations.
@@ -1663,6 +1774,8 @@ How to disable it:
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed interactive changelog rendering for the telemetry notes by moving the section under a `### Telemetry` heading, so startup shows the full release notes instead of only the version header.
 - Updated `antigravity-image-gen.ts` example extension to use User-Agent version `1.21.9` ([#2901](https://github.com/badlogic/pi-mono/pull/2901) by [@aadishv](https://github.com/aadishv))
 - Bumped default Antigravity User-Agent version to `1.21.9` ([#2901](https://github.com/badlogic/pi-mono/pull/2901) by [@aadishv](https://github.com/aadishv))
@@ -1694,6 +1807,8 @@ See [0.67.1]. Version 0.67.0 shipped with a changelog formatting error that caus
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed bare `readline` import to use `node:readline` prefix for Deno compatibility ([#2885](https://github.com/badlogic/pi-mono/issues/2885) by [@milosv-vtool](https://github.com/milosv-vtool))
 - Fixed auto-retry to treat stream failures like `request ended without sending any chunks` as transient errors ([#2892](https://github.com/badlogic/pi-mono/issues/2892))
 - Fixed interactive startup notices to render after the initial resource listing, and added a bundled Earendil startup announcement with inline image rendering for April 8 and 9, 2026. Moved the blog link above the image to avoid overlap with terminal image rendering.
@@ -1704,6 +1819,8 @@ See [0.67.1]. Version 0.67.0 shipped with a changelog formatting error that caus
 ## [0.65.1] - 2026-04-05
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed bash output truncation by line count to always persist full output to a temp file, preventing data loss when output exceeds 2000 lines but stays under the byte threshold ([#2852](https://github.com/badlogic/pi-mono/issues/2852))
 - RpcClient now forwards subprocess stderr to parent process in real-time ([#2805](https://github.com/badlogic/pi-mono/issues/2805))
@@ -1805,6 +1922,8 @@ await runtime.fork("entry-id");
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed startup resource loading to reuse the initial `ResourceLoader` for the first runtime, so extensions are not loaded twice before session startup and `session_start` handlers still fire for singleton-style extensions ([#2766](https://github.com/badlogic/pi-mono/issues/2766))
 - Fixed retry settlement so retried agent runs wait for the full retry cycle to complete before declaring idle, preventing stale state after transient errors
 - Fixed theme `export` colors to resolve theme variables the same way as `colors`, so `/export` HTML backgrounds now honor entries like `pageBg: "base"` instead of requiring inline hex values ([#2707](https://github.com/badlogic/pi-mono/issues/2707))
@@ -1830,6 +1949,8 @@ await runtime.fork("entry-id");
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed extension-queued user messages to refresh the interactive pending-message list so messages submitted while a turn is active are no longer silently dropped ([#2674](https://github.com/badlogic/pi-mono/pull/2674) by [@mrexodia](https://github.com/mrexodia))
 - Fixed monorepo `tsconfig.json` path mappings to resolve `@mariozechner/pi-ai` subpath exports to source files in development checkouts ([#2625](https://github.com/badlogic/pi-mono/pull/2625) by [@ferologics](https://github.com/ferologics))
 - Fixed TUI cell size response handling to consume only exact `CSI 6 ; height ; width t` replies, so bare `Escape` is no longer swallowed while waiting for terminal image metadata ([#2661](https://github.com/badlogic/pi-mono/issues/2661))
@@ -1849,6 +1970,8 @@ await runtime.fork("entry-id");
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed built-in `edit` tool input to use `edits[]` as the only replacement shape, eliminating the mixed single-edit and multi-edit modes that caused repeated invalid tool calls and retries ([#2639](https://github.com/badlogic/pi-mono/issues/2639))
 - Fixed edit tool TUI rendering to defer large multi-edit diffs to the settled result, avoiding full-screen redraws when the tool completes ([#2664](https://github.com/badlogic/pi-mono/issues/2664))
 
@@ -1859,6 +1982,8 @@ await runtime.fork("entry-id");
 - Added `gemini-3.1-pro-preview-customtools` model availability for the `google-vertex` provider ([#2610](https://github.com/badlogic/pi-mono/pull/2610) by [@gordonhwc](https://github.com/gordonhwc))
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Documented `tool_call` input mutation as supported extension API behavior, clarified that post-mutation inputs are not re-validated, and added regression coverage for executing mutated tool arguments ([#2611](https://github.com/badlogic/pi-mono/issues/2611))
 - Fixed repeated compactions dropping messages that were kept by an earlier compaction by re-summarizing from the previous kept boundary and recalculating `tokensBefore` from the rebuilt session context ([#2608](https://github.com/badlogic/pi-mono/issues/2608))
@@ -1907,6 +2032,8 @@ return streamSimple(model, messages, {
 ### Changed
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed file mutation queue ordering so concurrent `edit` and `write` operations targeting the same file stay serialized in request order instead of being reordered during queue-key resolution
 - Fixed `models.json` shell-command auth and headers to resolve at request time instead of being cached into long-lived model state. pi now leaves TTL, caching, and recovery policy to user-provided wrapper commands because arbitrary shell commands need provider-specific strategies ([#1835](https://github.com/badlogic/pi-mono/issues/1835))
@@ -1964,6 +2091,8 @@ Examples:
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed extension command name conflicts so extensions with duplicate command names can load together. Conflicting extension commands now get numeric invocation suffixes in load order, for example `/review:1` and `/review:2` ([#1061](https://github.com/badlogic/pi-mono/issues/1061))
 - Fixed slash command source attribution for extension commands, prompt templates, and skills in autocomplete and command discovery ([#1734](https://github.com/badlogic/pi-mono/issues/1734))
 - Fixed auto-resized image handling to enforce the inline image size limit on the final base64 payload, return text-only fallbacks when resizing cannot produce a safe image, and avoid falling back to the original image in `read` and `@file` auto-resize paths ([#2055](https://github.com/badlogic/pi-mono/issues/2055))
@@ -1994,6 +2123,8 @@ Examples:
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed `ctrl+z` suspend and `fg` resume reliability by keeping the process alive until the `SIGCONT` handler restores the TUI, avoiding immediate process exit in environments with no other live event-loop handles ([#2454](https://github.com/badlogic/pi-mono/issues/2454))
 - Fixed `createAgentSession({ agentDir })` to derive the default persisted session path from the provided `agentDir`, keeping session storage aligned with settings, auth, models, and resource loading ([#2457](https://github.com/badlogic/pi-mono/issues/2457))
 - Fixed shared keybinding resolution to stop user overrides from evicting unrelated default shortcuts such as selector confirm and editor cursor keys ([#2455](https://github.com/badlogic/pi-mono/issues/2455))
@@ -2020,6 +2151,8 @@ Examples:
 - Added a resizable sidebar to HTML share and export views ([#2435](https://github.com/badlogic/pi-mono/pull/2435) by [@dmmulroy](https://github.com/dmmulroy))
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Tests for session-selector-rename and tree-selector are now keybinding-agnostic, resetting editor keybindings to defaults before each test so user `keybindings.json` cannot cause failures ([#2360](https://github.com/badlogic/pi-mono/issues/2360))
 - Fixed custom `keybindings.json` overrides to shadow conflicting default shortcuts globally, so bindings such as `cursorUp: ["up", "ctrl+p"]` no longer leave default actions like model cycling active ([#2391](https://github.com/badlogic/pi-mono/issues/2391))
@@ -2059,6 +2192,8 @@ Examples:
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed active model selection to refresh immediately after dynamic provider registrations or updates change the available model set ([#2291](https://github.com/badlogic/pi-mono/issues/2291))
 - Fixed tmux xterm `modifyOtherKeys` matching for `Backspace`, `Escape`, and `Space`, and resolved raw `\x08` backspace ambiguity by treating Windows Terminal sessions differently from legacy terminals ([#2293](https://github.com/badlogic/pi-mono/issues/2293))
 - Fixed Gemini 3 and Antigravity image tool results to stay inline as multimodal tool responses instead of being rerouted through separate follow-up messages ([#2052](https://github.com/badlogic/pi-mono/issues/2052))
@@ -2090,6 +2225,8 @@ Examples:
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed session title handling in `/tree`, compaction, and branch summarization so empty title clears render correctly and `session_info` entries stay out of summaries ([#2304](https://github.com/badlogic/pi-mono/pull/2304) by [@aliou](https://github.com/aliou))
 - Fixed footer branch detection for Git repositories using reftable storage so branch names still appear correctly in the footer ([#2300](https://github.com/badlogic/pi-mono/issues/2300))
 - Fixed rendered user messages to emit an OSC 133 command-executed marker after command output, improving terminal prompt integration ([#2242](https://github.com/badlogic/pi-mono/issues/2242))
@@ -2099,6 +2236,8 @@ Examples:
 ## [0.58.4] - 2026-03-16
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed steering messages to wait until the current assistant message's tool-call batch fully finishes instead of skipping pending tool calls.
 
@@ -2111,6 +2250,8 @@ Examples:
 - Improved settings, theme, thinking, and show-images selector layouts by using configurable select-list primary column sizing ([#2154](https://github.com/badlogic/pi-mono/pull/2154) by [@markusylisiurunen](https://github.com/markusylisiurunen))
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed fuzzy `edit` matching to normalize Unicode compatibility variants before comparison, reducing false "oldText not found" failures for text such as CJK and full-width characters ([#2044](https://github.com/badlogic/pi-mono/issues/2044))
 - Fixed `/model <ref>` exact matching and picker search to recognize canonical `provider/model` references when model IDs themselves contain `/`, such as LM Studio models like `unsloth/qwen3.5-35b-a3b` ([#2174](https://github.com/badlogic/pi-mono/issues/2174))
@@ -2125,6 +2266,8 @@ Examples:
 - Added `pi uninstall` alias for `pi install --uninstall` convenience
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed OpenAI Codex websocket protocol to include required headers and properly terminate SSE streams on connection close ([#1961](https://github.com/badlogic/pi-mono/issues/1961))
 - Fixed WSL clipboard image fallback to properly handle missing clipboard utilities and permission errors ([#1722](https://github.com/badlogic/pi-mono/issues/1722))
@@ -2165,6 +2308,8 @@ Examples:
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed `tool_call` extension handlers observing stale `sessionManager` state during multi-tool turns by draining queued agent events before each `tool_call` preflight. In parallel tool mode this guarantees state through the current assistant tool-calling message, but not sibling tool results from the same assistant message.
 - Fixed interactive input fields backed by the TUI `Input` component to scroll by visual column width for wide Unicode text (CJK, fullwidth characters), preventing rendered line overflow and TUI crashes in places like search and filter inputs ([#1982](https://github.com/badlogic/pi-mono/issues/1982))
 - Fixed `shift+tab` and other modified Tab bindings in tmux when `extended-keys-format` is left at the default `xterm`
@@ -2195,6 +2340,8 @@ Examples:
 - Added digit keys (`0-9`) to the keybinding system, including Kitty CSI-u and xterm `modifyOtherKeys` support for bindings like `ctrl+1` ([#1905](https://github.com/badlogic/pi-mono/issues/1905))
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 - Fixed custom tool collapsed/expanded rendering in HTML exports. Custom tools that define different collapsed vs expanded displays now render correctly in exported HTML, with expandable sections when both states differ and direct display when only expanded exists ([#1934](https://github.com/badlogic/pi-mono/pull/1934) by [@aliou](https://github.com/aliou))
 - Fixed tmux startup guidance and keyboard setup warnings for modified key handling, including Ghostty `shift+enter=text:\n` remap guidance and tmux `extended-keys-format` detection ([#1872](https://github.com/badlogic/pi-mono/issues/1872))
 - Fixed z.ai context overflow recovery so `model_context_window_exceeded` errors trigger auto-compaction instead of surfacing as unhandled stop reason failures ([#1937](https://github.com/badlogic/pi-mono/issues/1937))
@@ -2226,6 +2373,8 @@ Examples:
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed RPC mode stdin/stdout framing to use strict LF-delimited JSONL instead of `readline`, so payloads containing `U+2028` or `U+2029` no longer corrupt command or event streams ([#1911](https://github.com/badlogic/pi-mono/issues/1911))
 - Fixed automatic overlay focus restoration in extension UIs to skip non-capturing overlays, and fixed overlay hide behavior to only reassign focus when the hidden overlay had focus ([#1916](https://github.com/badlogic/pi-mono/pull/1916) by [@nicobailon](https://github.com/nicobailon))
 - Fixed `pi config` misclassifying `~/.agents/skills` as project-scoped in non-git directories under `$HOME`, so toggling those skills no longer writes project overrides to `.pi/settings.json` ([#1915](https://github.com/badlogic/pi-mono/issues/1915))
@@ -2245,6 +2394,8 @@ Examples:
 - Added [tmux setup documentation](docs/tmux.md) for modified enter key support ([#1872](https://github.com/badlogic/pi-mono/issues/1872))
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed custom editors having their `onEscape`/`onCtrlD` handlers unconditionally overwritten by app-level defaults, making vim-style escape handling impossible ([#1838](https://github.com/badlogic/pi-mono/issues/1838))
 - Fixed auto-compaction retriggering on the first prompt after compaction due to stale pre-compaction assistant usage ([#1860](https://github.com/badlogic/pi-mono/issues/1860) by [@joelhooks](https://github.com/joelhooks))
@@ -2276,6 +2427,8 @@ Examples:
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed GPT-5.3 Codex follow-up turns dropping OpenAI Responses assistant `phase` metadata by preserving replayable signatures in session history and forwarding `phase` back to the Responses API ([#1819](https://github.com/badlogic/pi-mono/issues/1819)).
 - Fixed OpenAI Responses replay to omit empty thinking blocks, avoiding invalid no-op reasoning items in follow-up turns.
 - Updated Mistral integration to use the native SDK-backed provider and conversations API, including coding-agent model/provider wiring and Mistral setup documentation ([#1716](https://github.com/badlogic/pi-mono/issues/1716)).
@@ -2290,6 +2443,8 @@ Examples:
 ## [0.56.1] - 2026-03-05
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed extension alias fallback resolution to use ESM-aware resolution for `jiti` aliases in global installs ([#1821](https://github.com/badlogic/pi-mono/pull/1821) by [@Perlence](https://github.com/Perlence))
 - Fixed markdown blockquote rendering to isolate blockquote styling from default text style, preventing style leakage.
@@ -2318,6 +2473,8 @@ Examples:
 - Updated Antigravity Gemini 3.1 model metadata and request headers to match upstream behavior.
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed IME hardware cursor positioning in the custom extension editor (`ctx.ui.editor()` / extension editor dialog) by propagating focus to the internal `Editor`, preventing the terminal cursor from getting stuck at the bottom-right during composition.
 - Added OSC 133 semantic zone markers around rendered user messages to support terminal navigation between prompts in iTerm2, WezTerm, Kitty, Ghostty, and other compatible terminals ([#1805](https://github.com/badlogic/pi-mono/issues/1805)).
@@ -2352,6 +2509,8 @@ Examples:
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed `pi.registerTool()` dynamic registration after session initialization. Tools registered in `session_start` and later handlers now refresh immediately, become active, and are visible to the LLM without `/reload` ([#1720](https://github.com/badlogic/pi-mono/issues/1720))
 - Fixed session message persistence ordering by serializing `AgentSession` event processing, preventing `toolResult` entries from being written before their corresponding assistant tool-call messages when extension handlers are asynchronous ([#1717](https://github.com/badlogic/pi-mono/issues/1717))
 - Fixed spacing artifacts when custom tool renderers intentionally suppress per-call transcript output, including extra blank rows in interactive streaming and non-zero transcript footprint for empty custom renders ([#1719](https://github.com/badlogic/pi-mono/pull/1719) by [@alasano](https://github.com/alasano))
@@ -2360,6 +2519,8 @@ Examples:
 ## [0.55.3] - 2026-02-27
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Changed the default image paste keybinding on Windows to `alt+v` to avoid `ctrl+v` conflicts with terminal paste behavior ([#1682](https://github.com/badlogic/pi-mono/pull/1682) by [@mrexodia](https://github.com/mrexodia)).
 
@@ -2375,6 +2536,8 @@ Examples:
 - `pi.unregisterProvider(name)` removes a dynamically registered provider and its models from the registry without requiring `/reload`. Built-in models that were overridden by the provider are restored ([#1669](https://github.com/badlogic/pi-mono/pull/1669) by [@aliou](https://github.com/aliou)).
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - `pi.registerProvider()` now takes effect immediately when called after the initial extension load phase (e.g. from a command handler). Previously the registration sat in a pending queue that was never flushed until the next `/reload` ([#1669](https://github.com/badlogic/pi-mono/pull/1669) by [@aliou](https://github.com/aliou)).
 - Fixed duplicate session headers when forking from a point before any assistant message. `createBranchedSession` now defers file creation to `_persist()` when the branched path has no assistant message, matching the `newSession()` contract ([#1672](https://github.com/badlogic/pi-mono/pull/1672) by [@w-winter](https://github.com/w-winter)).
@@ -2392,6 +2555,8 @@ Examples:
 - Added `gemini-3.1-pro-preview` model support to the `google-gemini-cli` provider ([#1599](https://github.com/badlogic/pi-mono/pull/1599) by [@audichuang](https://github.com/audichuang)).
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed offline startup hangs by adding offline startup behavior and network timeouts during managed tool setup ([#1631](https://github.com/badlogic/pi-mono/pull/1631) by [@mcollina](https://github.com/mcollina))
 - Fixed Windows VT input initialization in ESM by loading koffi via createRequire, avoiding runtime and bundling issues in end-user environments ([#1627](https://github.com/badlogic/pi-mono/pull/1627) by [@kaste](https://github.com/kaste))
@@ -2412,6 +2577,8 @@ Examples:
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed `.pi` folder being created unnecessarily when only reading settings. The folder is now only created when writing project-specific settings.
 - Fixed extension-driven runtime theme changes to persist in settings so `/settings` reflects the active `currentTheme` after `ctx.ui.setTheme(...)` ([#1483](https://github.com/badlogic/pi-mono/pull/1483) by [@ferologics](https://github.com/ferologics))
 - Fixed interactive mode freezes during large streaming `write` tool calls by using incremental syntax highlighting while partial arguments stream, with a final full re-highlight after tool-call arguments complete.
@@ -2419,6 +2586,8 @@ Examples:
 ## [0.54.1] - 2026-02-22
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Externalized koffi from bun binary builds, reducing archive sizes by ~15MB per platform (e.g. darwin-arm64: 43MB -> 28MB). Koffi's Windows-only `.node` file is now shipped alongside the Windows binary only.
 
@@ -2453,6 +2622,8 @@ Examples:
 - `SettingsManager` now uses scoped storage abstraction with per-scope locked read/merge/write persistence for global and project settings.
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed project settings persistence to preserve unrelated external edits via merge-on-write, while still applying in-memory changes for modified keys.
 - Fixed auth credential persistence to preserve unrelated external edits to `auth.json` via locked read/merge/write updates.
@@ -2503,6 +2674,8 @@ Examples:
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed context usage percentage in footer showing stale pre-compaction values. After compaction the footer now shows `?/200k` until the next LLM response provides accurate usage ([#1382](https://github.com/badlogic/pi-mono/pull/1382) by [@ferologics](https://github.com/ferologics))
 - Fixed `_checkCompaction()` using the first compaction entry instead of the latest, which could cause incorrect overflow detection with multiple compactions ([#1382](https://github.com/badlogic/pi-mono/pull/1382) by [@ferologics](https://github.com/ferologics))
 - `--model` now works without `--provider`, supports `provider/id` syntax, fuzzy matching, and `:<thinking>` suffix (e.g., `--model sonnet:high`, `--model openai/gpt-4o`) ([#1350](https://github.com/badlogic/pi-mono/pull/1350) by [@mitsuhiko](https://github.com/mitsuhiko))
@@ -2529,6 +2702,8 @@ Examples:
 - `pi.getAllTools()` now returns tool parameters in addition to name and description ([#1416](https://github.com/badlogic/pi-mono/pull/1416) by [@marchellodev](https://github.com/marchellodev))
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed extension source parsing so dot-prefixed local paths (for example `.pi/extensions/foo.ts`) are treated as local paths instead of git URLs
 - Fixed fd/rg download failing on Windows due to `unzip` not being available; now uses `tar` for both `.tar.gz` and `.zip` extraction, with proper error reporting ([#1348](https://github.com/badlogic/pi-mono/issues/1348))
@@ -2563,6 +2738,8 @@ Examples:
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed temporary git package caches (`-e <git-url>`) to refresh on cache hits for unpinned sources, including detached/no-upstream checkouts
 - Fixed aborting retries when an extension customizes the editor ([#1364](https://github.com/badlogic/pi-mono/pull/1364) by [@Perlence](https://github.com/Perlence))
 - Fixed autocomplete not propagating to custom editors created by extensions ([#1372](https://github.com/badlogic/pi-mono/pull/1372) by [@Perlence](https://github.com/Perlence))
@@ -2587,6 +2764,8 @@ Examples:
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed extra spacing between thinking-only assistant content and subsequent tool execution blocks when assistant messages contain no text
 - Fixed queued steering/follow-up/custom messages remaining stuck after threshold auto-compaction by resuming the agent loop when Agent-level queues still contain pending messages ([#1312](https://github.com/badlogic/pi-mono/pull/1312) by [@ferologics](https://github.com/ferologics))
 - Fixed `tool_result` extension handlers to chain result patches across handlers instead of last-handler-wins behavior ([#1280](https://github.com/badlogic/pi-mono/issues/1280))
@@ -2604,6 +2783,8 @@ Examples:
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed `/quit` being shadowed by fuzzy slash command autocomplete matches from skills by adding `/quit` to built-in command autocomplete ([#1303](https://github.com/badlogic/pi-mono/issues/1303))
 - Fixed local package source parsing and settings normalization regression that misclassified relative paths as git URLs and prevented globally installed local packages from loading after restart ([#1304](https://github.com/badlogic/pi-mono/issues/1304))
 
@@ -2611,17 +2792,23 @@ Examples:
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed thinking level capability detection so Anthropic Opus 4.6 models expose `xhigh` in selectors and cycling
 
 ## [0.52.4] - 2026-02-05
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed extensions setting not respecting `package.json` `pi.extensions` manifest when directory is specified directly ([#1302](https://github.com/badlogic/pi-mono/pull/1302) by [@hjanuschka](https://github.com/hjanuschka))
 
 ## [0.52.3] - 2026-02-05
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed git package parsing fallback for unknown hosts so enterprise git sources like `git:github.tools.sap/org/repo` are treated as git packages instead of local paths
 - Fixed git package `@ref` parsing for shorthand, HTTPS, and SSH source formats, including branch refs with slashes
@@ -2662,6 +2849,8 @@ Examples:
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed HTML export losing indentation in ANSI-rendered tool output (e.g. JSON code blocks in custom tool results) ([#1269](https://github.com/badlogic/pi-mono/pull/1269) by [@aliou](https://github.com/aliou))
 - Fixed images being silently dropped when `prompt()` is called with both `images` and `streamingBehavior` during streaming. `steer()`, `followUp()`, and the corresponding RPC commands now accept optional images. ([#1271](https://github.com/badlogic/pi-mono/pull/1271) by [@aliou](https://github.com/aliou))
 - CLI `--help`, `--version`, `--list-models`, and `--export` now exit even if extensions keep the event loop alive ([#1285](https://github.com/badlogic/pi-mono/pull/1285) by [@ferologics](https://github.com/ferologics))
@@ -2685,6 +2874,8 @@ Examples:
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Ignored unknown skill frontmatter fields when loading skills
 - Fixed `/reload` not picking up changes in global settings.json ([#1241](https://github.com/badlogic/pi-mono/issues/1241))
 - Fixed forked sessions to persist the user message after forking
@@ -2702,6 +2893,8 @@ Examples:
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed Windows package installs regression by using shell execution instead of `.cmd` resolution ([#1220](https://github.com/badlogic/pi-mono/issues/1220))
 
 ## [0.51.4] - 2026-02-03
@@ -2715,6 +2908,8 @@ Examples:
 - Share URLs now use pi.dev by default while pi.dev and buildwithpi.ai continue to work.
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed input scrolling to avoid splitting emoji sequences ([#1228](https://github.com/badlogic/pi-mono/pull/1228) by [@haoqixu](https://github.com/haoqixu))
 
@@ -2737,6 +2932,8 @@ Examples:
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed default thinking level persistence so settings-derived defaults are saved and restored correctly
 - Fixed Windows package installs by resolving `npm.cmd` when `npm` is not directly executable ([#1220](https://github.com/badlogic/pi-mono/issues/1220))
 - Fixed xhigh thinking level support check to accept gpt-5.2 model IDs ([#1209](https://github.com/badlogic/pi-mono/issues/1209))
@@ -2754,6 +2951,8 @@ Examples:
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed Kitty key release events leaking to parent shell over slow SSH connections by draining stdin for up to 1s on exit ([#1204](https://github.com/badlogic/pi-mono/issues/1204))
 - Fixed legacy newline handling in the editor to preserve previous newline behavior
 - Fixed @ autocomplete to include hidden paths
@@ -2770,6 +2969,8 @@ Examples:
 - **Clear on shrink setting**: New `terminal.clearOnShrink` setting keeps the editor and footer pinned to the bottom of the terminal when content shrinks. May cause some flicker due to redraws. Disabled by default. Enable via `/settings` or `PI_CLEAR_ON_SHRINK=1` env var.
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed scoped models not finding valid credentials after logout ([#1194](https://github.com/badlogic/pi-mono/pull/1194) by [@terrorobe](https://github.com/terrorobe))
 - Fixed Ctrl+D exit closing the parent SSH session due to stdin buffer race condition ([#1185](https://github.com/badlogic/pi-mono/issues/1185))
@@ -2820,6 +3021,8 @@ Examples:
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed `pi update` not updating npm/git packages when called without arguments ([#1151](https://github.com/badlogic/pi-mono/issues/1151))
 - Fixed `models.json` validation requiring fields documented as optional. Model definitions now only require `id`; all other fields (`name`, `reasoning`, `input`, `cost`, `contextWindow`, `maxTokens`) have sensible defaults. ([#1146](https://github.com/badlogic/pi-mono/issues/1146))
 - Fixed models resolving relative paths in skill files from cwd instead of skill directory by adding explicit guidance to skills preamble ([#1136](https://github.com/badlogic/pi-mono/issues/1136))
@@ -2852,6 +3055,8 @@ Examples:
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed `switchSession()` appending spurious `thinking_level_change` entry to session log on resume. `setThinkingLevel()` is now idempotent. ([#1118](https://github.com/badlogic/pi-mono/issues/1118))
 - Fixed clipboard image paste on WSL2/WSLg writing invalid PNG files when clipboard provides `image/bmp` format. BMP images are now converted to PNG before saving. ([#1112](https://github.com/badlogic/pi-mono/pull/1112) by [@lightningRalf](https://github.com/lightningRalf))
 - Fixed Kitty keyboard protocol base layout fallback so non-QWERTY layouts do not trigger wrong shortcuts ([#1096](https://github.com/badlogic/pi-mono/pull/1096) by [@rytswd](https://github.com/rytswd))
@@ -2859,6 +3064,8 @@ Examples:
 ## [0.50.7] - 2026-01-31
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Multi-file extensions in packages now work correctly. Package resolution now uses the same discovery logic as local extensions: only `index.ts` (or manifest-declared entries) are loaded from subdirectories, not helper modules. ([#1102](https://github.com/badlogic/pi-mono/issues/1102))
 
@@ -2869,6 +3076,8 @@ Examples:
 - Added `ctx.getSystemPrompt()` to extension context for accessing the current effective system prompt ([#1098](https://github.com/badlogic/pi-mono/pull/1098) by [@kaofelix](https://github.com/kaofelix))
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed empty rows appearing below footer when content shrinks (e.g., closing `/tree`, clearing multi-line editor) ([#1095](https://github.com/badlogic/pi-mono/pull/1095) by [@marckrenn](https://github.com/marckrenn))
 - Fixed terminal cursor remaining hidden after exiting TUI via `stop()` when a render was pending ([#1099](https://github.com/badlogic/pi-mono/pull/1099) by [@haoqixu](https://github.com/haoqixu))
@@ -2901,6 +3110,8 @@ Examples:
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Read tool now handles macOS filenames with curly quotes (U+2019) and NFD Unicode normalization ([#1078](https://github.com/badlogic/pi-mono/issues/1078))
 - Respect .gitignore, .ignore, and .fdignore files when scanning package resources for skills, prompts, themes, and extensions ([#1072](https://github.com/badlogic/pi-mono/issues/1072))
 - Fixed tool call argument defaults when providers omit inputs ([#1065](https://github.com/badlogic/pi-mono/issues/1065))
@@ -2918,6 +3129,8 @@ Examples:
 - Added Kimi For Coding provider support (Moonshot AI's Anthropic-compatible coding API). Set `KIMI_API_KEY` environment variable. See [README.md#kimi-for-coding](README.md#kimi-for-coding).
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Resources now appear before messages when resuming a session, preventing loaded context from appearing at the bottom of the chat.
 
@@ -2947,6 +3160,8 @@ Examples:
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - External edits to `settings.json` are now preserved when pi reloads or saves unrelated settings. Previously, editing settings.json directly (e.g., removing a package from `packages` array) would be silently reverted on next pi startup when automatic setters like `setLastChangelogVersion()` triggered a save.
 - Fixed custom header not displaying correctly with `quietStartup` enabled ([#1039](https://github.com/badlogic/pi-mono/pull/1039) by [@tudoroancea](https://github.com/tudoroancea))
 - Empty array in package filter now disables all resources instead of falling back to manifest defaults ([#1044](https://github.com/badlogic/pi-mono/issues/1044))
@@ -2966,6 +3181,8 @@ Examples:
 ## [0.50.1] - 2026-01-26
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Git extension updates now handle force-pushed remotes gracefully instead of failing ([#961](https://github.com/badlogic/pi-mono/pull/961) by [@aliou](https://github.com/aliou))
 - Extension `ctx.newSession({ setup })` now properly syncs agent state and renders messages after setup callback runs ([#968](https://github.com/badlogic/pi-mono/issues/968))
@@ -3038,6 +3255,8 @@ There are multiple SDK breaking changes since v0.49.3. For the quickest migratio
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Extension `setWorkingMessage()` calls in `agent_start` handlers now work correctly; previously the message was silently ignored because the loading animation didn't exist yet ([#935](https://github.com/badlogic/pi-mono/issues/935))
 - Fixed package auto-discovery to respect loader rules, config overrides, and force-exclude patterns
 - Fixed /reload restoring the correct editor after reload ([#949](https://github.com/badlogic/pi-mono/pull/949) by [@Perlence](https://github.com/Perlence))
@@ -3089,6 +3308,8 @@ There are multiple SDK breaking changes since v0.49.3. For the quickest migratio
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed error messages showing hardcoded `~/.pi/agent/` paths instead of respecting `PI_CODING_AGENT_DIR` ([#887](https://github.com/badlogic/pi-mono/pull/887) by [@aliou](https://github.com/aliou))
 - Fixed `write` tool not displaying errors in the UI when execution fails ([#856](https://github.com/badlogic/pi-mono/issues/856))
 - Fixed HTML export using default theme instead of user's active theme ([#870](https://github.com/badlogic/pi-mono/pull/870) by [@scutifer](https://github.com/scutifer))
@@ -3113,6 +3334,8 @@ There are multiple SDK breaking changes since v0.49.3. For the quickest migratio
 - Improved error message for OAuth authentication failures (expired credentials, offline) instead of generic 'No API key found' ([#849](https://github.com/badlogic/pi-mono/pull/849) by [@zedrdave](https://github.com/zedrdave))
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 - Fixed `/model` selector scope toggle so you can switch between all and scoped models when scoped models are saved ([#844](https://github.com/badlogic/pi-mono/issues/844))
 - Fixed OpenAI Responses 400 error "reasoning without following item" when replaying aborted turns ([#838](https://github.com/badlogic/pi-mono/pull/838))
 - Fixed pi exiting with code 0 when cancelling resume session selection
@@ -3135,6 +3358,8 @@ There are multiple SDK breaking changes since v0.49.3. For the quickest migratio
 - API keys in `models.json` can now be retrieved via shell command using `!` prefix (e.g., `"apiKey": "!security find-generic-password -ws 'anthropic'"` for macOS Keychain) ([#762](https://github.com/badlogic/pi-mono/pull/762) by [@cv](https://github.com/cv))
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed IME candidate window appearing in wrong position when filtering menus with Input Method Editor (e.g., Chinese IME). Components with search inputs now properly propagate focus state for cursor positioning. ([#827](https://github.com/badlogic/pi-mono/issues/827))
 - Fixed extension shortcut conflicts to respect user keybindings when built-in actions are remapped. ([#826](https://github.com/badlogic/pi-mono/pull/826) by [@richardgill](https://github.com/richardgill))
@@ -3159,6 +3384,8 @@ There are multiple SDK breaking changes since v0.49.3. For the quickest migratio
 - Simplified Codex system prompt handling to use the default system prompt directly for Codex instructions.
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed photon module failing to load in ESM context with "require is not defined" error ([#795](https://github.com/badlogic/pi-mono/pull/795) by [@dannote](https://github.com/dannote))
 - Fixed compaction UI not showing when extensions trigger compaction.
@@ -3185,6 +3412,8 @@ There are multiple SDK breaking changes since v0.49.3. For the quickest migratio
 - `navigateTree()` now supports `replaceInstructions` option to replace the default summarization prompt entirely, and `label` option to attach a label to the branch summary entry ([#787](https://github.com/badlogic/pi-mono/pull/787) by [@mitsuhiko](https://github.com/mitsuhiko))
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed crash during auto-compaction when summarization fails (e.g., quota exceeded). Now displays error message instead of crashing ([#792](https://github.com/badlogic/pi-mono/issues/792))
 - Fixed `--session <UUID>` to search globally across projects if not found locally, with option to fork sessions from other projects ([#785](https://github.com/badlogic/pi-mono/pull/785) by [@ribelo](https://github.com/ribelo))
@@ -3222,6 +3451,8 @@ There are multiple SDK breaking changes since v0.49.3. For the quickest migratio
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Editor no longer corrupts terminal display when loading large prompts via `setEditorText`. Content now scrolls vertically with indicators showing lines above/below the viewport. ([#732](https://github.com/badlogic/pi-mono/issues/732))
 - Piped stdin now works correctly: `echo foo | pi` is equivalent to `pi -p foo`. When stdin is piped, print mode is automatically enabled since interactive mode requires a TTY ([#708](https://github.com/badlogic/pi-mono/issues/708))
 - Session tree now preserves branch connectors and indentation when filters hide intermediate entries so descendants attach to the nearest visible ancestor and sibling branches align. Fixed in both TUI and HTML export ([#739](https://github.com/badlogic/pi-mono/pull/739) by [@w-winter](https://github.com/w-winter))
@@ -3233,6 +3464,8 @@ There are multiple SDK breaking changes since v0.49.3. For the quickest migratio
 ## [0.46.0] - 2026-01-15
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Scoped models (`--models` or `enabledModels`) now remember the last selected model across sessions instead of always starting with the first model in the scope ([#736](https://github.com/badlogic/pi-mono/pull/736) by [@ogulcancelik](https://github.com/ogulcancelik))
 - Show `bun install` instead of `npm install` in update notification when running under Bun ([#714](https://github.com/badlogic/pi-mono/pull/714) by [@dannote](https://github.com/dannote))
@@ -3279,6 +3512,8 @@ There are multiple SDK breaking changes since v0.49.3. For the quickest migratio
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Skip changelog display on fresh install (only show on upgrades)
 
 ## [0.45.4] - 2026-01-13
@@ -3298,6 +3533,8 @@ There are multiple SDK breaking changes since v0.49.3. For the quickest migratio
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fix API key resolution after model switches by using provider argument ([#691](https://github.com/badlogic/pi-mono/pull/691) by [@joshp123](https://github.com/joshp123))
 - Fixed z.ai thinking/reasoning: thinking toggle now correctly enables/disables thinking for z.ai models ([#688](https://github.com/badlogic/pi-mono/issues/688))
 - Fixed extension loading in compiled Bun binary: extensions with local file imports now work correctly. Updated `@mariozechner/jiti` to v2.6.5 which bundles babel for Bun binary compatibility. ([#681](https://github.com/badlogic/pi-mono/issues/681))
@@ -3308,6 +3545,8 @@ There are multiple SDK breaking changes since v0.49.3. For the quickest migratio
 ## [0.45.2] - 2026-01-13
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Extensions now load correctly in compiled Bun binary using `@mariozechner/jiti` fork with `virtualModules` support. Bundled packages (`@sinclair/typebox`, `@mariozechner/pi-tui`, `@mariozechner/pi-ai`, `@mariozechner/pi-coding-agent`) are accessible to extensions without filesystem node_modules.
 
@@ -3343,6 +3582,8 @@ There are multiple SDK breaking changes since v0.49.3. For the quickest migratio
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Session selector now stays open when current folder has no sessions, allowing Tab to switch to "all" scope ([#661](https://github.com/badlogic/pi-mono/pull/661) by [@aliou](https://github.com/aliou))
 - Extensions using theme utilities like `getSettingsListTheme()` now work in dev mode with tsx
 
@@ -3373,6 +3614,8 @@ There are multiple SDK breaking changes since v0.49.3. For the quickest migratio
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Missing spacer between assistant message and text editor ([#655](https://github.com/badlogic/pi-mono/issues/655))
 - Session picker respects custom keybindings when using `--resume` ([#633](https://github.com/badlogic/pi-mono/pull/633) by [@aos](https://github.com/aos))
 - Custom footer extensions now see model changes: `ctx.model` is now a getter that returns the current model instead of a snapshot from when the context was created ([#634](https://github.com/badlogic/pi-mono/pull/634) by [@ogulcancelik](https://github.com/ogulcancelik))
@@ -3383,6 +3626,8 @@ There are multiple SDK breaking changes since v0.49.3. For the quickest migratio
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Reduced flicker by only re-rendering changed lines ([#617](https://github.com/badlogic/pi-mono/pull/617) by [@ogulcancelik](https://github.com/ogulcancelik)). No worries tho, there's still a little flicker in the VS Code Terminal. Praise the flicker.
 - Cursor position tracking when content shrinks with unchanged remaining lines
 - TUI renders with wrong dimensions after suspend/resume if terminal was resized while suspended ([#599](https://github.com/badlogic/pi-mono/issues/599))
@@ -3391,6 +3636,8 @@ There are multiple SDK breaking changes since v0.49.3. For the quickest migratio
 ## [0.42.4] - 2026-01-10
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Bash output expanded hint now says "(ctrl+o to collapse)" ([#610](https://github.com/badlogic/pi-mono/pull/610) by [@tallshort](https://github.com/tallshort))
 - Fixed UTF-8 text corruption in remote bash execution (SSH, containers) by using streaming TextDecoder ([#608](https://github.com/badlogic/pi-mono/issues/608))
@@ -3411,11 +3658,15 @@ There are multiple SDK breaking changes since v0.49.3. For the quickest migratio
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed LM Studio compatibility for OpenAI Responses tool strict mapping in the ai provider ([#598](https://github.com/badlogic/pi-mono/pull/598) by [@gnattu](https://github.com/gnattu))
 
 ## [0.42.1] - 2026-01-09
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Symlinked directories in `prompts/` folders are now followed when loading prompt templates ([#601](https://github.com/badlogic/pi-mono/pull/601) by [@aliou](https://github.com/aliou))
 
@@ -3445,11 +3696,15 @@ There are multiple SDK breaking changes since v0.49.3. For the quickest migratio
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Components now properly rebuild their content on theme change (tool executions, assistant messages, bash executions, custom messages, branch/compaction summaries)
 
 ## [0.39.1] - 2026-01-08
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - `setTheme()` now triggers a full rerender so previously rendered components update with the new theme colors
 - `mac-system-theme.ts` example now polls every 2 seconds and uses `osascript` for real-time macOS appearance detection
@@ -3476,6 +3731,8 @@ There are multiple SDK breaking changes since v0.49.3. For the quickest migratio
 - `AgentSession.skills` and `AgentSession.skillWarnings` properties to access loaded skills without rediscovery ([#577](https://github.com/badlogic/pi-mono/pull/577) by [@cv](https://github.com/cv))
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - String `systemPrompt` in `createAgentSession()` now works as a full replacement instead of having context files and skills appended, matching documented behavior ([#543](https://github.com/badlogic/pi-mono/issues/543))
 - Update notification for bun binary installs now shows release download URL instead of npm command ([#567](https://github.com/badlogic/pi-mono/pull/567) by [@ferologics](https://github.com/ferologics))
@@ -3509,6 +3766,8 @@ There are multiple SDK breaking changes since v0.49.3. For the quickest migratio
 - `ctx.shutdown()` is now available in extension contexts for requesting a graceful shutdown. In interactive mode, shutdown is deferred until the agent becomes idle (after processing all queued steering and follow-up messages). In RPC mode, shutdown is deferred until after completing the current command response. In print mode, shutdown is a no-op as the process exits automatically when prompts complete. ([#542](https://github.com/badlogic/pi-mono/pull/542) by [@kaofelix](https://github.com/kaofelix))
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Default thinking level from settings now applies correctly when `enabledModels` is configured ([#540](https://github.com/badlogic/pi-mono/pull/540) by [@ferologics](https://github.com/ferologics))
 - External edits to `settings.json` while pi is running are now preserved when pi saves settings ([#527](https://github.com/badlogic/pi-mono/pull/527) by [@ferologics](https://github.com/ferologics))
@@ -3558,6 +3817,8 @@ There are multiple SDK breaking changes since v0.49.3. For the quickest migratio
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Queued steering/follow-up messages no longer wipe unsent editor input ([#503](https://github.com/badlogic/pi-mono/pull/503) by [@tmustier](https://github.com/tmustier))
 - OAuth token refresh failure no longer crashes app at startup, allowing user to `/login` to re-authenticate ([#498](https://github.com/badlogic/pi-mono/issues/498))
 
@@ -3572,6 +3833,8 @@ There are multiple SDK breaking changes since v0.49.3. For the quickest migratio
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Add `minimatch` as a direct dependency for explicit imports.
 - Status bar now shows correct git branch when running in a git worktree ([#490](https://github.com/badlogic/pi-mono/pull/490) by [@kcosr](https://github.com/kcosr))
 - Interactive mode: Ctrl+V clipboard image paste now works on Wayland sessions by using `wl-paste` with `xclip` fallback ([#488](https://github.com/badlogic/pi-mono/pull/488) by [@ghoulr](https://github.com/ghoulr))
@@ -3580,6 +3843,8 @@ There are multiple SDK breaking changes since v0.49.3. For the quickest migratio
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Extension directories in `settings.json` now respect `package.json` manifests, matching global extension behavior ([#480](https://github.com/badlogic/pi-mono/pull/480) by [@prateekmedia](https://github.com/prateekmedia))
 - Share viewer: deep links now scroll to the target message when opened via `/share`
 - Bash tool now handles spawn errors gracefully instead of crashing the agent (missing cwd, invalid shell path) ([#479](https://github.com/badlogic/pi-mono/pull/479) by [@robinwander](https://github.com/robinwander))
@@ -3587,6 +3852,8 @@ There are multiple SDK breaking changes since v0.49.3. For the quickest migratio
 ## [0.37.1] - 2026-01-05
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Share viewer: copy-link buttons now generate correct URLs when session is viewed via `/share` (iframe context)
 
@@ -3605,6 +3872,8 @@ There are multiple SDK breaking changes since v0.49.3. For the quickest migratio
 - OpenAI Codex clean-up: removed per-thinking-level model variants, thinking level is now set separately and the provider clamps to what each model supports internally (initial implementation in [#472](https://github.com/badlogic/pi-mono/pull/472) by [@ben-vargas](https://github.com/ben-vargas))
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Messages submitted during compaction are queued and delivered after compaction completes, preserving steering and follow-up behavior. Extension commands execute immediately during compaction. ([#476](https://github.com/badlogic/pi-mono/pull/476) by [@tmustier](https://github.com/tmustier))
 - Managed binaries (`fd`, `rg`) now stored in `~/.pi/agent/bin/` instead of `tools/`, eliminating false deprecation warnings ([#470](https://github.com/badlogic/pi-mono/pull/470) by [@mcinteerj](https://github.com/mcinteerj))
@@ -3890,6 +4159,8 @@ pi --extension ./safety.ts -e ./todo.ts
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed potential text decoding issues in bash executor by using streaming TextDecoder instead of Buffer.toString()
 - External editor (Ctrl-G) now shows full pasted content instead of `[paste #N ...]` placeholders ([#444](https://github.com/badlogic/pi-mono/pull/444) by [@aliou](https://github.com/aliou))
 
@@ -3907,11 +4178,15 @@ pi --extension ./safety.ts -e ./todo.ts
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Subagent example README referenced incorrect filename `subagent.ts` instead of `index.ts` ([#427](https://github.com/badlogic/pi-mono/pull/427) by [@Whamp](https://github.com/Whamp))
 
 ## [0.32.3] - 2026-01-03
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - `--list-models` no longer shows Google Vertex AI models without explicit authentication configured
 - JPEG/GIF/WebP images not displaying in terminals using Kitty graphics protocol (Kitty, Ghostty, WezTerm). The protocol requires PNG format, so non-PNG images are now converted before display.
@@ -3936,6 +4211,8 @@ pi --extension ./safety.ts -e ./todo.ts
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Slash command argument substitution now processes positional arguments (`$1`, `$2`, etc.) before all-arguments (`$@`, `$ARGUMENTS`) to prevent recursive substitution when argument values contain dollar-digit patterns like `$100`. ([#418](https://github.com/badlogic/pi-mono/pull/418) by [@skuridin](https://github.com/skuridin))
 
 ## [0.32.1] - 2026-01-03
@@ -3945,6 +4222,8 @@ pi --extension ./safety.ts -e ./todo.ts
 - Shell commands without context contribution: use `!!command` to execute a bash command that is shown in the TUI and saved to session history but excluded from LLM context. Useful for running commands you don't want the AI to see. ([#414](https://github.com/badlogic/pi-mono/issues/414))
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Edit tool diff not displaying in TUI due to race condition between async preview computation and tool execution
 
@@ -3987,6 +4266,8 @@ pi --extension ./safety.ts -e ./todo.ts
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - `/model` selector now opens instantly instead of waiting for OAuth token refresh. Token refresh is deferred until a model is actually used.
 - Shift+Space, Shift+Backspace, and Shift+Delete now work correctly in Kitty-protocol terminals (Kitty, WezTerm, etc.) instead of being silently ignored ([#411](https://github.com/badlogic/pi-mono/pull/411) by [@nathyong](https://github.com/nathyong))
 - `AgentSession.prompt()` now throws if called while the agent is already streaming, preventing race conditions. Use `steer()` or `followUp()` to queue messages during streaming.
@@ -3995,6 +4276,8 @@ pi --extension ./safety.ts -e ./todo.ts
 ## [0.31.1] - 2026-01-02
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Model selector no longer allows negative index when pressing arrow keys before models finish loading ([#398](https://github.com/badlogic/pi-mono/pull/398) by [@mitsuhiko](https://github.com/mitsuhiko))
 - Type guard functions (`isBashToolResult`, etc.) now exported at runtime, not just in type declarations ([#397](https://github.com/badlogic/pi-mono/issues/397))
@@ -4253,6 +4536,8 @@ Total color count increased from 46 to 50. See [docs/themes.md](docs/themes.md) 
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - HTML export now properly sanitizes user messages containing HTML tags like `<style>` that could break DOM rendering
 - Crash when displaying bash output containing Unicode format characters like U+0600-U+0604 ([#372](https://github.com/badlogic/pi-mono/pull/372) by [@HACKE-RC](https://github.com/HACKE-RC))
 - **Footer shows full session stats**: Token usage and cost now include all messages, not just those after compaction. ([#322](https://github.com/badlogic/pi-mono/issues/322))
@@ -4280,6 +4565,8 @@ Total color count increased from 46 to 50. See [docs/themes.md](docs/themes.md) 
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - **Sessions saved to wrong directory**: In v0.30.0, sessions were being saved to `~/.pi/agent/` instead of `~/.pi/agent/sessions/<encoded-cwd>/`, breaking `--resume` and `/resume`. Misplaced sessions are automatically migrated on startup. ([#320](https://github.com/badlogic/pi-mono/issues/320) by [@aliou](https://github.com/aliou))
 - **Custom system prompts missing context**: When using a custom system prompt string, project context files (AGENTS.md), skills, date/time, and working directory were not appended. ([#321](https://github.com/badlogic/pi-mono/issues/321))
 
@@ -4303,6 +4590,8 @@ Total color count increased from 46 to 50. See [docs/themes.md](docs/themes.md) 
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - **Custom tools/hooks with typebox subpath imports**: Fixed jiti alias for `@sinclair/typebox` to point to package root instead of entry file, allowing imports like `@sinclair/typebox/compiler` to resolve correctly. ([#311](https://github.com/badlogic/pi-mono/issues/311) by [@kim0](https://github.com/kim0))
 
 ## [0.29.0] - 2025-12-25
@@ -4318,6 +4607,8 @@ Total color count increased from 46 to 50. See [docs/themes.md](docs/themes.md) 
 - **Full Unicode input**: Input fields now accept Unicode characters beyond ASCII. ([#306](https://github.com/badlogic/pi-mono/pull/306) by [@kim0](https://github.com/kim0))
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - **Readline-style Ctrl+W**: Now skips trailing whitespace before deleting the preceding word, matching standard readline behavior. ([#306](https://github.com/badlogic/pi-mono/pull/306) by [@kim0](https://github.com/kim0))
 
@@ -4342,11 +4633,15 @@ Total color count increased from 46 to 50. See [docs/themes.md](docs/themes.md) 
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - **Duplicate skill warnings for symlinks**: Skills loaded via symlinks pointing to the same file are now silently deduplicated instead of showing name collision warnings. ([#304](https://github.com/badlogic/pi-mono/pull/304) by [@mitsuhiko](https://github.com/mitsuhiko))
 
 ## [0.27.9] - 2025-12-24
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - **Model selector and --list-models with settings.json API keys**: Models with API keys configured in settings.json (but not in environment variables) now properly appear in the /model selector and `--list-models` output. ([#295](https://github.com/badlogic/pi-mono/issues/295))
 
@@ -4354,11 +4649,15 @@ Total color count increased from 46 to 50. See [docs/themes.md](docs/themes.md) 
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - **API key priority**: OAuth tokens now take priority over settings.json API keys. Previously, an API key in settings.json would trump OAuth, causing users logged in with a plan (unlimited tokens) to be billed via PAYG instead.
 
 ## [0.27.7] - 2025-12-24
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - **Thinking tag leakage**: Fixed Claude mimicking literal `</thinking>` tags in responses. Unsigned thinking blocks (from aborted streams) are now converted to plain text without `<thinking>` tags. The TUI still displays them as thinking blocks. ([#302](https://github.com/badlogic/pi-mono/pull/302) by [@nicobailon](https://github.com/nicobailon))
 
@@ -4387,11 +4686,15 @@ Total color count increased from 46 to 50. See [docs/themes.md](docs/themes.md) 
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - **Ghostty inline images in tmux**: Fixed terminal detection for Ghostty when running inside tmux by checking `GHOSTTY_RESOURCES_DIR` env var. ([#299](https://github.com/badlogic/pi-mono/pull/299) by [@nicobailon](https://github.com/nicobailon))
 
 ## [0.27.4] - 2025-12-24
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - **Symlinked skill directories**: Skills in symlinked directories (e.g., `~/.pi/agent/skills/my-skills -> /path/to/skills`) are now correctly discovered and loaded.
 
@@ -4402,6 +4705,8 @@ Total color count increased from 46 to 50. See [docs/themes.md](docs/themes.md) 
 - **API keys in settings.json**: Store API keys in `~/.pi/agent/settings.json` under the `apiKeys` field (e.g., `{ "apiKeys": { "anthropic": "sk-..." } }`). Settings keys take priority over environment variables. ([#295](https://github.com/badlogic/pi-mono/issues/295))
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - **Allow startup without API keys**: Interactive mode no longer throws when no API keys are configured. Users can now start the agent and use `/login` to authenticate. ([#288](https://github.com/badlogic/pi-mono/issues/288))
 - **`--system-prompt` file path support**: The `--system-prompt` argument now correctly resolves file paths (like `--append-system-prompt` already did). ([#287](https://github.com/badlogic/pi-mono/pull/287) by [@scutifer](https://github.com/scutifer))
@@ -4415,6 +4720,8 @@ Total color count increased from 46 to 50. See [docs/themes.md](docs/themes.md) 
 ## [0.27.1] - 2025-12-22
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - **Skill discovery performance**: Skip `node_modules` directories when recursively scanning for skills. Fixes ~60ms startup delay when skill directories contain npm dependencies.
 
@@ -4434,6 +4741,8 @@ Total color count increased from 46 to 50. See [docs/themes.md](docs/themes.md) 
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - **File tab completion display**: File paths no longer get cut off early. Folders now show trailing `/` and removed redundant "directory"/"file" labels to maximize horizontal space. ([#280](https://github.com/badlogic/pi-mono/issues/280))
 
 - **Bash tool visual line truncation**: Fixed bash tool output in collapsed mode to use visual line counting (accounting for line wrapping) instead of logical line counting. Now consistent with bash-execution.ts behavior. Extracted shared `truncateToVisualLines` utility. ([#275](https://github.com/badlogic/pi-mono/issues/275))
@@ -4441,6 +4750,8 @@ Total color count increased from 46 to 50. See [docs/themes.md](docs/themes.md) 
 ## [0.26.1] - 2025-12-22
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - **SDK tools respect cwd**: Core tools (bash, read, edit, write, grep, find, ls) now properly use the `cwd` option from `createAgentSession()`. Added tool factory functions (`createBashTool`, `createReadTool`, etc.) for SDK users who specify custom `cwd` with explicit tools. ([#279](https://github.com/badlogic/pi-mono/issues/279))
 
@@ -4459,6 +4770,8 @@ Total color count increased from 46 to 50. See [docs/themes.md](docs/themes.md) 
 ## [0.25.4] - 2025-12-22
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - **Syntax highlighting stderr spam**: Fixed cli-highlight logging errors to stderr when markdown contains malformed code fences (e.g., missing newlines around closing backticks). Now validates language identifiers before highlighting and falls back silently to plain text. ([#274](https://github.com/badlogic/pi-mono/issues/274))
 
@@ -4480,11 +4793,15 @@ Total color count increased from 46 to 50. See [docs/themes.md](docs/themes.md) 
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - **Image shifting in tool output**: Fixed an issue where images in tool output would shift down (due to accumulating spacers) each time the tool output was expanded or collapsed via Ctrl+O.
 
 ## [0.25.1] - 2025-12-21
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - **Gemini image reading broken**: Fixed the `read` tool returning images causing flaky/broken responses with Gemini models. Images in tool results are now properly formatted per the Gemini API spec.
 
@@ -4506,6 +4823,8 @@ Total color count increased from 46 to 50. See [docs/themes.md](docs/themes.md) 
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - **Connection errors not retried**: Added "connection error" to the list of retryable errors so Anthropic connection drops trigger auto-retry instead of silently failing. ([#252](https://github.com/badlogic/pi-mono/issues/252))
 
 - **Thinking level not clamped on model switch**: Fixed TUI showing xhigh thinking level after switching to a model that doesn't support it. Thinking level is now automatically clamped to model capabilities. ([#253](https://github.com/badlogic/pi-mono/issues/253))
@@ -4516,11 +4835,15 @@ Total color count increased from 46 to 50. See [docs/themes.md](docs/themes.md) 
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - **Input buffering in iTerm2**: Fixed Ctrl+C, Ctrl+D, and other keys requiring multiple presses in iTerm2. The cell size query response parser was incorrectly holding back keyboard input.
 
 ## [0.24.4] - 2025-12-20
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - **Arrow keys and Enter in selector components**: Fixed arrow keys and Enter not working in model selector, session selector, OAuth selector, and other selector components when Caps Lock or Num Lock is enabled. ([#243](https://github.com/badlogic/pi-mono/issues/243))
 
@@ -4528,11 +4851,15 @@ Total color count increased from 46 to 50. See [docs/themes.md](docs/themes.md) 
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - **Footer overflow on narrow terminals**: Fixed footer path display exceeding terminal width when resizing to very narrow widths, causing rendering crashes. /arminsayshi
 
 ## [0.24.2] - 2025-12-20
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - **More Kitty keyboard protocol fixes**: Fixed Backspace, Enter, Home, End, and Delete keys not working with Caps Lock enabled. The initial fix in 0.24.1 missed several key handlers that were still using raw byte detection. Now all key handlers use the helper functions that properly mask out lock key bits. ([#243](https://github.com/badlogic/pi-mono/issues/243))
 
@@ -4545,6 +4872,8 @@ Total color count increased from 46 to 50. See [docs/themes.md](docs/themes.md) 
 - **xhigh thinking level for gpt-5.2 models**: The thinking level selector and shift+tab cycling now show xhigh option for gpt-5.2 and gpt-5.2-codex models (in addition to gpt-5.1-codex-max). ([#236](https://github.com/badlogic/pi-mono/pull/236) by [@theBucky](https://github.com/theBucky))
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - **Hooks wrap custom tools**: Custom tools are now executed through the hook wrapper, so `tool_call`/`tool_result` hooks can observe, block, and modify custom tool executions (consistent with hook type docs). ([#248](https://github.com/badlogic/pi-mono/pull/248) by [@nicobailon](https://github.com/nicobailon))
 
@@ -4586,6 +4915,8 @@ Total color count increased from 46 to 50. See [docs/themes.md](docs/themes.md) 
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - **JSON mode stdout flush**: Fixed race condition where `pi --mode json` could exit before all output was written to stdout, causing consumers to miss final events.
 
 - **Symlinked tools, hooks, and slash commands**: Discovery now correctly follows symlinks when scanning for custom tools, hooks, and slash commands. ([#219](https://github.com/badlogic/pi-mono/pull/219), [#232](https://github.com/badlogic/pi-mono/pull/232) by [@aliou](https://github.com/aliou))
@@ -4613,6 +4944,8 @@ Total color count increased from 46 to 50. See [docs/themes.md](docs/themes.md) 
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - **Gemini tool result format**: Fixed tool result format for Gemini 3 Flash Preview which strictly requires `{ output: value }` for success and `{ error: value }` for errors. Previous format using `{ result, isError }` was rejected by newer Gemini models. ([#213](https://github.com/badlogic/pi-mono/issues/213), [#220](https://github.com/badlogic/pi-mono/pull/220))
 
 - **Google baseUrl configuration**: Google provider now respects `baseUrl` configuration for custom endpoints or API proxies. ([#216](https://github.com/badlogic/pi-mono/issues/216), [#221](https://github.com/badlogic/pi-mono/pull/221) by [@theBucky](https://github.com/theBucky))
@@ -4622,6 +4955,8 @@ Total color count increased from 46 to 50. See [docs/themes.md](docs/themes.md) 
 ## [0.23.3] - 2025-12-17
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Check for compaction before submitting user prompt, not just after agent turn ends. This catches cases where user aborts mid-response and context is already near the limit.
 
@@ -4648,6 +4983,8 @@ Total color count increased from 46 to 50. See [docs/themes.md](docs/themes.md) 
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed Claude models via GitHub Copilot re-answering all previous prompts in multi-turn conversations. The issue was that assistant message content was sent as an array instead of a string, which Copilot's Claude adapter misinterpreted. Also added missing `Openai-Intent: conversation-edits` header and fixed `X-Initiator` logic to check for any assistant/tool message in history. ([#209](https://github.com/badlogic/pi-mono/issues/209))
 
 - Detect image MIME type via file magic (read tool and `@file` attachments), not filename extension.
@@ -4657,6 +4994,8 @@ Total color count increased from 46 to 50. See [docs/themes.md](docs/themes.md) 
 ## [0.23.1] - 2025-12-17
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed TUI performance regression caused by Box component lacking render caching. Built-in tools now use Text directly (like v0.22.5), and Box has proper caching for custom tool rendering.
 
@@ -4678,6 +5017,8 @@ Total color count increased from 46 to 50. See [docs/themes.md](docs/themes.md) 
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed `--session` flag not saving sessions in print mode (`-p`). The session manager was never receiving events because no subscriber was attached.
 
 ## [0.22.4] - 2025-12-17
@@ -4687,6 +5028,8 @@ Total color count increased from 46 to 50. See [docs/themes.md](docs/themes.md) 
 - `--list-models [search]` CLI flag to list available models with optional fuzzy search. Shows provider, model ID, context window, max output, thinking support, and image support. Only lists models with configured API keys. ([#203](https://github.com/badlogic/pi-mono/issues/203))
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed tool execution showing green (success) background while still running. Now correctly shows gray (pending) background until the tool completes.
 
@@ -4703,6 +5046,8 @@ Total color count increased from 46 to 50. See [docs/themes.md](docs/themes.md) 
 - Updated `@mariozechner/pi-ai` with X-Initiator header support for GitHub Copilot, ensuring agent calls are not deducted from quota. ([#200](https://github.com/badlogic/pi-mono/pull/200) by [@kim0](https://github.com/kim0))
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed editor text being cleared during compaction. Text typed while compaction is running is now preserved. ([#179](https://github.com/badlogic/pi-mono/issues/179))
 - Improved RGB to 256-color mapping for terminals without truecolor support. Now correctly uses grayscale ramp for neutral colors and preserves semantic tints (green for success, red for error, blue for pending) instead of mapping everything to wrong cube colors.
@@ -4730,6 +5075,8 @@ _Dedicated to Peter's shoulder ([@steipete](https://twitter.com/steipete))_
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Model selector fuzzy search now matches against provider name (not just model ID) and supports space-separated tokens where all tokens must match
 
 ## [0.21.0] - 2025-12-14
@@ -4741,6 +5088,8 @@ _Dedicated to Peter's shoulder ([@steipete](https://twitter.com/steipete))_
 - **Gemini 3 Pro thinking levels**: Thinking level selector now works with Gemini 3 Pro models. Minimal/low map to Google's LOW, medium/high map to Google's HIGH. ([#176](https://github.com/badlogic/pi-mono/pull/176) by [@markusylisiurunen](https://github.com/markusylisiurunen))
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed read tool failing on macOS screenshot filenames due to Unicode Narrow No-Break Space (U+202F) in timestamp. Added fallback to try macOS variant paths and consolidated duplicate expandPath functions into shared path-utils.ts. ([#181](https://github.com/badlogic/pi-mono/pull/181) by [@nicobailon](https://github.com/nicobailon))
 
@@ -4766,6 +5115,8 @@ _Dedicated to Peter's shoulder ([@steipete](https://twitter.com/steipete))_
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Documentation: Added skills system documentation to README (setup, usage, CLI flags, settings)
 
 ## [0.19.0] - 2025-12-12
@@ -4786,6 +5137,8 @@ _Dedicated to Peter's shoulder ([@steipete](https://twitter.com/steipete))_
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - **Branch selector now works with single message**: Previously the branch selector would not open when there was only one user message. Now it correctly allows branching from any message, including the first one. This is needed for checkpoint hooks to restore state from before the first message. ([#163](https://github.com/badlogic/pi-mono/issues/163))
 
 - **In-memory branching for `--no-session` mode**: Branching now works correctly in `--no-session` mode without creating any session files. The conversation is truncated in memory.
@@ -4799,6 +5152,8 @@ _Dedicated to Peter's shoulder ([@steipete](https://twitter.com/steipete))_
 - **Mistral provider**: Added support for Mistral AI models. Set `MISTRAL_API_KEY` environment variable to use.
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed print mode (`-p`) not exiting after output when custom themes are present (theme watcher now properly stops in print mode) ([#161](https://github.com/badlogic/pi-mono/issues/161))
 
@@ -4836,6 +5191,8 @@ _Dedicated to Peter's shoulder ([@steipete](https://twitter.com/steipete))_
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - **Block input during compaction**: User input is now blocked while auto-compaction is running to prevent race conditions.
 
 - **Skip error messages in usage calculation**: Context size estimation now skips both aborted and error messages, as neither have valid usage data.
@@ -4864,11 +5221,15 @@ _Dedicated to Peter's shoulder ([@steipete](https://twitter.com/steipete))_
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fix crash when bash command outputs binary data (e.g., `curl` downloading a video file)
 
 ## [0.14.1] - 2025-12-08
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fix build errors with tsgo 7.0.0-dev.20251208.1 by properly importing `ReasoningEffort` type
 
@@ -4908,11 +5269,15 @@ _Dedicated to Peter's shoulder ([@steipete](https://twitter.com/steipete))_
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - **Windows binary detection**: Fixed Bun compiled binary detection on Windows by checking for URL-encoded `%7EBUN` in addition to `$bunfs` and `~BUN` in `import.meta.url`. This ensures the binary correctly locates supporting files (package.json, themes, etc.) next to the executable.
 
 ## [0.12.15] - 2025-12-06
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - **Editor crash with emojis/CJK characters**: Fixed crash when pasting or typing text containing wide characters (emojis like ✅, CJK characters) that caused line width to exceed terminal width. The editor now uses grapheme-aware text wrapping with proper visible width calculation.
 
@@ -4936,6 +5301,8 @@ _Dedicated to Peter's shoulder ([@steipete](https://twitter.com/steipete))_
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - **Multi-key sequences in inputs**: Inputs like model search now handle multi-key sequences identically to the main prompt editor. ([#122](https://github.com/badlogic/pi-mono/pull/122) by [@markusylisiurunen](https://github.com/markusylisiurunen))
 - **Line wrapping escape codes**: Fixed underline style bleeding into padding when wrapping long URLs. ANSI codes now attach to the correct content, and line-end resets only turn off underline (preserving background colors). ([#109](https://github.com/badlogic/pi-mono/issues/109))
 
@@ -4952,6 +5319,8 @@ _Dedicated to Peter's shoulder ([@steipete](https://twitter.com/steipete))_
 - **Compaction UI**: Simplified collapsed compaction indicator to show warning-colored text with token count instead of styled banner. Removed redundant success message after compaction. ([#108](https://github.com/badlogic/pi-mono/issues/108))
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - **Print mode error handling**: `-p` flag now outputs error messages and exits with code 1 when requests fail, instead of silently producing no output.
 - **Branch selector crash**: Fixed TUI crash when user messages contained Unicode characters (like `✔` or `›`) that caused line width to exceed terminal width. Now uses proper `truncateToWidth` instead of `substring`.
@@ -5002,6 +5371,8 @@ _Dedicated to Peter's shoulder ([@steipete](https://twitter.com/steipete))_
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - **Bun Binary Detection**: Fixed Bun compiled binary failing to start after Bun updated its virtual filesystem path format from `%7EBUN` to `$bunfs`. ([#95](https://github.com/badlogic/pi-mono/pull/95))
 
 ## [0.12.4] - 2025-12-02
@@ -5013,6 +5384,8 @@ _Dedicated to Peter's shoulder ([@steipete](https://twitter.com/steipete))_
 ## [0.12.3] - 2025-12-02
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - **Rate limit handling**: Anthropic rate limit errors now trigger automatic retry with exponential backoff (base 10s, max 5 retries). Previously these errors would abort the request immediately.
 - **Usage tracking during retries**: Retried requests now correctly accumulate token usage from all attempts, not just the final successful one. Fixes artificially low token counts when requests were retried.
@@ -5062,11 +5435,15 @@ _Dedicated to Peter's shoulder ([@steipete](https://twitter.com/steipete))_
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Absolute glob patterns (e.g., `/Users/foo/**/*.ts`) are now handled correctly. Previously the leading `/` was being stripped, causing the pattern to be interpreted relative to the current directory.
 
 ## [0.11.7] - 2025-12-01
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fix read path traversal vulnerability. Paths are now validated to prevent reading outside the working directory or its parents. The `read` tool can read from `cwd`, its ancestors (for config files), and all descendants. Symlinks are resolved before validation.
 
@@ -5074,11 +5451,15 @@ _Dedicated to Peter's shoulder ([@steipete](https://twitter.com/steipete))_
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fix `--system-prompt <path>` allowing the path argument to be captured by the message collection, causing "file not found" errors.
 
 ## [0.11.5] - 2025-11-30
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed fatal error "Cannot set properties of undefined (setting '0')" when editing empty files in the `edit` tool.
 - Simplified `edit` tool output: Shows only "Edited file.txt" for successful edits instead of verbose search/replace details.
@@ -5088,17 +5469,23 @@ _Dedicated to Peter's shoulder ([@steipete](https://twitter.com/steipete))_
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed chat rendering crash when messages contain preformatted/styled text (e.g., thinking traces with gray italic styling). The markdown renderer now preserves existing ANSI escape codes when they appear before inline elements.
 
 ## [0.11.3] - 2025-11-29
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fix file drop functionality for absolute paths
 
 ## [0.11.2] - 2025-11-29
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed TUI crash when pasting content containing tab characters. Tabs are now converted to 4 spaces before insertion.
 - Fixed terminal corruption after exit when shell integration sequences (OSC 133) appeared in bash output. These sequences are now stripped along with other ANSI codes.
@@ -5110,6 +5497,8 @@ _Dedicated to Peter's shoulder ([@steipete](https://twitter.com/steipete))_
 - Added `fd` integration for file path autocompletion. Now uses `fd` for faster fuzzy file search
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed keyboard shortcuts Ctrl+A, Ctrl+E, Ctrl+K, Ctrl+U, Ctrl+W, and word navigation (Option+Arrow) not working in VS Code integrated terminal and some other terminal emulators
 
@@ -5132,6 +5521,8 @@ _Dedicated to Peter's shoulder ([@steipete](https://twitter.com/steipete))_
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - Fixed autocomplete z-order issue where dropdown could appear behind chat messages
 - Fixed cursor position when navigating through wrapped lines in the editor
 - Fixed attachment handling for continued sessions to preserve file references
@@ -5143,6 +5534,8 @@ _Dedicated to Peter's shoulder ([@steipete](https://twitter.com/steipete))_
 - Show base64-truncated indicator for large images in tool output
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Fixed image dimensions not being read correctly from PNG/JPEG/GIF files
 - Fixed PDF images being incorrectly base64-truncated in display
@@ -5156,12 +5549,16 @@ _Dedicated to Peter's shoulder ([@steipete](https://twitter.com/steipete))_
 
 ### Fixed
 
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
+
 - `@`-references now handle special characters in file names (spaces, quotes, unicode)
 - Fixed cursor positioning issues with multi-byte unicode characters in editor
 
 ## [0.10.4] - 2025-11-28
 
 ### Fixed
+
+- Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 
 - Removed padding on first user message in TUI to improve visual consistency.
 
