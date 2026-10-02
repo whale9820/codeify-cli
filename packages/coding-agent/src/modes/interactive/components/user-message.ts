@@ -29,7 +29,7 @@ export class UserMessageComponent extends Container {
 
 	private rebuild(): void {
 		this.clear();
-		const contentBox = new Box(this.outputPad, 1, (content: string) => theme.bg("userMessageBg", content));
+		const contentBox = new Box(this.outputPad, 0, (content: string) => theme.bg("userMessageBg", content));
 		contentBox.addChild(
 			new PrefixedComponent(
 				new Markdown(
@@ -42,7 +42,7 @@ export class UserMessageComponent extends Container {
 					},
 					{ preserveOrderedListMarkers: true, preserveBackslashEscapes: true },
 				),
-				`${theme.fg("dim", ">")} `,
+				`${theme.fg("userMessageText", theme.bold(">"))} `,
 				"  ",
 			),
 		);
@@ -52,6 +52,11 @@ export class UserMessageComponent extends Container {
 	override render(width: number): string[] {
 		const lines = super.render(width);
 		if (lines.length === 0) {
+			return lines;
+		}
+
+		if (lines.length === 1) {
+			lines[0] = OSC133_ZONE_START + OSC133_ZONE_END + OSC133_ZONE_FINAL + lines[0];
 			return lines;
 		}
 
