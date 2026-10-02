@@ -44,6 +44,7 @@ describe("session defaults", () => {
 					agentDir: directory,
 					modelRuntime,
 					settingsManager,
+					allowNetwork: false,
 					includeBuiltinProviders: false,
 					resourceLoaderOptions: { noSkills: true, noPromptTemplates: true, noThemes: true, noContextFiles: true },
 				});

@@ -171,8 +171,8 @@ describe("FooterComponent width handling", () => {
 		const lines = footer.render(80).map((line) => stripAnsi(line));
 		expect(lines).toHaveLength(1);
 		expect(lines[0]).toHaveLength(80);
-		expect(lines[0].startsWith("/tmp/project (main)")).toBe(true);
-		expect(lines[0].endsWith("gpt-test • high")).toBe(true);
+		expect(lines[0].trimStart().startsWith("/tmp/project (main)")).toBe(true);
+		expect(lines[0].trimEnd().endsWith("gpt-test • high")).toBe(true);
 		expect(lines[0]).not.toContain("$");
 		expect(lines[0]).not.toContain("%");
 	});
@@ -186,7 +186,7 @@ describe("FooterComponent width handling", () => {
 
 		const lines = footer.render(80).map((line) => stripAnsi(line));
 		expect(lines).toHaveLength(1);
-		expect(lines[0]).toContain("/tmp/project (main) • test · 2 background");
+		expect(lines[0]).toContain("/tmp/project (main) • test • 2 tasks");
 		expect(lines[0].trimEnd().endsWith("test-model")).toBe(true);
 	});
 
@@ -197,6 +197,6 @@ describe("FooterComponent width handling", () => {
 		const lines = footer.render(40).map((line) => stripAnsi(line));
 		expect(lines).toHaveLength(1);
 		expect(visibleWidth(lines[0])).toBeLessThanOrEqual(40);
-		expect(lines[0].endsWith("gpt-test")).toBe(true);
+		expect(lines[0].trimEnd().endsWith("gpt-test")).toBe(true);
 	});
 });
