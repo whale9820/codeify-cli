@@ -25,7 +25,7 @@ const NON_RETRYABLE_PROVIDER_LIMIT_ERROR_PATTERN = buildProviderErrorPattern([
 
 export const NETWORK_UNSTABLE_ERROR_MESSAGE = "network unstable please try again";
 export const MALFORMED_JSON_MAX_RETRIES = 3;
-export const SAFEGUARD_BLOCK_MESSAGE = "Blocked by Claude safeguards";
+export const SAFEGUARD_BLOCK_MESSAGE = "Blocked by model safeguards";
 
 export function isSafeguardBlock(errorMessage: string | undefined): boolean {
 	return errorMessage?.startsWith(SAFEGUARD_BLOCK_MESSAGE) ?? false;

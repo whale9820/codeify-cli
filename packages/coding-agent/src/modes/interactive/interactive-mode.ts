@@ -3052,7 +3052,7 @@ export class InteractiveMode {
 				this.session.pauseGoal();
 				if (isSafeguardBlock((last as AssistantMessage).errorMessage)) {
 					this.showWarning(
-						"Goal paused: Claude safeguards blocked the last response. Rephrase, /revert, or switch models.",
+						"Goal paused: model safeguards blocked the last response. Rephrase, /revert, or switch models.",
 					);
 				} else {
 					this.showStatus("Goal paused after interruption. Use /goal resume to continue.");
