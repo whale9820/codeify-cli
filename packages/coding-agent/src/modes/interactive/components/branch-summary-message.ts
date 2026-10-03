@@ -1,19 +1,16 @@
-import { Box, Markdown, type MarkdownTheme, Spacer, Text } from "codeify-tui";
+import { Container, Markdown, type MarkdownTheme, Text } from "codeify-tui";
 import type { BranchSummaryMessage } from "../../../core/messages.ts";
 import { getMarkdownTheme, theme } from "../theme/theme.ts";
 import { keyText } from "./keybinding-hints.ts";
+import { PrefixedComponent } from "./prefixed.ts";
 
-/**
- * Component that renders a branch summary message with collapsed/expanded state.
- * Uses same background color as custom messages for visual consistency.
- */
-export class BranchSummaryMessageComponent extends Box {
+export class BranchSummaryMessageComponent extends Container {
 	private expanded = false;
 	private message: BranchSummaryMessage;
 	private markdownTheme: MarkdownTheme;
 
 	constructor(message: BranchSummaryMessage, markdownTheme: MarkdownTheme = getMarkdownTheme()) {
-		super(1, 1, (t) => theme.bg("customMessageBg", t));
+		super();
 		this.message = message;
 		this.markdownTheme = markdownTheme;
 		this.updateDisplay();
@@ -32,27 +29,13 @@ export class BranchSummaryMessageComponent extends Box {
 	private updateDisplay(): void {
 		this.clear();
 
-		const label = theme.fg("customMessageLabel", `\x1b[1m[branch]\x1b[22m`);
-		this.addChild(new Text(label, 0, 0));
-		this.addChild(new Spacer(1));
+		this.addChild(new Text(`${theme.fg("success", "●")} ${theme.bold("Branch summary")}`, 0, 0));
 
-		if (this.expanded) {
-			const header = "**Branch Summary**\n\n";
-			this.addChild(
-				new Markdown(header + this.message.summary, 0, 0, this.markdownTheme, {
-					color: (text: string) => theme.fg("customMessageText", text),
-				}),
-			);
-		} else {
-			this.addChild(
-				new Text(
-					theme.fg("customMessageText", "Branch summary (") +
-						theme.fg("dim", keyText("app.tools.expand")) +
-						theme.fg("customMessageText", " to expand)"),
-					0,
-					0,
-				),
-			);
-		}
+		const body = this.expanded
+			? new Markdown(this.message.summary, 0, 0, this.markdownTheme, {
+					color: (text: string) => theme.fg("toolOutput", text),
+				})
+			: new Text(theme.fg("dim", `${keyText("app.tools.expand")} to expand`), 0, 0);
+		this.addChild(new PrefixedComponent(body, `  ${theme.fg("dim", "⎿")}  `, "     ", true));
 	}
 }
