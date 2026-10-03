@@ -22,6 +22,7 @@ import { EventEmitter } from "events";
 const ESC = "\x1b";
 const BRACKETED_PASTE_START = "\x1b[200~";
 const BRACKETED_PASTE_END = "\x1b[201~";
+const UNMARKED_MULTILINE_PASTE = /^[^\x1b]*[^\r\n\x1b][\r\n]+[^\r\n\x1b][^\x1b]*$/;
 
 /**
  * Check if a string is a complete escape sequence or needs more data
@@ -331,6 +332,14 @@ export class StdinBuffer extends EventEmitter<StdinBufferEventMap> {
 					this.process(remaining);
 				}
 			}
+			return;
+		}
+
+		if (UNMARKED_MULTILINE_PASTE.test(this.buffer)) {
+			const pastedContent = this.buffer.replace(/[\r\n]+$/, "");
+			this.buffer = "";
+			this.pendingKittyPrintableCodepoint = undefined;
+			this.emit("paste", pastedContent);
 			return;
 		}
 

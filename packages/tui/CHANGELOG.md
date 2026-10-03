@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Fixed pasting multi-line text in terminals without bracketed paste sending one message per line; it is now a single paste.
 - Fixed the interactive viewport losing its bottom anchor when tool output shrinks, keeping the latest work visible.
 - Fixed hardware cursor clamping to the visible viewport and ensured line clearing and column alignment on initial and differential renders, preventing cursor drift and spliced line overwrites during streaming appends.
 - Fixed the terminal jumping to the top of scrollback while the agent works. Changes above the visible viewport and large shrinks now repaint the viewport in place instead of clearing the screen and scrollback.
