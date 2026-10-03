@@ -76,11 +76,35 @@ export function mergeProbedModels(
 	return probed.map((model) => known.get(model.id) ?? model);
 }
 
+export function inheritCodeifyMetadata(
+	models: readonly CodeifyModelDefinition[],
+	codeifyModels: readonly CodeifyModelDefinition[],
+): CodeifyModelDefinition[] {
+	return models.map((definition) => {
+		const inherited = codeifyModels.find((model) => model.id === definition.id);
+		if (!inherited) return definition;
+		return {
+			...definition,
+			reasoning: inherited.reasoning,
+			thinkingLevelMap: inherited.thinkingLevelMap,
+			input: inherited.input,
+			cost: inherited.cost,
+			contextWindow: inherited.contextWindow,
+			maxTokens: inherited.maxTokens,
+			compat: inherited.compat,
+		};
+	});
+}
+
 /**
  * Build the runtime provider config for an override backend. When `store` is given, refreshing
  * the model catalog queries the backend's own GET /models and persists the result.
  */
-export function overrideProviderConfig(backend: OverrideBackend, store?: OverrideStore): RuntimeProviderConfig {
+export function overrideProviderConfig(
+	backend: OverrideBackend,
+	store?: OverrideStore,
+	codeifyModels?: () => readonly CodeifyModelDefinition[],
+): RuntimeProviderConfig {
 	return {
 		name: backend.name,
 		baseUrl: backend.baseUrl,
@@ -95,7 +119,8 @@ export function overrideProviderConfig(backend: OverrideBackend, store?: Overrid
 					if (!probe.ok) throw new Error(`Could not refresh ${backend.name}: ${probe.error}`);
 					// An empty list is more likely a quirk of the backend than a real wipe; keep what we have.
 					if (probe.models.length === 0) return routeModels(current.models, current.baseUrl);
-					const models = mergeProbedModels(current.models, probe.models);
+					const merged = mergeProbedModels(current.models, probe.models);
+					const models = codeifyModels ? inheritCodeifyMetadata(merged, codeifyModels()) : merged;
 					store.upsert({ ...current, models });
 					return routeModels(models, current.baseUrl);
 				}

@@ -78,6 +78,7 @@ import { type AppKeybinding, KeybindingsManager } from "../../core/keybindings.t
 import { createCompactionSummaryMessage } from "../../core/messages.ts";
 import { findExactModelReferenceMatch, resolveModelScope } from "../../core/model-resolver.ts";
 import {
+	inheritCodeifyMetadata,
 	normalizeBaseUrl,
 	type OverrideBackend,
 	overrideProviderConfig,
@@ -3702,25 +3703,9 @@ export class InteractiveMode {
 			probe = { ok: true, models: [toModelDefinition({ id: modelId })] };
 		}
 
-		const codeifyModels = this.session.modelRuntime
-			.getModels()
-			.filter((model) => model.provider === CODEIFY_PROVIDER_ID);
 		probe = {
 			ok: true,
-			models: probe.models.map((definition) => {
-				const inherited = codeifyModels.find((model) => model.id === definition.id);
-				if (!inherited) return definition;
-				return {
-					...definition,
-					reasoning: inherited.reasoning,
-					thinkingLevelMap: inherited.thinkingLevelMap,
-					input: inherited.input,
-					cost: inherited.cost,
-					contextWindow: inherited.contextWindow,
-					maxTokens: inherited.maxTokens,
-					compat: inherited.compat,
-				};
-			}),
+			models: inheritCodeifyMetadata(probe.models, this.session.modelRuntime.getModels(CODEIFY_PROVIDER_ID)),
 		};
 
 		let name = existing?.name;
@@ -3745,7 +3730,10 @@ export class InteractiveMode {
 			runtime.unregisterProvider(overrideProviderId(existing.name));
 		}
 		store.upsert(backend, existing?.name);
-		runtime.registerProvider(id, overrideProviderConfig(backend, store));
+		runtime.registerProvider(
+			id,
+			overrideProviderConfig(backend, store, () => runtime.getModels(CODEIFY_PROVIDER_ID)),
+		);
 		await runtime.refresh({ allowNetwork: false });
 		await this.switchToOverrideBackend(backend);
 	}

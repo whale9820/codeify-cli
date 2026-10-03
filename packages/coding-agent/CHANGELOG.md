@@ -42,6 +42,7 @@
 
 ### Fixed
 
+- Override backends now inherit thinking levels and other model metadata from the Codeify catalog when refreshing models, not only when first added, so models such as grok-4.6 no longer offer `max` on backends like cpa.
 - Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 - Background task completions now render as a compact `●` block with the task id, status, and a collapsed `⎿` output preview instead of a full-width colored box.
 - Fixed model catalog refresh for custom `/override` backends: refreshing (at startup and in `/model`) never contacted the backend, so models added or removed there were not picked up while the UI still said "Model catalogs refreshed". Each override backend now refreshes from its own `GET /models`, saves the result, and reports a failing backend as a refresh error.
