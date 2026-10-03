@@ -177,7 +177,10 @@ export class ModelRuntime implements Models {
 			runtime.registerProvider("codeify", codeifyProvider());
 		}
 		for (const backend of runtime.overrides.list()) {
-			runtime.registerProvider(overrideProviderId(backend.name), overrideProviderConfig(backend, runtime.overrides));
+			runtime.registerProvider(
+				overrideProviderId(backend.name),
+				overrideProviderConfig(backend, runtime.overrides, () => runtime.getModels("codeify")),
+			);
 		}
 		runtime.rebuildProviders();
 		const refreshFromNetwork = runtime.modelNetworkEnabled && options.allowModelNetwork === true;
