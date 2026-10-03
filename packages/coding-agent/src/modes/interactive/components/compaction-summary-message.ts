@@ -1,19 +1,16 @@
-import { Box, Markdown, type MarkdownTheme, Spacer, Text } from "codeify-tui";
+import { Container, Markdown, type MarkdownTheme, Text } from "codeify-tui";
 import type { CompactionSummaryMessage } from "../../../core/messages.ts";
 import { getMarkdownTheme, theme } from "../theme/theme.ts";
 import { keyText } from "./keybinding-hints.ts";
+import { PrefixedComponent } from "./prefixed.ts";
 
-/**
- * Component that renders a compaction message with collapsed/expanded state.
- * Uses same background color as custom messages for visual consistency.
- */
-export class CompactionSummaryMessageComponent extends Box {
+export class CompactionSummaryMessageComponent extends Container {
 	private expanded = false;
 	private message: CompactionSummaryMessage;
 	private markdownTheme: MarkdownTheme;
 
 	constructor(message: CompactionSummaryMessage, markdownTheme: MarkdownTheme = getMarkdownTheme()) {
-		super(1, 1, (t) => theme.bg("customMessageBg", t));
+		super();
 		this.message = message;
 		this.markdownTheme = markdownTheme;
 		this.updateDisplay();
@@ -33,27 +30,14 @@ export class CompactionSummaryMessageComponent extends Box {
 		this.clear();
 
 		const tokenStr = this.message.tokensBefore.toLocaleString();
-		const label = theme.fg("customMessageLabel", `\x1b[1m[compaction]\x1b[22m`);
-		this.addChild(new Text(label, 0, 0));
-		this.addChild(new Spacer(1));
+		const title = `${theme.fg("success", "●")} ${theme.bold("Compacted conversation")}`;
+		this.addChild(new Text(`${title} ${theme.fg("dim", `from ${tokenStr} tokens`)}`, 0, 0));
 
-		if (this.expanded) {
-			const header = `**Compacted from ${tokenStr} tokens**\n\n`;
-			this.addChild(
-				new Markdown(header + this.message.summary, 0, 0, this.markdownTheme, {
-					color: (text: string) => theme.fg("customMessageText", text),
-				}),
-			);
-		} else {
-			this.addChild(
-				new Text(
-					theme.fg("customMessageText", `Compacted from ${tokenStr} tokens (`) +
-						theme.fg("dim", keyText("app.tools.expand")) +
-						theme.fg("customMessageText", " to expand)"),
-					0,
-					0,
-				),
-			);
-		}
+		const body = this.expanded
+			? new Markdown(this.message.summary, 0, 0, this.markdownTheme, {
+					color: (text: string) => theme.fg("toolOutput", text),
+				})
+			: new Text(theme.fg("dim", `${keyText("app.tools.expand")} to expand`), 0, 0);
+		this.addChild(new PrefixedComponent(body, `  ${theme.fg("dim", "⎿")}  `, "     ", true));
 	}
 }
