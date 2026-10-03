@@ -388,6 +388,18 @@ describe("StdinBuffer", () => {
 			});
 		});
 
+		it("should treat a multi-line chunk without paste markers as one paste", () => {
+			buffer.process("line one\rline two\rline three\r");
+			assert.deepStrictEqual(emittedPaste, ["line one\rline two\rline three"]);
+			assert.deepStrictEqual(emittedSequences, []);
+		});
+
+		it("should not treat a single typed enter as a paste", () => {
+			buffer.process("hello");
+			buffer.process("\r");
+			assert.deepStrictEqual(emittedPaste, []);
+		});
+
 		it("should emit paste event for complete bracketed paste", () => {
 			const pasteStart = "\x1b[200~";
 			const pasteEnd = "\x1b[201~";
