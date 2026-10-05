@@ -4,6 +4,7 @@ import { Type } from "typebox";
 import { beforeAll, describe, expect, test } from "vitest";
 import { type BashOperations, createBashToolDefinition } from "../src/core/tools/bash.ts";
 import { createReadTool, createReadToolDefinition } from "../src/core/tools/read.ts";
+import { createRequestUserInputToolDefinition } from "../src/core/tools/request-user-input.ts";
 import type { ToolDefinition } from "../src/core/tools/types.ts";
 import { createWriteToolDefinition } from "../src/core/tools/write.ts";
 import { ToolExecutionComponent } from "../src/modes/interactive/components/tool-execution.ts";
@@ -32,6 +33,61 @@ function createFakeTui(): TUI {
 describe("ToolExecutionComponent parity", () => {
 	beforeAll(() => {
 		initTheme("dark");
+	});
+
+	test("renders user questions and answers compactly with full text available on expansion", async () => {
+		const questions = [
+			{ question: "Which authorization link should be used after account creation?", options: ["IDE", "Portal"] },
+			{ question: "Which account should receive the authorization?" },
+		];
+		const tool = createRequestUserInputToolDefinition(async () => ["IDE/device authorization link", "New account"]);
+		const component = new ToolExecutionComponent(
+			"request_user_input",
+			"tool-questions",
+			{ questions },
+			{},
+			tool,
+			createFakeTui(),
+			process.cwd(),
+		);
+		const pending = component
+			.render(80)
+			.map(stripAnsi)
+			.filter((line) => line.trim());
+		expect(pending).toHaveLength(1);
+		expect(pending[0]).toContain("AskUser(Which authorization");
+		expect(pending[0]).toContain("; Which account");
+		expect(pending[0].trimEnd()).toMatch(/\.\.\.\)$/);
+		expect(pending[0].length).toBeLessThanOrEqual(80);
+		const result = await tool.execute("tool-questions", { questions }, undefined, undefined, { cwd: process.cwd() });
+		component.updateResult({ ...result, isError: false });
+		const collapsed = stripAnsi(component.render(80).join("\n"));
+		expect(collapsed).toContain("IDE/device authorization link; New account");
+		expect(collapsed).not.toContain('"answers"');
+		expect(collapsed).not.toContain("Portal");
+		component.setExpanded(true);
+		const expanded = stripAnsi(component.render(160).join("\n"));
+		for (const { question } of questions) expect(expanded).toContain(question);
+	});
+
+	test("renders partial user questions and cancellation errors without raw tool labels", () => {
+		const tool = createRequestUserInputToolDefinition(async () => []);
+		const component = new ToolExecutionComponent(
+			"request_user_input",
+			"tool-questions-error",
+			{},
+			{},
+			tool,
+			createFakeTui(),
+			process.cwd(),
+		);
+		expect(stripAnsi(component.render(80).join("\n"))).toContain("AskUser(...)");
+		component.updateArgs({ questions: [{ question: "Which\n destination?" }] });
+		component.updateResult({ content: [{ type: "text", text: "Request cancelled" }], isError: true });
+		const rendered = stripAnsi(component.render(80).join("\n"));
+		expect(rendered).toContain("AskUser(Which destination?)");
+		expect(rendered).toContain("Request cancelled");
+		expect(rendered).not.toContain("request_user_input");
 	});
 
 	test("stacks custom call and result renderers like the old implementation", () => {
