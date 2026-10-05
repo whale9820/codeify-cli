@@ -43,6 +43,7 @@
 
 ### Fixed
 
+- Fixed `codeify update` failing after attribution history was rewritten. Clean installations with an identical source snapshot in the new history recover automatically, retain a backup branch, and keep dependencies until the source update succeeds. Local changes and divergent source snapshots are preserved.
 - Override backends now inherit thinking levels and other model metadata from the Codeify catalog when refreshing models, not only when first added, so models such as grok-4.6 no longer offer `max` on backends like cpa.
 - Footer shows running background tasks as `N tasks` right after the provider, user input uses the `❯` prompt, and the startup `[Context]` section now sits below `[Skills]` without an extra blank line above it.
 - Background task completions now render as a compact `●` block with the task id, status, and a collapsed `⎿` output preview instead of a full-width colored box.

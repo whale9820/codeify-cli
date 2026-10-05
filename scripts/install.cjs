@@ -248,6 +248,37 @@ function installBuildCompiler() {
 	}
 }
 
+function updateSourceCheckout() {
+	const args = ["-C", installHome];
+	if (run("git", [...args, "status", "--porcelain", "--untracked-files=normal"], undefined, true).trim()) {
+		throw new Error(`The installation at ${installHome} contains local changes. Preserve them before updating.`);
+	}
+	run("git", [...args, "fetch", "--quiet", "origin", "+refs/heads/main:refs/remotes/origin/main"]);
+	let canFastForward = true;
+	try {
+		execute("git", [...args, "merge-base", "--is-ancestor", "HEAD", "refs/remotes/origin/main"], {
+			env: childEnv,
+			stdio: "pipe",
+		});
+	} catch (error) {
+		if (!error || error.status !== 1) throw error;
+		canFastForward = false;
+	}
+	if (canFastForward) {
+		run("git", [...args, "merge", "--quiet", "--ff-only", "refs/remotes/origin/main"]);
+		return;
+	}
+	const branch = run("git", [...args, "symbolic-ref", "--quiet", "--short", "HEAD"], undefined, true).trim();
+	const tree = run("git", [...args, "rev-parse", "HEAD^{tree}"], undefined, true).trim();
+	const history = run("git", [...args, "log", "--format=%T", "refs/remotes/origin/main"], undefined, true).trim().split(/\r?\n/u);
+	if (branch !== "main" || !tree || !history.includes(tree)) {
+		throw new Error(`The installation at ${installHome} has diverged from upstream. Its local history was preserved.`);
+	}
+	const head = run("git", [...args, "rev-parse", "HEAD"], undefined, true).trim();
+	run("git", [...args, "branch", `codeify-before-history-repair-${head.slice(0, 12)}`, "HEAD"]);
+	run("git", [...args, "checkout", "--quiet", "-B", "main", "refs/remotes/origin/main"]);
+}
+
 function installWindowsArchive() {
 	mkdirSync(dirname(installHome), { recursive: true });
 	const temporaryDirectory = mkdtempSync(join(dirname(installHome), "codeify-download-"));
@@ -308,10 +339,10 @@ task(updatingExisting ? "Updating source" : "Downloading source", updatingExisti
 		if (!gitAvailable) {
 			throw new Error("Git is required to update this existing Git-based installation.");
 		}
+		updateSourceCheckout();
 		if (!isWindows) {
 			rmSync(join(installHome, "node_modules"), { force: true, recursive: true });
 		}
-		run("git", ["-C", installHome, "pull", "--quiet", "--ff-only", "origin", "main"]);
 	} else if (existingArchiveInstall) {
 		if (!isWindows) {
 			throw new Error("Git is required to update this installation.");

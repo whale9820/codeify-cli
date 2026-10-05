@@ -194,17 +194,26 @@ describe("Codeify install script", () => {
 		});
 		expect(calls).toContainEqual({
 			command: "git",
-			args: ["-C", "C:\\Users\\test\\AppData\\Local/CodeifyCLI", "pull", "--quiet", "--ff-only", "origin", "main"],
+			args: [
+				"-C",
+				"C:\\Users\\test\\AppData\\Local/CodeifyCLI",
+				"merge",
+				"--quiet",
+				"--ff-only",
+				"refs/remotes/origin/main",
+			],
 		});
 		expect(calls.some((call) => call.args.at(-1) === "npm.cmd ci --ignore-scripts --loglevel=error")).toBe(false);
 	});
 
-	it("removes Unix dependencies before updating the source checkout", () => {
+	it("removes Unix dependencies only after updating the source checkout", () => {
 		const installHome = "/root/.local/share/codeify-cli";
 		const rmSync = vi.fn();
 		const calls: CommandCall[] = [];
 		const execFileSync = vi.fn((command: string, args: string[]) => {
 			calls.push({ command, args });
+			if (args.includes("merge"))
+				expect(rmSync).not.toHaveBeenCalledWith(`${installHome}/node_modules`, expect.anything());
 			return command === "/usr/bin/node" ? "0.82.12\\n" : "";
 		});
 		const source = readFileSync(new URL("../../../scripts/install.cjs", import.meta.url), "utf8");
@@ -249,7 +258,7 @@ describe("Codeify install script", () => {
 		expect(rmSync).toHaveBeenCalledWith(`${installHome}/node_modules`, { force: true, recursive: true });
 		expect(calls).toContainEqual({
 			command: "git",
-			args: ["-C", installHome, "pull", "--quiet", "--ff-only", "origin", "main"],
+			args: ["-C", installHome, "fetch", "--quiet", "origin", "+refs/heads/main:refs/remotes/origin/main"],
 		});
 	});
 
