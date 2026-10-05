@@ -73,7 +73,7 @@ export function createBackgroundTaskToolDefinition(
 			"Run work in the background so the conversation stays free while it runs.",
 			"",
 			'Actions: "start" launches a shell command (command) or a delegated agent (model and task) and returns immediately with a task ID; "list" shows all tasks; "output" reads the captured output of a task (sinceLast: true returns only new output since the last read, filter: a regex to keep matching lines); "stop" cancels a running task.',
-			"When a background task finishes, its result is delivered back to you automatically as a new message. Do not poll or sleep waiting for it.",
+			"When a background task finishes, its result is delivered automatically before your next response, after the current response and tool calls finish. Do not poll or sleep waiting for it.",
 		].join("\n"),
 		promptSnippet:
 			"Prefer this for anything that may take more than a few seconds: run commands or delegated agent work in the background; results are reported back automatically when done.",
@@ -81,7 +81,7 @@ export function createBackgroundTaskToolDefinition(
 			"Default to background_task instead of bash for anything that could take more than a few seconds: installs, builds, test suites, linters, type checks, dev servers, watchers, large searches, and delegated agent work. There is no downside: the result is delivered back to you automatically, and the user can keep chatting and giving you other work in the meantime.",
 			"Use plain bash only for quick commands whose output you need immediately to decide your very next step.",
 			"Start independent background tasks together, then continue with other useful work. Never block the user waiting on something that can run in the background.",
-			"After starting a background task, briefly tell the user it is running. You will be messaged when it completes; react to that message then.",
+			"After starting a background task, briefly tell the user it is running. Completion results arrive during your work; incorporate them into your next steps and final answer. Avoid repeating acknowledgments for results you already reviewed.",
 			"Do not busy-wait on a background task with sleep or repeated list calls.",
 			"Your turn stays open until every running background task has finished and you have reacted to its result. Stop long-lived tasks (dev servers, watchers) with the stop action once you no longer need them, or the turn will never end.",
 		],

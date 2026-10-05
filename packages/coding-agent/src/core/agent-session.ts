@@ -2664,7 +2664,7 @@ export class AgentSession {
 				display: true,
 				details: task,
 			},
-			{ triggerTurn: true, deliverAs: "followUp" },
+			{ triggerTurn: true, deliverAs: "steer" },
 		).catch(() => {});
 	}
 
