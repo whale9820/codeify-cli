@@ -30,7 +30,10 @@ describe("InteractiveMode questions", () => {
 	it("collects a selected answer and custom text while rejecting blank submissions", async () => {
 		const mode = createMode();
 		mode.showDialogSelector.mockResolvedValueOnce("2. Remote").mockResolvedValueOnce("Type your own answer");
-		mode.showInputDialog.mockResolvedValueOnce(" ").mockResolvedValueOnce("my custom answer");
+		mode.showInputDialog
+			.mockResolvedValueOnce("")
+			.mockResolvedValueOnce(" ")
+			.mockResolvedValueOnce("my custom answer");
 		await handleRequest.call(mode, {
 			id: "q1",
 			questions: [
@@ -39,8 +42,59 @@ describe("InteractiveMode questions", () => {
 			],
 		});
 		expect(mode.session.answerUserInput).toHaveBeenCalledWith("q1", ["Remote", "my custom answer"]);
-		expect(mode.showInputDialog).toHaveBeenCalledTimes(2);
+		expect(mode.showInputDialog).toHaveBeenCalledTimes(3);
 		expect(mode.session.abort).not.toHaveBeenCalled();
+	});
+
+	it("waits for extra text after selecting a choice and submits both together", async () => {
+		const mode = createMode();
+		mode.showDialogSelector.mockResolvedValue("2. Remote");
+		let submitDetails: ((value: string) => void) | undefined;
+		mode.showInputDialog.mockImplementation(
+			() =>
+				new Promise((resolve) => {
+					submitDetails = resolve;
+				}),
+		);
+		const pending = handleRequest.call(mode, {
+			id: "q-details",
+			questions: [{ question: "Destination?", options: ["Local", "Remote"] }],
+		});
+		await vi.waitFor(() => expect(mode.showInputDialog).toHaveBeenCalled());
+		expect(mode.session.answerUserInput).not.toHaveBeenCalled();
+		expect(mode.showInputDialog.mock.calls[0]?.[0]).toContain("Selected: Remote");
+		submitDetails?.("  Use the staging server, not production.  ");
+		await pending;
+		expect(mode.session.answerUserInput).toHaveBeenCalledWith("q-details", [
+			"Remote\nUse the staging server, not production.",
+		]);
+	});
+
+	it.each(["", "   "])("submits just the selected choice when optional details are %j", async (details) => {
+		const mode = createMode();
+		mode.showDialogSelector.mockResolvedValue("1. Local");
+		mode.showInputDialog.mockResolvedValue(details);
+		await handleRequest.call(mode, {
+			id: "q-choice",
+			questions: [{ question: "Destination?", options: ["Local", "Remote"] }],
+		});
+		expect(mode.session.answerUserInput).toHaveBeenCalledWith("q-choice", ["Local"]);
+		expect(mode.session.abort).not.toHaveBeenCalled();
+	});
+
+	it("cancels during optional details without submitting selected choices", async () => {
+		const mode = createMode();
+		mode.showDialogSelector.mockResolvedValue("1. Local");
+		mode.showInputDialog.mockResolvedValueOnce("Use staging").mockResolvedValueOnce(undefined);
+		await handleRequest.call(mode, {
+			id: "q-details-cancel",
+			questions: [
+				{ question: "Destination?", options: ["Local", "Remote"] },
+				{ question: "Account?", options: ["Local", "Remote"] },
+			],
+		});
+		expect(mode.session.abort).toHaveBeenCalledTimes(1);
+		expect(mode.session.answerUserInput).not.toHaveBeenCalled();
 	});
 
 	it("supports a free text question", async () => {

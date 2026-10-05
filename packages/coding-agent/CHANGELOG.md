@@ -4,6 +4,7 @@
 
 ### Added
 
+- Suggested answers now offer an optional details step: select a choice, append your own text, or submit the choice alone.
 - Added `request_user_input` in interactive and RPC modes: the agent can ask up to three questions with suggested or custom answers and wait for explicit replies. Escape cancels the turn; RPC clients answer through `user_input_response`.
 - Added Ctrl+B (`app.tools.background`) to move a running bash command to the background. The tool call returns immediately with a task ID, the process keeps running (even if the turn is aborted), its output keeps being captured, and the result is delivered back to the agent when it finishes. The running command shows a "ctrl+b to run in background" hint.
 - Added `/tasks follow <id>`, a live tail of a task's output (x stops it, Esc closes), also reachable from the `/tasks` menu. The `background_task` output action gained `sinceLast` (only new output since the last read) and `filter` (regex line filter). The system prompt now tells the agent about `/tasks` and Ctrl+B so it handles commands moved to the background correctly.

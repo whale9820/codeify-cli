@@ -1,17 +1,17 @@
 {
 	"name": "codeify-coding-agent",
-	"version": "0.82.80",
+	"version": "0.82.81",
 	"lockfileVersion": 3,
 	"requires": true,
 	"packages": {
 		"": {
 			"name": "codeify-coding-agent",
-			"version": "0.82.80",
+			"version": "0.82.81",
 			"license": "MIT",
 			"dependencies": {
-				"codeify-agent-core": "^0.82.80",
-				"codeify-ai": "^0.82.80",
-				"codeify-tui": "^0.82.80",
+				"codeify-agent-core": "^0.82.81",
+				"codeify-ai": "^0.82.81",
+				"codeify-tui": "^0.82.81",
 				"@modelcontextprotocol/sdk": "1.29.0",
 				"@silvia-odwyer/photon-node": "0.3.4",
 				"chalk": "5.6.2",
@@ -458,11 +458,11 @@
 			}
 		},
 		"node_modules/codeify-agent-core": {
-			"version": "0.82.80",
-			"resolved": "https://registry.npmjs.org/codeify-agent-core/-/codeify-agent-core-0.82.80.tgz",
+			"version": "0.82.81",
+			"resolved": "https://registry.npmjs.org/codeify-agent-core/-/codeify-agent-core-0.82.81.tgz",
 			"license": "MIT",
 			"dependencies": {
-				"codeify-ai": "^0.82.80",
+				"codeify-ai": "^0.82.81",
 				"ignore": "7.0.5",
 				"typebox": "1.1.38",
 				"yaml": "2.9.0"
@@ -472,8 +472,8 @@
 			}
 		},
 		"node_modules/codeify-ai": {
-			"version": "0.82.80",
-			"resolved": "https://registry.npmjs.org/codeify-ai/-/codeify-ai-0.82.80.tgz",
+			"version": "0.82.81",
+			"resolved": "https://registry.npmjs.org/codeify-ai/-/codeify-ai-0.82.81.tgz",
 			"license": "MIT",
 			"dependencies": {
 				"@anthropic-ai/sdk": "0.91.1",
@@ -486,8 +486,8 @@
 			}
 		},
 		"node_modules/codeify-tui": {
-			"version": "0.82.80",
-			"resolved": "https://registry.npmjs.org/codeify-tui/-/codeify-tui-0.82.80.tgz",
+			"version": "0.82.81",
+			"resolved": "https://registry.npmjs.org/codeify-tui/-/codeify-tui-0.82.81.tgz",
 			"license": "MIT",
 			"dependencies": {
 				"get-east-asian-width": "1.6.0",

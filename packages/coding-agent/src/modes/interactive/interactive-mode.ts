@@ -1444,7 +1444,19 @@ export class InteractiveMode {
 						return;
 					}
 					const selectedIndex = options.indexOf(selected);
-					if (selectedIndex >= 0) answer = question.options[selectedIndex];
+					if (selectedIndex >= 0) {
+						answer = question.options[selectedIndex];
+						const details = await this.showInputDialog(
+							`${title}\nSelected: ${answer}\nAdd details (optional; ${keyText("tui.input.submit")} to skip)`,
+							undefined,
+							{ signal },
+						);
+						if (details === undefined) {
+							await session.abort();
+							return;
+						}
+						if (details.trim()) answer = `${answer}\n${details.trim()}`;
+					}
 				}
 				while (!answer?.trim()) {
 					answer = await this.showInputDialog(title, "Enter your answer", { signal });
