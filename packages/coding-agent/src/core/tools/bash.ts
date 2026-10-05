@@ -511,7 +511,7 @@ export function createBashToolDefinition(
 							content: [
 								{
 									type: "text",
-									text: `The user moved this command to the background as task ${adopted.task.id}. It is still running; its result will be delivered to you automatically when it finishes, so do not wait for it. Use background_task with action "output" and id ${adopted.task.id} to read more output, or "stop" to cancel it.${tail ? `\n\nOutput so far:\n${tail}` : ""}`,
+									text: `The user moved this command to the background as task ${adopted.task.id}. It is still running; its result will arrive automatically. Continue only with independent work; if you need this result or have no useful work left, end your response and wait for the automatic notification. Do not poll, sleep, or rerun the command. Use background_task with action "output" and id ${adopted.task.id} to read more output, or "stop" to cancel it.${tail ? `\n\nOutput so far:\n${tail}` : ""}`,
 								},
 							],
 							details: undefined,

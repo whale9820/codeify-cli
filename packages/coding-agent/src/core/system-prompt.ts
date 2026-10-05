@@ -108,7 +108,7 @@ export function buildSystemPrompt(options: BuildSystemPromptOptions): string {
 
 	if (tools.includes("background_task")) {
 		addGuideline(
-			"Background tasks: the user manages them with /tasks (list, follow live output, view output, stop, clear) and can press Ctrl+B while a bash command is running to move it to the background. When a bash result says the user moved the command to the background as task <id>, it is still running: do not rerun it, do not wait or poll, and continue with other useful work or tell the user it is running. Its final result arrives later as a background task message; react to it then. To inspect a task, use background_task output (sinceLast for only new output, filter for a regex) and stop to cancel it. Stop tasks you started that are no longer needed.",
+			"Background tasks: the user manages them with /tasks (list, follow live output, view output, stop, clear) and can press Ctrl+B while a bash command is running to move it to the background. When a bash result says the user moved the command to the background as task <id>, it is still running: do not rerun it or poll for completion. Continue only with useful independent work. If its result is needed or no useful work remains, briefly tell the user what you are waiting for and end your response without tool calls; the session waits and resumes you automatically when the result arrives. Do not invent extra work or claim completion before required results arrive. To inspect a task, use background_task output (sinceLast for only new output, filter for a regex) and stop to cancel it. Stop tasks you started that are no longer needed.",
 		);
 	}
 

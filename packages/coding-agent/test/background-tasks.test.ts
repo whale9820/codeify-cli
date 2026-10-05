@@ -137,13 +137,13 @@ describe("background_task tool", () => {
 		return { ops, run };
 	}
 
-	it("starts a command and tells the agent not to wait", async () => {
+	it("starts a command and explains how to wait for a required result", async () => {
 		const { ops, run } = setup();
 		const text = await run({ action: "start", command: "npm test" });
 
 		expect(ops.startCommand).toHaveBeenCalledWith("npm test", "npm test", undefined);
 		expect(text).toContain("bg1");
-		expect(text).toContain("do not wait");
+		expect(text).toContain("end your response and wait for the automatic notification");
 	});
 
 	it("reads only new output and applies a line filter", async () => {

@@ -1,3 +1,5 @@
+import { writeFileSync } from "node:fs";
+import { join } from "node:path";
 import { fauxAssistantMessage, fauxToolCall } from "codeify-ai";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createHarness, getMessageText, type Harness } from "./harness.ts";
@@ -9,6 +11,41 @@ describe("background_task integration", () => {
 		while (harnesses.length > 0) {
 			harnesses.pop()?.cleanup();
 		}
+	});
+
+	it("waits without extra model calls when the agent yields for a required result", async () => {
+		const harness = await createHarness({ initialActiveToolNames: ["background_task"] });
+		harnesses.push(harness);
+		harness.setResponses([
+			fauxAssistantMessage(
+				[
+					fauxToolCall("background_task", {
+						action: "start",
+						command: "while [ ! -f release ]; do sleep 0.01; done; echo bg-done",
+					}),
+				],
+				{ stopReason: "toolUse" },
+			),
+			fauxAssistantMessage("Waiting for the required check."),
+			fauxAssistantMessage("The check passed."),
+		]);
+		let settled = false;
+		const pending = harness.session.prompt("run the check and wait for its result").then(() => {
+			settled = true;
+		});
+		await vi.waitFor(() => expect(harness.eventsOfType("agent_end")).toHaveLength(1));
+
+		expect(settled).toBe(false);
+		expect(harness.session.isIdle).toBe(false);
+		expect(harness.session.getBackgroundTasks()[0]?.status).toBe("running");
+		expect(harness.getPendingResponseCount()).toBe(1);
+		writeFileSync(join(harness.tempDir, "release"), "");
+		await pending;
+
+		expect(harness.session.getLastAssistantText()).toBe("The check passed.");
+		expect(harness.session.isIdle).toBe(true);
+		expect(harness.getPendingResponseCount()).toBe(0);
+		expect(harness.eventsOfType("tool_execution_start")).toHaveLength(1);
 	});
 
 	it.each([
