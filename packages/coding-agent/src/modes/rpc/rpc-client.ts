@@ -212,6 +212,11 @@ export class RpcClient {
 		await this.send({ type: "follow_up", message, images });
 	}
 
+	async answerUserInput(requestId: string, answers: string[]): Promise<void> {
+		const response = await this.send({ type: "user_input_response", requestId, answers });
+		if (!response.success) throw new Error(response.error);
+	}
+
 	/**
 	 * Abort current operation.
 	 */

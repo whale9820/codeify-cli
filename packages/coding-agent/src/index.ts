@@ -214,6 +214,7 @@ export {
 	type ProjectTrustStoreEntry,
 	type ProjectTrustUpdate,
 } from "./core/trust-manager.ts";
+export type { UserInputQuestion, UserInputRequest } from "./core/user-input.ts";
 // Main entry point
 export { main } from "./main.ts";
 // Run modes for programmatic SDK usage

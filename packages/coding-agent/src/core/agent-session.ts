@@ -92,9 +92,11 @@ import { createCodeifyModelToolDefinition } from "./tools/codeify-model.ts";
 import { type ContextUsageSnapshot, createContextUsageToolDefinition } from "./tools/context-usage.ts";
 import { createUpdateGoalToolDefinition } from "./tools/goal.ts";
 import { createAllToolDefinitions } from "./tools/index.ts";
+import { createRequestUserInputToolDefinition } from "./tools/request-user-input.ts";
 import { createToolDefinitionFromAgentTool, wrapToolDefinition } from "./tools/tool-definition-wrapper.ts";
 import type { ToolDefinition, ToolExecutionContext, ToolInfo } from "./tools/types.ts";
 import { addUsageToTotals, createUsageTotals } from "./usage-totals.ts";
+import { UserInputManager, type UserInputRequest } from "./user-input.ts";
 
 // ============================================================================
 // Skill Block Parsing
@@ -141,6 +143,7 @@ export type AgentSessionEvent =
 	| { type: "compaction_requested"; rationale: string }
 	| { type: "goal_updated"; goal: Goal | undefined }
 	| { type: "background_tasks_updated" }
+	| { type: "user_input_requested"; request: UserInputRequest }
 	| { type: "entry_appended"; entry: SessionEntry }
 	| { type: "session_info_changed"; name: string | undefined }
 	| { type: "thinking_level_changed"; level: ThinkingLevel }
@@ -313,6 +316,8 @@ export class AgentSession {
 	private _goal: Goal | undefined = undefined;
 	/** Foreground bash commands that can still be moved to the background. */
 	private _foregroundCommands = new Set<() => void>();
+	private _userInput = new UserInputManager();
+	private _userInputEnabled = false;
 	private _backgroundTasks = new BackgroundTaskManager(
 		(task) => this._reportBackgroundTask(task),
 		() => this._emit({ type: "background_tasks_updated" }),
@@ -772,6 +777,22 @@ export class AgentSession {
 			return this._toolDefinitions.get(targetName)?.definition;
 		}
 		return undefined;
+	}
+
+	setUserInputEnabled(): void {
+		if (this._userInputEnabled) return;
+		this._userInputEnabled = true;
+		const activeToolNames = this.getActiveToolNames();
+		if (activeToolNames.length > 0) activeToolNames.push("request_user_input");
+		this._buildRuntime({ activeToolNames });
+	}
+
+	getPendingUserInput(): UserInputRequest | undefined {
+		return this._userInput.getPending();
+	}
+
+	answerUserInput(id: string, answers: string[]): void {
+		this._userInput.answer(id, answers);
 	}
 
 	/**
@@ -1987,7 +2008,8 @@ export class AgentSession {
 							name !== "codeify_model" &&
 							name !== "context_usage" &&
 							name !== "update_goal" &&
-							name !== "background_task",
+							name !== "background_task" &&
+							name !== "request_user_input",
 					),
 				createDelegatedTools: () => ({
 					tools: [...this._toolRegistry.values()].filter(
@@ -1995,7 +2017,8 @@ export class AgentSession {
 							tool.name !== "codeify_model" &&
 							tool.name !== "context_usage" &&
 							tool.name !== "update_goal" &&
-							tool.name !== "background_task",
+							tool.name !== "background_task" &&
+							tool.name !== "request_user_input",
 					),
 				}),
 			});
@@ -2058,6 +2081,14 @@ export class AgentSession {
 				completeGoal: (summary) => this.completeGoal(summary),
 				blockGoal: (reason) => this.blockGoal(reason),
 			});
+		}
+
+		if (this._userInputEnabled) {
+			baseToolDefinitions.request_user_input = createRequestUserInputToolDefinition((request, signal) =>
+				this._userInput.request(request, signal, (pending) =>
+					this._emit({ type: "user_input_requested", request: pending }),
+				),
+			);
 		}
 
 		this._baseToolDefinitions = new Map(

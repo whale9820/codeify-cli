@@ -96,6 +96,7 @@ import type { SourceInfo } from "../../core/source-info.ts";
 import type { TruncationResult } from "../../core/tools/truncate.ts";
 import { hasTrustRequiringProjectResources, ProjectTrustStore } from "../../core/trust-manager.ts";
 import { getUsageCostBreakdown } from "../../core/usage-totals.ts";
+import type { UserInputRequest } from "../../core/user-input.ts";
 import { copyToClipboard, readClipboardText } from "../../utils/clipboard.ts";
 import { extensionForImageMimeType, readClipboardImage } from "../../utils/clipboard-image.ts";
 import { parseGitUrl } from "../../utils/git.ts";
@@ -1315,6 +1316,7 @@ export class InteractiveMode {
 	}
 
 	private async bindCurrentSession(): Promise<void> {
+		this.session.setUserInputEnabled();
 		setRegisteredThemes(this.session.resourceLoader.getThemes().themes);
 		this.setupAutocompleteProvider();
 		this.showLoadedResources({ force: false, showDiagnosticsWhenQuiet: true });
@@ -1418,6 +1420,54 @@ export class InteractiveMode {
 				notify: (message, type) => this.showNotification(message, type),
 			},
 		};
+	}
+
+	private async handleUserInputRequest(request: UserInputRequest): Promise<void> {
+		const session = this.session;
+		const signal = session.agent.signal;
+		this.clearStatusIndicator();
+		this.statusContainer.addChild(new Text(theme.fg("muted", "Waiting for your answer..."), 0, 0));
+		this.ui.requestRender();
+		const answers: string[] = [];
+		try {
+			for (const [index, question] of request.questions.entries()) {
+				const title =
+					request.questions.length > 1
+						? `Question ${index + 1} of ${request.questions.length}\n${question.question}`
+						: question.question;
+				let answer: string | undefined;
+				if (question.options?.length) {
+					const options = question.options.map((option, optionIndex) => `${optionIndex + 1}. ${option}`);
+					const selected = await this.showDialogSelector(title, [...options, "Type your own answer"], { signal });
+					if (selected === undefined) {
+						await session.abort();
+						return;
+					}
+					const selectedIndex = options.indexOf(selected);
+					if (selectedIndex >= 0) answer = question.options[selectedIndex];
+				}
+				while (!answer?.trim()) {
+					answer = await this.showInputDialog(title, "Enter your answer", { signal });
+					if (answer === undefined) {
+						await session.abort();
+						return;
+					}
+				}
+				answers.push(answer.trim());
+			}
+			session.answerUserInput(request.id, answers);
+		} catch (error) {
+			if (!signal?.aborted) {
+				this.showError(error instanceof Error ? error.message : String(error));
+				await session.abort();
+			}
+		} finally {
+			this.statusContainer.clear();
+			if (this.session === session && session.isStreaming && !signal?.aborted) {
+				this.showStatusIndicator(new WorkingStatusIndicator(this.ui, this.defaultWorkingMessage));
+			}
+			this.ui.requestRender();
+		}
 	}
 
 	private showDialogSelector(title: string, options: string[], opts?: DialogOptions): Promise<string | undefined> {
@@ -2119,6 +2169,10 @@ export class InteractiveMode {
 				await this.checkShutdownRequested();
 				await this.handleRequestedCompaction();
 				void this.continueGoal();
+				break;
+
+			case "user_input_requested":
+				await this.handleUserInputRequest(event.request);
 				break;
 
 			case "background_tasks_updated":

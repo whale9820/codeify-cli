@@ -64,6 +64,7 @@ export async function runRpcMode(runtimeHost: AgentSessionRuntime): Promise<neve
 
 	const rebindSession = async (): Promise<void> => {
 		session = runtimeHost.session;
+		session.setUserInputEnabled();
 		shutdownRequested = false;
 
 		unsubscribe?.();
@@ -140,6 +141,11 @@ export async function runRpcMode(runtimeHost: AgentSessionRuntime): Promise<neve
 				return success(id, "follow_up");
 			}
 
+			case "user_input_response": {
+				session.answerUserInput(command.requestId, command.answers);
+				return success(id, "user_input_response");
+			}
+
 			case "abort": {
 				await session.abort();
 				return success(id, "abort");
@@ -172,6 +178,7 @@ export async function runRpcMode(runtimeHost: AgentSessionRuntime): Promise<neve
 					autoCompactionEnabled: session.autoCompactionEnabled,
 					messageCount: session.messages.length,
 					pendingMessageCount: session.pendingMessageCount,
+					pendingUserInput: session.getPendingUserInput(),
 				};
 				return success(id, "get_state", state);
 			}

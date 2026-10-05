@@ -12,6 +12,7 @@ import type { BashResult } from "../../core/bash-executor.ts";
 import type { CompactionResult } from "../../core/compaction/index.ts";
 import type { SessionEntry, SessionTreeNode } from "../../core/session-manager.ts";
 import type { SourceInfo } from "../../core/source-info.ts";
+import type { UserInputRequest } from "../../core/user-input.ts";
 
 // ============================================================================
 // RPC Commands (stdin)
@@ -23,6 +24,7 @@ export type RpcCommand =
 	| { id?: string; type: "steer"; message: string; images?: ImageContent[] }
 	| { id?: string; type: "follow_up"; message: string; images?: ImageContent[] }
 	| { id?: string; type: "abort" }
+	| { id?: string; type: "user_input_response"; requestId: string; answers: string[] }
 	| { id?: string; type: "new_session"; parentSession?: string }
 
 	// State
@@ -105,6 +107,7 @@ export interface RpcSessionState {
 	autoCompactionEnabled: boolean;
 	messageCount: number;
 	pendingMessageCount: number;
+	pendingUserInput?: UserInputRequest;
 }
 
 // ============================================================================
@@ -118,6 +121,7 @@ export type RpcResponse =
 	| { id?: string; type: "response"; command: "steer"; success: true }
 	| { id?: string; type: "response"; command: "follow_up"; success: true }
 	| { id?: string; type: "response"; command: "abort"; success: true }
+	| { id?: string; type: "response"; command: "user_input_response"; success: true }
 	| { id?: string; type: "response"; command: "new_session"; success: true; data: { cancelled: boolean } }
 
 	// State
