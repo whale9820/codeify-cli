@@ -109,6 +109,7 @@ export function overrideProviderConfig(
 		name: backend.name,
 		baseUrl: backend.baseUrl,
 		api: "openai-responses",
+		overrideProtocolFallback: true,
 		apiKey: escapeConfigValue(backend.apiKey),
 		models: routeModels(backend.models, backend.baseUrl),
 		refreshModels: store

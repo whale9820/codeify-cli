@@ -21,6 +21,7 @@ import {
 } from "codeify-ai";
 import { getApiProvider } from "codeify-ai/compat";
 import type { ModelConfig, ModelsJsonModel, ModelsJsonModelOverride, ModelsJsonProvider } from "./model-config.ts";
+import { streamOverrideFallback } from "./override-stream.ts";
 import {
 	clearConfigValueCache,
 	getConfigValueEnvVarNames,
@@ -44,6 +45,7 @@ export interface RuntimeProviderConfig {
 	baseUrl?: string;
 	apiKey?: string;
 	api?: Api;
+	overrideProtocolFallback?: boolean;
 	streamSimple?: (model: Model<Api>, context: Context, options?: SimpleStreamOptions) => AssistantMessageEventStream;
 	headers?: Record<string, string>;
 	authHeader?: boolean;
@@ -486,8 +488,18 @@ export function composeModelProvider(
 		filterModels: base?.filterModels
 			? (models, credential: Credential | undefined) => base.filterModels!(models, credential)
 			: undefined,
-		stream: (model, context, options) => streamWith(model, context, options, false),
-		streamSimple: (model, context, options) => streamWith(model, context, options, true),
+		stream: (model, context, options) =>
+			configured?.overrideProtocolFallback
+				? streamOverrideFallback(model, configured.baseUrl!, options, (candidate) =>
+						streamWith(candidate, context, options, false),
+					)
+				: streamWith(model, context, options, false),
+		streamSimple: (model, context, options) =>
+			configured?.overrideProtocolFallback
+				? streamOverrideFallback(model, configured.baseUrl!, options, (candidate) =>
+						streamWith(candidate, context, options, true),
+					)
+				: streamWith(model, context, options, true),
 	};
 }
 
