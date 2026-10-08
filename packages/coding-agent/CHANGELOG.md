@@ -62,6 +62,7 @@
 - Retry HTTP 5xx errors and request timeouts up to five times, and show `Reconnecting... (1/5)` in bold thinking text while reconnecting.
 - Retry errors containing `no output within 30s` up to five times and show `Reconnecting... (1/5)` while reconnecting.
 - Retry transport cuts of the form `upstream_error: ...` up to five times and show `Reconnecting... (1/5)` while reconnecting.
+- Retry unexpected EOF errors up to five times and show `Reconnecting (1/5)...` while reconnecting.
 - Render back-to-back bold spans (`**a****b**`) in thinking and assistant text as separate lines instead of one bold run containing literal asterisks.
 - Hide the red error line for failed requests that will be retried; the spinner shows the attempt count instead.
 - Show `Reconnecting (1/5)...` in the status spinner, styled like the retry indicator, instead of a bold italic transcript line.

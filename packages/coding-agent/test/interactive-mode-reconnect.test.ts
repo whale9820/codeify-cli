@@ -133,6 +133,16 @@ describe("InteractiveMode reconnect status", () => {
 		});
 		expect(upstreamHost.showStatusIndicator.mock.calls[0]?.[0]).toBeInstanceOf(ReconnectStatusIndicator);
 
+		const eofHost = host();
+		await handleEvent.call(eofHost, {
+			type: "auto_retry_start",
+			attempt: 1,
+			maxAttempts: 5,
+			delayMs: 2000,
+			errorMessage: "unexpected EOF",
+		});
+		expect(eofHost.showStatusIndicator.mock.calls[0]?.[0]).toBeInstanceOf(ReconnectStatusIndicator);
+
 		const retryHost = host();
 		await handleEvent.call(retryHost, {
 			type: "auto_retry_start",

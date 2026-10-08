@@ -96,6 +96,9 @@ describe("provider retry classification", () => {
 		"upstream_error: connection reset",
 		"upstream_error: ANYTHING_HERE",
 		"Error: upstream_error: timeout",
+		"unexpected EOF",
+		"Error: unexpected eof",
+		"UnexpectedEOF",
 	])("reconnects on %s", (errorMessage) => {
 		expect(isReconnectableProviderError(errorMessage)).toBe(true);
 		expect(isRetryableAssistantError(fauxAssistantMessage("", { stopReason: "error", errorMessage }))).toBe(true);
@@ -221,6 +224,7 @@ describe("retryAssistantCall", () => {
 			"Request timed out.",
 			"no output within 30s",
 			"upstream_error: connection reset",
+			"unexpected EOF",
 		]) {
 			const produce = vi.fn(async () => fauxAssistantMessage("", { stopReason: "error", errorMessage }));
 			const onRetryScheduled = vi.fn();

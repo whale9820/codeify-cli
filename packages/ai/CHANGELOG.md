@@ -18,6 +18,7 @@
 - Retry HTTP 5xx responses, including Cloudflare 522, and `Request timed out.` at least five times before stopping.
 - Retry errors containing `no output within 30s` at least five times, using the same reconnect budget as HTTP 5xx and request timeouts.
 - Retry transport cuts of the form `upstream_error: ...` at least five times, using the same reconnect budget as HTTP 5xx and request timeouts.
+- Retry unexpected EOF errors at least five times, using the same reconnect budget as HTTP 5xx and request timeouts.
 
 ## [0.82.9] - 2026-08-13
 

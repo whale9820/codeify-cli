@@ -44,6 +44,7 @@ const HTTP_5XX_STATUS_PATTERN = /\b5\d{2}\b/;
 const REQUEST_TIMED_OUT_PATTERN = /request timed out/i;
 const NO_OUTPUT_WITHIN_30S_PATTERN = /no output within 30s/i;
 const UPSTREAM_ERROR_PATTERN = /upstream_error\s*:/i;
+const UNEXPECTED_EOF_PATTERN = /unexpected\s*eof/i;
 
 export function isReconnectableProviderError(errorMessage: string): boolean {
 	if (NON_RETRYABLE_PROVIDER_LIMIT_ERROR_PATTERN.test(errorMessage)) return false;
@@ -51,7 +52,8 @@ export function isReconnectableProviderError(errorMessage: string): boolean {
 		HTTP_5XX_STATUS_PATTERN.test(errorMessage) ||
 		REQUEST_TIMED_OUT_PATTERN.test(errorMessage) ||
 		NO_OUTPUT_WITHIN_30S_PATTERN.test(errorMessage) ||
-		UPSTREAM_ERROR_PATTERN.test(errorMessage)
+		UPSTREAM_ERROR_PATTERN.test(errorMessage) ||
+		UNEXPECTED_EOF_PATTERN.test(errorMessage)
 	);
 }
 
@@ -204,7 +206,7 @@ function sleep(ms: number, signal?: AbortSignal): Promise<void> {
  *   the retried call starts, and `onRetryFinished` once at the end (whether the loop
  *   ends in success, exhausted retries, or an aborted backoff).
  * - HTTP 5xx responses, `Request timed out.`, errors containing `no output within 30s`,
- *   and transport cuts of the form `upstream_error: ...` use at least
+ *   transport cuts of the form `upstream_error: ...`, and unexpected EOF errors use at least
  *   {@link RECONNECT_MAX_RETRIES} attempts when the policy is enabled with a non-zero budget.
  *
  * When `policy` is undefined or disabled, the first response is returned unchanged
