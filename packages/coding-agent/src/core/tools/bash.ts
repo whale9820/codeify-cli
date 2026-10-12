@@ -26,6 +26,24 @@ import type { ToolDefinition, ToolRenderResultOptions } from "./types.ts";
 const MAX_TIMEOUT_MS = 2_147_483_647;
 const MAX_TIMEOUT_SECONDS = MAX_TIMEOUT_MS / 1000;
 
+function hasSleepCommand(command: string): boolean {
+	let commandStart = true;
+	for (const match of command.matchAll(/#[^\n]*|[;&|()\n]|(?:[^\s;&|()'"\\#]+|'[^']*'|"(?:\\.|[^"\\])*"|\\.)+/gu)) {
+		const token = match[0];
+		if (token.startsWith("#")) continue;
+		if (/^[;&|()\n]$/u.test(token)) {
+			commandStart = true;
+			continue;
+		}
+		if (!commandStart) continue;
+		const word = token.replace(/['"]/gu, "").replace(/\\(.)/gu, "$1");
+		if (/^(?:.*\/)?sleep$/u.test(word)) return true;
+		if (/^[\w]+=/u.test(word) || /^(?:command|exec|env|if|then|elif|while|until|do|!|\{)$/u.test(word)) continue;
+		commandStart = false;
+	}
+	return false;
+}
+
 function resolveTimeoutMs(timeout: number | undefined): number | undefined {
 	if (timeout === undefined) return undefined;
 	if (!Number.isFinite(timeout) || timeout <= 0) {
@@ -170,6 +188,7 @@ export interface BashBackgroundHost {
 }
 
 export interface BashToolOptions {
+	hasRunningBackgroundTasks?: () => boolean;
 	/** Enables moving running commands to the background (Ctrl+B in interactive mode) */
 	background?: BashBackgroundHost;
 	/** Custom operations for command execution. Default: local shell */
@@ -368,6 +387,11 @@ export function createBashToolDefinition(
 		prepareArguments: prepareBashArguments,
 		async execute(_toolCallId, input: BashToolInput, signal?: AbortSignal, onUpdate?, _ctx?) {
 			const { command, timeout } = input;
+			if (options?.hasRunningBackgroundTasks?.() && hasSleepCommand(command)) {
+				throw new Error(
+					"Sleep blocked while a background task is running. Just end your turn rather than waiting: the task will ping you automatically when it finishes. No need to sleep or poll. Continue only with independent work if any remains.",
+				);
+			}
 			const rawCwd = (input as Record<string, unknown>).Cwd ?? (input as Record<string, unknown>).cwd;
 			const effectiveCwd = typeof rawCwd === "string" ? resolveToCwd(rawCwd, cwd) : cwd;
 			const resolvedCommand = commandPrefix ? `${commandPrefix}\n${command}` : command;

@@ -1974,6 +1974,7 @@ export class AgentSession {
 			: createAllToolDefinitions(this._cwd, {
 					read: { autoResizeImages },
 					bash: {
+						hasRunningBackgroundTasks: () => this._backgroundTasks.runningCount() > 0,
 						commandPrefix: shellCommandPrefix,
 						shellPath,
 						background: {
