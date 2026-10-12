@@ -20,7 +20,7 @@ describe("bash sleep guard", () => {
 		const exec = vi.fn(async () => ({ exitCode: 0 }));
 		const tool = createBashToolDefinition(process.cwd(), {
 			operations: { exec },
-			hasRunningBackgroundTasks: () => true,
+			hasPendingBackgroundTasks: () => true,
 		});
 		await expect(tool.execute("call", { command }, undefined, undefined, undefined as never)).rejects.toThrow(
 			"Just end your turn rather than waiting: the task will ping you automatically",
@@ -41,7 +41,7 @@ describe("bash sleep guard", () => {
 		const exec = vi.fn(async () => ({ exitCode: 0 }));
 		const tool = createBashToolDefinition(process.cwd(), {
 			operations: { exec },
-			hasRunningBackgroundTasks: () => true,
+			hasPendingBackgroundTasks: () => true,
 		});
 		await tool.execute("call", { command }, undefined, undefined, undefined as never);
 		expect(exec).toHaveBeenCalledOnce();
@@ -52,7 +52,7 @@ describe("bash sleep guard", () => {
 		const exec = vi.fn(async () => ({ exitCode: 0 }));
 		const tool = createBashToolDefinition(process.cwd(), {
 			operations: { exec },
-			hasRunningBackgroundTasks: () => running,
+			hasPendingBackgroundTasks: () => running,
 		});
 		await expect(
 			tool.execute("blocked", { command: "sleep 30" }, undefined, undefined, undefined as never),

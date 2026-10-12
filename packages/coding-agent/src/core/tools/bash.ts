@@ -188,7 +188,7 @@ export interface BashBackgroundHost {
 }
 
 export interface BashToolOptions {
-	hasRunningBackgroundTasks?: () => boolean;
+	hasPendingBackgroundTasks?: () => boolean;
 	/** Enables moving running commands to the background (Ctrl+B in interactive mode) */
 	background?: BashBackgroundHost;
 	/** Custom operations for command execution. Default: local shell */
@@ -387,9 +387,9 @@ export function createBashToolDefinition(
 		prepareArguments: prepareBashArguments,
 		async execute(_toolCallId, input: BashToolInput, signal?: AbortSignal, onUpdate?, _ctx?) {
 			const { command, timeout } = input;
-			if (options?.hasRunningBackgroundTasks?.() && hasSleepCommand(command)) {
+			if (options?.hasPendingBackgroundTasks?.() && hasSleepCommand(command)) {
 				throw new Error(
-					"Sleep blocked while a background task is running. Just end your turn rather than waiting: the task will ping you automatically when it finishes. No need to sleep or poll. Continue only with independent work if any remains.",
+					"Sleep blocked while a background task or its completion notification is pending. Just end your turn rather than waiting: the task will ping you automatically. No need to sleep or poll. Continue only with independent work if any remains.",
 				);
 			}
 			const rawCwd = (input as Record<string, unknown>).Cwd ?? (input as Record<string, unknown>).cwd;

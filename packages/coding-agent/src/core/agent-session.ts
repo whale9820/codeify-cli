@@ -316,6 +316,7 @@ export class AgentSession {
 	private _goal: Goal | undefined = undefined;
 	/** Foreground bash commands that can still be moved to the background. */
 	private _foregroundCommands = new Set<() => void>();
+	private _pendingBackgroundTaskNotifications = new Set<string>();
 	private _userInput = new UserInputManager();
 	private _userInputEnabled = false;
 	private _backgroundTasks = new BackgroundTaskManager(
@@ -555,6 +556,10 @@ export class AgentSession {
 		if (event.type === "message_end") {
 			// Check if this is a custom message
 			if (event.message.role === "custom") {
+				if (event.message.customType === "background_task") {
+					const details = event.message.details as BackgroundTask | undefined;
+					if (details?.id) this._pendingBackgroundTaskNotifications.delete(details.id);
+				}
 				// Persist as CustomMessageEntry
 				this.sessionManager.appendCustomMessageEntry(
 					event.message.customType,
@@ -1285,6 +1290,7 @@ export class AgentSession {
 		this._steeringMessages = [];
 		this._followUpMessages = [];
 		this.agent.clearAllQueues();
+		this._pendingBackgroundTaskNotifications.clear();
 		this._emitQueueUpdate();
 		return { steering, followUp };
 	}
@@ -1974,7 +1980,8 @@ export class AgentSession {
 			: createAllToolDefinitions(this._cwd, {
 					read: { autoResizeImages },
 					bash: {
-						hasRunningBackgroundTasks: () => this._backgroundTasks.runningCount() > 0,
+						hasPendingBackgroundTasks: () =>
+							this._backgroundTasks.runningCount() > 0 || this._pendingBackgroundTaskNotifications.size > 0,
 						commandPrefix: shellCommandPrefix,
 						shellPath,
 						background: {
@@ -2688,6 +2695,7 @@ export class AgentSession {
 	private _reportBackgroundTask(task: BackgroundTask): void {
 		this._wakeTaskWaiter?.();
 		if (task.status === "stopped") return;
+		this._pendingBackgroundTaskNotifications.add(task.id);
 		const output = this._backgroundTasks.readOutput(task.id) ?? { text: "", droppedChars: 0 };
 		void this.sendCustomMessage(
 			{
@@ -2697,7 +2705,7 @@ export class AgentSession {
 				details: task,
 			},
 			{ triggerTurn: true, deliverAs: "steer" },
-		).catch(() => {});
+		).catch(() => this._pendingBackgroundTaskNotifications.delete(task.id));
 	}
 
 	getGoal(): Goal | undefined {
