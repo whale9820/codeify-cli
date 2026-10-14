@@ -7,7 +7,7 @@ import type { Api, Context, Model, ModelsSimpleStreamOptions, Usage } from "code
 import { createAssistantMessageEventStream } from "codeify-ai";
 import { type Static, Type } from "typebox";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { BackgroundTaskManager } from "../src/core/background-tasks.ts";
+import { BackgroundTaskManager, buildCompletionMessage } from "../src/core/background-tasks.ts";
 import {
 	type CodeifyModelToolRuntime,
 	createCodeifyModelToolDefinition,
@@ -228,6 +228,7 @@ describe("codeify_model tool", () => {
 			);
 			expect(result.details).toMatchObject({ action: "run", status: "running", taskId: "bg1" });
 			await startedRead;
+			expect(backgroundTasks.readOutput("bg1")?.text).toContain('Tool read started: {"path":"notes.txt"}');
 			controller.abort();
 			expect(backgroundTasks.get("bg1")?.status).toBe("running");
 			expect(finished).not.toHaveBeenCalled();
@@ -255,9 +256,60 @@ describe("codeify_model tool", () => {
 		await vi.waitFor(() => expect(finished).toHaveBeenCalledOnce());
 		expect(backgroundTasks.get("bg1")).toMatchObject({
 			status: "failed",
-			error: "Delegated Codeify CLI agent request failed.",
+			error: expect.stringContaining("Delegated Codeify CLI agent request failed."),
 		});
 		expect(JSON.stringify(backgroundTasks.list())).not.toContain("secret-codeify-key");
+		expect(backgroundTasks.get("bg1")?.error).toContain("[redacted]");
+	});
+
+	it("retains delegated progress and tool errors when a later provider request fails", async () => {
+		const finished = vi.fn();
+		const backgroundTasks = new BackgroundTaskManager(finished);
+		const { runtime } = runtimeWith(
+			[model("worker")],
+			[
+				{ text: "Inspecting notes", toolCalls: [{ name: "read", args: { path: "missing.txt" } }] },
+				{ error: "HTTP 429: rate limit exceeded; api_key=secret-key" },
+			],
+		);
+		const tool = createCodeifyModelToolDefinition(process.cwd(), runtime, {
+			backgroundTasks,
+			createDelegatedTools: () => ({
+				tools: [
+					readTool(async () => {
+						throw new Error("ENOENT: missing.txt");
+					}),
+				],
+			}),
+		});
+		await tool.execute("spawn", { action: "run", model: "worker", task: "Read notes" }, undefined, undefined, {
+			cwd: process.cwd(),
+		});
+		await vi.waitFor(() => expect(finished).toHaveBeenCalledOnce());
+		const task = backgroundTasks.get("bg1")!;
+		const output = backgroundTasks.readOutput("bg1")!;
+		const message = buildCompletionMessage(task, output);
+		expect(task.status).toBe("failed");
+		expect(message).toContain("HTTP 429: rate limit exceeded");
+		expect(message).toContain("Inspecting notes");
+		expect(message).toContain("Tool read failed");
+		expect(message).toContain("ENOENT: missing.txt");
+		expect(message).not.toContain("secret-key");
+		expect(message).not.toContain("(no output)");
+	});
+
+	it("retains sanitized diagnostics for thrown runtime failures", async () => {
+		const { runtime } = runtimeWith([model("worker")]);
+		runtime.streamSimple = () => {
+			throw new Error("Connection refused https://user:secret-password@example.test/v1?access_token=secret-token");
+		};
+		const tool = createCodeifyModelWorkerDefinition(process.cwd(), runtime);
+		const request = tool.execute("failure", { action: "run", model: "worker", task: "Work" }, undefined, undefined, {
+			cwd: process.cwd(),
+		});
+		await expect(request).rejects.toThrow("Connection refused");
+		await expect(request).rejects.not.toThrow("secret-password");
+		await expect(request).rejects.not.toThrow("secret-token");
 	});
 
 	it("cancels a spawned agent through the background task manager", async () => {

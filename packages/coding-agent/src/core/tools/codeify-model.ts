@@ -27,6 +27,19 @@ const DEFAULT_READ_ONLY_TOOLS = ["read", "grep", "find", "glob", "ls"];
 
 class DelegationInputError extends Error {}
 
+class DelegationExecutionError extends Error {}
+
+function redactDiagnostics(text: string): string {
+	return text
+		.replace(/\b(Bearer|Basic)\s+[^\s"',;]+/giu, "$1 [redacted]")
+		.replace(
+			/((?:api[_-]?key|access[_-]?token|refresh[_-]?token|authorization|password|secret)["']?\s*[:=]\s*["']?)[^\s"',;&]+/giu,
+			"$1[redacted]",
+		)
+		.replace(/\bsk-[\w-]+/gu, "[redacted]")
+		.replace(/(https?:\/\/)[^\s/@]+:[^\s/@]+@/giu, "$1[redacted]@");
+}
+
 const effortSchema = Type.Union([
 	Type.Literal("off"),
 	Type.Literal("minimal"),
@@ -116,6 +129,7 @@ export interface CodeifyModelToolRuntime {
 }
 
 export interface CodeifyModelToolOptions {
+	onOutput?: (text: string) => void;
 	imagesBlocked?: () => boolean;
 	autoResizeImages?: () => boolean;
 	getDelegatedToolNames?: () => readonly string[];
@@ -183,8 +197,10 @@ function usageLine(usage: Usage): string {
 async function getCodeifyModels(runtime: CodeifyModelToolRuntime): Promise<readonly Model<Api>[]> {
 	try {
 		return await runtime.getAvailable(CODEIFY_PROVIDER_ID);
-	} catch {
-		throw new DelegationInputError("Unable to load delegated Codeify CLI models.");
+	} catch (error) {
+		throw new DelegationInputError(
+			`Unable to load delegated Codeify CLI models. ${redactDiagnostics(error instanceof Error ? error.message : String(error))}`,
+		);
 	}
 }
 
@@ -359,6 +375,7 @@ export function createCodeifyModelWorkerDefinition(
 
 				const selected = selectDelegatedTools(params, options);
 				toolSet = selected.toolSet;
+				options.onOutput?.(`Delegated agent: ${model.id}\nTools: ${selected.names.join(", ") || "none"}\n`);
 				const images = await loadImages(imagePaths, cwd, options.autoResizeImages?.() ?? true);
 				const content = [{ type: "text" as const, text: task }, ...images];
 				const maxTokens = Math.min(params.maxOutputTokens ?? model.maxTokens, model.maxTokens);
@@ -372,6 +389,7 @@ export function createCodeifyModelWorkerDefinition(
 				let completedToolCalls = 0;
 				let currentTool: string | undefined;
 				let lastStopReason: AssistantMessage["stopReason"] | undefined;
+				let lastError: string | undefined;
 				const progressDetails = (
 					status: "running" | "completed",
 				): Extract<CodeifyModelToolDetails, { action: "run" }> => ({
@@ -431,6 +449,9 @@ export function createCodeifyModelWorkerDefinition(
 						if (event.type === "message_end" && event.message.role === "assistant") {
 							addUsage(usage, event.message.usage);
 							lastStopReason = event.message.stopReason;
+							lastError = event.message.errorMessage;
+							const text = responseText([event.message]);
+							if (text) options.onOutput?.(`\nAssistant:\n${redactDiagnostics(text)}\n`);
 						}
 						if (event.type === "turn_end") {
 							turns++;
@@ -440,11 +461,22 @@ export function createCodeifyModelWorkerDefinition(
 							toolCalls++;
 							currentTool = event.toolName;
 							toolArgs.set(event.toolCallId, event.args);
+							options.onOutput?.(
+								`\nTool ${event.toolName} started: ${redactDiagnostics(JSON.stringify(event.args))}\n`,
+							);
 							emitProgress();
 						}
 						if (event.type === "tool_execution_end") {
 							completedToolCalls++;
 							currentTool = undefined;
+							const content: Array<{ type: string; text?: string }> = event.result.content ?? [];
+							const output = content
+								.filter((block) => block.type === "text")
+								.map((block) => block.text)
+								.join("\n");
+							options.onOutput?.(
+								`Tool ${event.toolName} ${event.isError ? "failed" : "completed"}:\n${redactDiagnostics(output)}\n`,
+							);
 							if (event.result.usage) addUsage(usage, event.result.usage);
 							if (!event.isError && (event.toolName === "edit" || event.toolName === "write")) {
 								const args = toolArgs.get(event.toolCallId);
@@ -462,7 +494,11 @@ export function createCodeifyModelWorkerDefinition(
 				if (signal?.aborted || lastStopReason === "aborted") {
 					throw new Error("Delegated Codeify CLI agent request was cancelled.");
 				}
-				if (lastStopReason === "error") throw new Error("Delegated Codeify CLI agent request failed.");
+				if (lastStopReason === "error") {
+					throw new DelegationExecutionError(
+						`Delegated Codeify CLI agent request failed. ${redactDiagnostics(lastError || "Provider returned an error without diagnostics.")}`,
+					);
+				}
 				const rawText = responseText(messages);
 				const fallback =
 					lastStopReason === "length"
@@ -483,7 +519,7 @@ export function createCodeifyModelWorkerDefinition(
 					usage,
 				};
 			} catch (error) {
-				if (error instanceof DelegationInputError) throw error;
+				if (error instanceof DelegationInputError || error instanceof DelegationExecutionError) throw error;
 				if (
 					error instanceof Error &&
 					[
@@ -496,7 +532,7 @@ export function createCodeifyModelWorkerDefinition(
 				throw new Error(
 					signal?.aborted
 						? "Delegated Codeify CLI agent request was cancelled."
-						: "Delegated Codeify CLI agent request failed.",
+						: `Delegated Codeify CLI agent request failed. ${redactDiagnostics(error instanceof Error ? error.message : String(error))}`,
 				);
 			} finally {
 				await toolSet?.dispose?.();
@@ -529,13 +565,14 @@ export function createCodeifyModelToolDefinition(
 		return options.backgroundTasks.start({
 			kind: "agent",
 			description: description || params.task.replace(/\s+/gu, " ").trim().slice(0, 80),
-			run: async ({ signal }) => {
-				const result = await worker.execute("delegated", params, signal, undefined, ctx);
+			run: async ({ signal, append }) => {
+				const taskWorker = createCodeifyModelWorkerDefinition(cwd, runtime, { ...options, onOutput: append });
+				const result = await taskWorker.execute("delegated", params, signal, undefined, ctx);
 				return {
-					text: result.content
+					text: `\n${result.content
 						.filter((block) => block.type === "text")
 						.map((block) => block.text)
-						.join("\n"),
+						.join("\n")}`,
 					usage: result.usage,
 				};
 			},
