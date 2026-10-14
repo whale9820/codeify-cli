@@ -104,11 +104,41 @@ const tempDirs: string[] = [];
 beforeAll(() => initTheme("dark"));
 
 afterEach(async () => {
+	vi.useRealTimers();
 	vi.restoreAllMocks();
 	await Promise.all(tempDirs.splice(0).map((path) => rm(path, { recursive: true, force: true })));
 });
 
 describe("codeify_model tool", () => {
+	it("accepts explicit budgets above the former caps and lists every model by default", async () => {
+		const models = Array.from({ length: 110 }, (_, index) => model(`worker-${index}`));
+		const { runtime } = runtimeWith(models, ["done"], (_selected, _context, options) => {
+			expect(options?.maxTokens).toBe(30_000);
+		});
+		const tool = createCodeifyModelToolDefinition(process.cwd(), runtime);
+		for (const field of ["maxOutputTokens", "maxTurns", "maxToolCalls", "limit"]) {
+			expect(tool.parameters).not.toHaveProperty(`properties.${field}.maximum`);
+		}
+		const context = { cwd: process.cwd(), model: models[0] };
+		const listed = await tool.execute("list", { action: "list" }, undefined, undefined, context);
+		expect(listed.details).toMatchObject({ action: "list", count: 110 });
+		const result = await tool.execute(
+			"run",
+			{
+				action: "run",
+				model: models[0].id,
+				task: "Work",
+				maxOutputTokens: 30_000,
+				maxTurns: 100,
+				maxToolCalls: 1000,
+			},
+			undefined,
+			undefined,
+			context,
+		);
+		expect(result.details).toMatchObject({ action: "run", status: "completed" });
+	});
+
 	it("lists all models by price with capability and delegated tool details", async () => {
 		const main = model("main", { inputCost: 5, outputCost: 30 });
 		const cheapVision = model("cheap-vision", { inputCost: 0.05, outputCost: 0.4 });
@@ -286,7 +316,7 @@ describe("codeify_model tool", () => {
 		expect(text).not.toContain("without a text summary");
 	});
 
-	it("loads bounded image paths for vision delegation", async () => {
+	it("loads more than four image paths for vision delegation", async () => {
 		const directory = await mkdtemp(join(tmpdir(), "codeify-model-tool-"));
 		tempDirs.push(directory);
 		const imagePath = join(directory, "pixel.png");
@@ -304,12 +334,13 @@ describe("codeify_model tool", () => {
 			expect(message?.role).toBe("user");
 			if (message?.role !== "user" || !Array.isArray(message.content)) throw new Error("Missing content");
 			expect(message.content.some((item) => item.type === "image" && item.mimeType === "image/png")).toBe(true);
+			expect(message.content.filter((item) => item.type === "image")).toHaveLength(6);
 		});
 		const tool = createCodeifyModelToolDefinition(directory, runtime);
 
 		await tool.execute(
 			"vision",
-			{ action: "run", model: "vision", task: "Describe it", imagePaths: ["pixel.png"] },
+			{ action: "run", model: "vision", task: "Describe it", imagePaths: Array(6).fill("pixel.png") },
 			undefined,
 			undefined,
 			{ cwd: directory, model: main },
@@ -374,13 +405,13 @@ describe("codeify_model tool", () => {
 		await expect(request).rejects.not.toThrow("secret-discovery-key");
 	});
 
-	it("limits concurrent delegated agents", async () => {
+	it("allows more than five concurrent delegated agents", async () => {
 		const main = model("main");
 		const cheap = model("cheap");
 		const { runtime } = runtimeWith([main, cheap], [{ text: "done", delayMs: 100 }]);
 		const tool = createCodeifyModelToolDefinition(process.cwd(), runtime);
 		const context = { cwd: process.cwd(), model: main };
-		const requests = Array.from({ length: 5 }, (_, index) =>
+		const requests = Array.from({ length: 8 }, (_, index) =>
 			tool.execute(
 				`request-${index}`,
 				{ action: "run", model: "cheap", task: `Task ${index}` },
@@ -390,10 +421,84 @@ describe("codeify_model tool", () => {
 			),
 		);
 
-		await expect(
-			tool.execute("sixth", { action: "run", model: "cheap", task: "Sixth" }, undefined, undefined, context),
-		).rejects.toThrow("At most 5 delegated Codeify CLI agents");
-		await Promise.all(requests);
+		const results = await Promise.all(requests);
+		expect(results).toHaveLength(8);
+		expect(results.every((result) => result.details?.action === "run" && result.details.status === "completed")).toBe(
+			true,
+		);
+	});
+
+	it("runs beyond former turn and tool-call caps with model output limits and full results", async () => {
+		const selected = model("worker");
+		const summary = "result ".repeat(10_000);
+		const responses: FauxResponseInput[] = Array.from({ length: 14 }, () => ({
+			toolCalls: Array.from({ length: 5 }, (_, index) => ({ name: "read", args: { path: `${index}.txt` } })),
+		}));
+		responses.push(summary);
+		const executeRead = vi.fn(async () => "ok");
+		const { runtime, contexts } = runtimeWith([selected], responses, (_model, _context, options) => {
+			expect(options?.maxTokens).toBe(selected.maxTokens);
+			expect(options?.timeoutMs).toBeUndefined();
+		});
+		const tool = createCodeifyModelToolDefinition(process.cwd(), runtime, {
+			createDelegatedTools: () => ({ tools: [readTool(executeRead)] }),
+		});
+		const result = await tool.execute(
+			"uncapped",
+			{ action: "run", model: "worker", task: "x".repeat(33_000), restrictions: "y".repeat(9_000) },
+			undefined,
+			undefined,
+			{ cwd: process.cwd(), model: selected },
+		);
+		expect(contexts).toHaveLength(15);
+		expect(executeRead).toHaveBeenCalledTimes(70);
+		expect(contexts[14]?.tools).toHaveLength(1);
+		expect(result.content[0]).toMatchObject({ type: "text", text: expect.stringContaining(summary.trim()) });
+	});
+
+	it("keeps running beyond five minutes and disposes tools after completion", async () => {
+		vi.useFakeTimers();
+		const selected = model("worker");
+		let finishRead: (value: string) => void = () => {};
+		let startedRead: () => void = () => {};
+		const started = new Promise<void>((resolve) => {
+			startedRead = resolve;
+		});
+		const pending = new Promise<string>((resolve) => {
+			finishRead = resolve;
+		});
+		const dispose = vi.fn();
+		const { runtime } = runtimeWith(
+			[selected],
+			[{ toolCalls: [{ name: "read", args: { path: "notes.txt" } }] }, "done"],
+		);
+		const tool = createCodeifyModelToolDefinition(process.cwd(), runtime, {
+			createDelegatedTools: () => ({
+				tools: [
+					readTool(async () => {
+						startedRead();
+						return pending;
+					}),
+				],
+				dispose,
+			}),
+		});
+		const controller = new AbortController();
+		const request = tool.execute(
+			"long",
+			{ action: "run", model: "worker", task: "Read" },
+			controller.signal,
+			undefined,
+			{
+				cwd: process.cwd(),
+				model: selected,
+			},
+		);
+		await started;
+		await vi.advanceTimersByTimeAsync(300_001);
+		finishRead("ok");
+		await expect(request).resolves.toMatchObject({ details: { status: "completed", turns: 2 } });
+		expect(dispose).toHaveBeenCalledOnce();
 	});
 
 	it("cancels before starting a delegated agent", async () => {

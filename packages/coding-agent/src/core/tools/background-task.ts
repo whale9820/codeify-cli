@@ -18,7 +18,7 @@ const backgroundTaskSchema = Type.Object({
 	),
 	task: Type.Optional(Type.String({ description: "Standalone task for a delegated background agent" })),
 	allowedTools: Type.Optional(
-		Type.Array(Type.String(), { description: "Tools the delegated background agent may use", maxItems: 32 }),
+		Type.Array(Type.String(), { description: "Tools the delegated background agent may use" }),
 	),
 	description: Type.Optional(Type.String({ description: "Short label shown to the user for a started task" })),
 	timeout: Type.Optional(Type.Number({ description: "Timeout in seconds for a command task" })),

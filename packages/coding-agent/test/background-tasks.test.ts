@@ -115,6 +115,30 @@ describe("BackgroundTaskManager", () => {
 		expect(message).toContain("failed exit 1");
 		expect(message).toContain("FAIL a.test.ts");
 	});
+
+	it("runs background agents beyond the task cap and retains their full output", async () => {
+		const finished = vi.fn<(task: BackgroundTask) => void>();
+		const manager = new BackgroundTaskManager(finished);
+		const gate = deferred<{ text: string }>();
+		for (let index = 0; index < 8; index++) {
+			manager.start({ kind: "command", description: "command", run: () => new Promise(() => {}) });
+		}
+		const tasks = Array.from({ length: 10 }, () =>
+			manager.start({
+				kind: "agent",
+				description: "agent",
+				run: () => gate.promise,
+			}),
+		);
+		expect(manager.runningCount()).toBe(18);
+		const summary = "result ".repeat(10_000);
+		gate.resolve({ text: summary });
+		await vi.waitFor(() => expect(finished).toHaveBeenCalledTimes(10));
+		const task = manager.get(tasks[0].id)!;
+		const output = manager.readOutput(task.id)!;
+		expect(output).toEqual({ text: summary, droppedChars: 0 });
+		expect(buildCompletionMessage(task, output)).toContain(summary.trimEnd());
+	});
 });
 
 describe("background_task tool", () => {

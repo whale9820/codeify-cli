@@ -63,7 +63,11 @@ export class BackgroundTaskManager {
 	}
 
 	start(options: BackgroundTaskStartOptions): BackgroundTask {
-		if (this.runningCount() >= MAX_RUNNING_BACKGROUND_TASKS) {
+		if (
+			options.kind === "command" &&
+			this.list().filter((task) => task.kind === "command" && task.status === "running").length >=
+				MAX_RUNNING_BACKGROUND_TASKS
+		) {
 			throw new Error(`At most ${MAX_RUNNING_BACKGROUND_TASKS} background tasks can run at once.`);
 		}
 		const controller = new AbortController();
@@ -106,7 +110,7 @@ export class BackgroundTaskManager {
 	private appendOutput(entry: Entry, text: string): void {
 		if (!text) return;
 		entry.output += text;
-		if (entry.output.length > MAX_OUTPUT_CHARS) {
+		if (entry.task.kind === "command" && entry.output.length > MAX_OUTPUT_CHARS) {
 			const excess = entry.output.length - MAX_OUTPUT_CHARS;
 			entry.output = entry.output.slice(excess);
 			entry.droppedChars += excess;
@@ -215,7 +219,7 @@ export function formatTaskLine(task: BackgroundTask): string {
 }
 
 export function buildCompletionMessage(task: BackgroundTask, output: { text: string; droppedChars: number }): string {
-	const tail = output.text.length > 8_000 ? output.text.slice(-8_000) : output.text;
+	const tail = task.kind === "command" && output.text.length > 8_000 ? output.text.slice(-8_000) : output.text;
 	const truncated = output.droppedChars > 0 || tail.length < output.text.length;
 	const lines = [`Background task ${formatTaskLine(task)}`];
 	if (task.error) lines.push(`Error: ${task.error}`);
