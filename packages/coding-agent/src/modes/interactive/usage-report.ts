@@ -1,5 +1,6 @@
 export interface UsageReportInput {
 	tokens: { input: number; output: number; cacheRead: number; cacheWrite: number };
+	contextUsage?: { tokens: number | null; contextWindow: number };
 }
 
 function compact(value: number): string {
@@ -9,6 +10,10 @@ function compact(value: number): string {
 }
 
 export function formatUsageReport(input: UsageReportInput): string {
-	const { tokens } = input;
-	return `${compact(tokens.input)} input, ${compact(tokens.output)} output, ${compact(tokens.cacheRead)} cache read, ${compact(tokens.cacheWrite)} cache write`;
+	const { tokens, contextUsage } = input;
+	const contextTokens = contextUsage?.tokens == null ? "?" : compact(contextUsage.tokens);
+	const contextWindow = contextUsage ? compact(contextUsage.contextWindow).replace(/\.0([km])$/, "$1") : "?";
+	const promptTokens = tokens.input + tokens.cacheRead + tokens.cacheWrite;
+	const cachedPercent = promptTokens > 0 ? (tokens.cacheRead / promptTokens) * 100 : 0;
+	return `${contextTokens}/${contextWindow} context, ${cachedPercent.toFixed(1)}% cached, ${compact(tokens.input)} input, ${compact(tokens.output)} output, ${compact(tokens.cacheRead)} cache read, ${compact(tokens.cacheWrite)} cache write`;
 }

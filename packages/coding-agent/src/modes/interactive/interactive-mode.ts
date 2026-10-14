@@ -5114,7 +5114,7 @@ export class InteractiveMode {
 	}
 
 	private handleUsageCommand(): void {
-		const report = formatUsageReport({ tokens: this.session.getSessionStats().tokens });
+		const report = formatUsageReport(this.session.getSessionStats());
 		this.chatContainer.addChild(new Spacer(1));
 		this.chatContainer.addChild(new Text(report, 1, 0));
 		this.ui.requestRender();
