@@ -133,10 +133,11 @@ function formatCompactReadCall(
 	}
 
 	return (
-		theme.fg("toolTitle", theme.bold(`read ${classification.kind}`)) +
-		" " +
+		theme.fg("toolTitle", theme.bold("Resource")) +
+		"(" +
 		theme.fg("accent", classification.label) +
 		formatReadLineRange(args, theme) +
+		")" +
 		expandHint
 	);
 }

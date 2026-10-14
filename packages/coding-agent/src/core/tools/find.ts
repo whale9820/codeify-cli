@@ -69,7 +69,7 @@ function formatFindCall(
 	const limit = args?.limit;
 	const invalidArg = invalidArgText(theme);
 	let text =
-		theme.fg("toolTitle", theme.bold(toolName === "find" ? "Search" : toolName)) +
+		theme.fg("toolTitle", theme.bold(toolName === "find" ? "Search" : "Glob")) +
 		"(" +
 		(pattern === null ? invalidArg : theme.fg("accent", pattern || "")) +
 		theme.fg("toolOutput", `, path: ${path === null ? invalidArg : path}`);

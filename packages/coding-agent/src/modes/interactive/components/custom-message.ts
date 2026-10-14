@@ -2,6 +2,7 @@ import type { TextContent } from "codeify-ai";
 import type { Component } from "codeify-tui";
 import { Box, Container, Markdown, type MarkdownTheme, Spacer, Text } from "codeify-tui";
 import type { CustomMessage } from "../../../core/messages.ts";
+import { formatToolCall } from "../../../core/tools/render-utils.ts";
 import type { CustomMessageRenderer } from "../../../core/tools/types.ts";
 import { getMarkdownTheme, theme } from "../theme/theme.ts";
 import { previewOutput } from "./output-preview.ts";
@@ -80,7 +81,7 @@ export class CustomMessageComponent extends Container {
 		this.box.clear();
 
 		// Default rendering: label + content
-		const label = theme.fg("customMessageLabel", `\x1b[1m[${this.message.customType}]\x1b[22m`);
+		const label = formatToolCall(theme, "Message", this.message.customType);
 		this.box.addChild(new Text(label, 0, 0));
 		this.box.addChild(new Spacer(1));
 

@@ -1,6 +1,7 @@
 import type { AgentTool } from "codeify-agent-core";
 import { Text } from "codeify-tui";
 import { type Static, Type } from "typebox";
+import { getTextOutput } from "./render-utils.ts";
 import { wrapToolDefinition } from "./tool-definition-wrapper.ts";
 import type { ToolDefinition, ToolRenderResultOptions } from "./types.ts";
 
@@ -69,11 +70,12 @@ export function createWebSearchToolDefinition(
 		},
 		renderCall(args, theme) {
 			const query = args?.query ? `"${args.query}"` : "";
-			return new Text(`${theme.fg("toolTitle", theme.bold("Web Search"))}(${query})`);
+			return new Text(`${theme.fg("toolTitle", theme.bold("WebSearch"))}(${query})`, 0, 0);
 		},
-		renderResult(result, _options: ToolRenderResultOptions, theme) {
+		renderResult(result, _options: ToolRenderResultOptions, theme, context) {
+			if (context.isError) return new Text(theme.fg("error", getTextOutput(result, context.showImages)), 0, 0);
 			const query = result.details?.query ? ` for "${result.details.query}"` : "";
-			return new Text(theme.fg("toolOutput", `Web search executed${query}.`));
+			return new Text(theme.fg("toolOutput", `Web search executed${query}.`), 0, 0);
 		},
 	};
 }

@@ -153,7 +153,7 @@ function describeCall(args: Partial<BrowserToolInput> | undefined): string {
 	const target =
 		args.url ??
 		args.selector ??
-		args.script?.slice(0, 80) ??
+		args.script ??
 		args.key ??
 		(args.id !== undefined ? `#${args.id}` : undefined) ??
 		args.url_contains ??

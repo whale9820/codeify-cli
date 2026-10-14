@@ -1,5 +1,6 @@
-import { Text, truncateToWidth } from "codeify-tui";
+import { Text, truncateToWidth, visibleWidth } from "codeify-tui";
 import { type Static, Type } from "typebox";
+import { keyHint } from "../../modes/interactive/components/keybinding-hints.ts";
 import type { UserInputRequest } from "../user-input.ts";
 import { getTextOutput } from "./render-utils.ts";
 import { defineTool } from "./types.ts";
@@ -51,7 +52,11 @@ export function createRequestUserInputToolDefinition(
 					);
 					const summary =
 						questions.map((question) => truncateToWidth(question, questionWidth)).join("; ") || "...";
-					return [truncateToWidth(`${title}(${theme.fg("toolOutput", summary)})`, width)];
+					const lines = [truncateToWidth(`${title}(${theme.fg("toolOutput", summary)})`, width)];
+					if (questions.some((question) => visibleWidth(question) > questionWidth)) {
+						lines.push(...new Text(keyHint("app.tools.expand", "to expand"), 0, 0).render(width));
+					}
+					return lines;
 				},
 			};
 		},
@@ -61,7 +66,14 @@ export function createRequestUserInputToolDefinition(
 			if (options.expanded) return new Text(text, 0, 0);
 			return {
 				invalidate() {},
-				render: (width) => [truncateToWidth(text.replace(/\s+/g, " "), width)],
+				render: (width) => {
+					const compact = text.replace(/\s+/g, " ");
+					const lines = [truncateToWidth(compact, width)];
+					if (visibleWidth(compact) > width) {
+						lines.push(...new Text(keyHint("app.tools.expand", "to expand"), 0, 0).render(width));
+					}
+					return lines;
+				},
 			};
 		},
 		async execute(id, params: Static<typeof schema>, signal) {

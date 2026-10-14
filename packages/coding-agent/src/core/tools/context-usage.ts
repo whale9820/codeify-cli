@@ -1,6 +1,7 @@
 import type { AgentToolResult } from "codeify-agent-core";
 import { Text } from "codeify-tui";
 import { type Static, Type } from "typebox";
+import { formatToolCall, getTextOutput } from "./render-utils.ts";
 import { defineTool, type ToolDefinition } from "./types.ts";
 
 const contextUsageSchema = Type.Object({
@@ -122,12 +123,14 @@ export function createContextUsageToolDefinition(
 			};
 		},
 		renderCall(args, theme) {
-			const suffix = args?.request_compaction ? " · request compaction" : "";
-			return new Text(`${theme.fg("toolTitle", theme.bold("context"))}${theme.fg("toolOutput", suffix)}`, 0, 0);
+			return new Text(
+				formatToolCall(theme, "Context", args?.request_compaction ? "request compaction" : "usage"),
+				0,
+				0,
+			);
 		},
-		renderResult(result, _options, theme) {
-			const text = result.content.find((block) => block.type === "text");
-			return new Text(theme.fg("toolOutput", text?.type === "text" ? text.text : ""), 0, 0);
+		renderResult(result, _options, theme, context) {
+			return new Text(theme.fg("toolOutput", getTextOutput(result, context.showImages)), 0, 0);
 		},
 	});
 }

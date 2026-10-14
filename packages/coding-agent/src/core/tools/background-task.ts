@@ -2,6 +2,7 @@ import type { AgentToolResult } from "codeify-agent-core";
 import { Text } from "codeify-tui";
 import { type Static, Type } from "typebox";
 import { type BackgroundTask, formatTaskLine } from "../background-tasks.ts";
+import { formatToolCall, getTextOutput } from "./render-utils.ts";
 import { defineTool, type ToolDefinition } from "./types.ts";
 
 const backgroundTaskSchema = Type.Object({
@@ -165,19 +166,18 @@ export function createBackgroundTaskToolDefinition(
 		renderCall(args, theme) {
 			const detail =
 				args?.action === "start"
-					? ` · ${args.description || args.command || args.task?.replace(/\s+/gu, " ").slice(0, 80) || "..."}`
+					? args.description || args.command || args.task?.replace(/\s+/gu, " ") || "..."
 					: args?.id
-						? ` · ${args.id}`
+						? args.id
 						: "";
 			return new Text(
-				`${theme.fg("toolTitle", theme.bold(`background ${args?.action ?? ""}`))}${theme.fg("muted", detail)}`,
+				formatToolCall(theme, "Background", [args?.action ?? "...", ...(detail ? [detail] : [])].join(", ")),
 				0,
 				0,
 			);
 		},
-		renderResult(result, _options, theme) {
-			const block = result.content.find((item) => item.type === "text");
-			return new Text(theme.fg("toolOutput", block?.type === "text" ? block.text : ""), 0, 0);
+		renderResult(result, _options, theme, context) {
+			return new Text(theme.fg("toolOutput", getTextOutput(result, context.showImages)), 0, 0);
 		},
 	});
 }

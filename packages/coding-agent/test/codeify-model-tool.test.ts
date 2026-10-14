@@ -881,7 +881,8 @@ describe("codeify_model tool", () => {
 				.render(160)
 				.join("\n") ?? "";
 
-		expect(call).toContain("delegate cheap");
+		expect(call).toContain("Delegate");
+		expect(call).toContain("cheap");
 		expect(call).toContain("read");
 		expect(result).toContain("completed");
 		expect(result).toContain("2 turns");

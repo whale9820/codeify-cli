@@ -72,6 +72,10 @@ export function invalidArgText(theme: Theme): string {
 	return theme.fg("error", "[invalid arg]");
 }
 
+export function formatToolCall(theme: Theme, name: string, detail = ""): string {
+	return `${theme.fg("toolTitle", theme.bold(name))}(${theme.fg("accent", detail)})`;
+}
+
 export function renderToolPath(
 	rawPath: string | null,
 	theme: Theme,

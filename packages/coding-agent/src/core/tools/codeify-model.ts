@@ -20,8 +20,8 @@ import { detectSupportedImageMimeTypeFromFile } from "../../utils/mime.ts";
 import { resolvePath } from "../../utils/paths.ts";
 import type { BackgroundTask, BackgroundTaskManager } from "../background-tasks.ts";
 import { CODEIFY_PROVIDER_ID } from "../codeify-provider.ts";
-import { getTextOutput } from "./render-utils.ts";
-import type { ToolDefinition, ToolExecutionContext, ToolRenderResultOptions } from "./types.ts";
+import { formatToolCall, getTextOutput } from "./render-utils.ts";
+import type { ToolDefinition, ToolExecutionContext } from "./types.ts";
 
 const DEFAULT_READ_ONLY_TOOLS = ["read", "grep", "find", "glob", "ls"];
 
@@ -253,16 +253,15 @@ function delegatedSystemPrompt(cwd: string, restrictions: string | undefined, to
 
 function formatCodeifyModelCall(args: CodeifyModelToolInput | undefined, theme: Theme): string {
 	if (args?.action === "list") {
-		const capability = args.capability && args.capability !== "any" ? ` · ${args.capability}` : "";
-		const limit = args.limit ? ` · limit ${args.limit}` : "";
-		return `${theme.fg("toolTitle", theme.bold("smart models"))}${theme.fg("muted", `${capability}${limit}`)}`;
+		const filters = [args.capability ?? "all", ...(args.limit ? [`limit: ${args.limit}`] : [])];
+		return formatToolCall(theme, "SmartModels", filters.join(", "));
 	}
 	const model = args?.model || "...";
 	const tools = args?.allowedTools?.length ? args.allowedTools.join(", ") : "read-only";
 	const turns = args?.maxTurns === undefined ? "unlimited turns" : `up to ${args.maxTurns} turns`;
 	const task = args?.task?.replace(/\s+/gu, " ").trim();
-	let text = `${theme.fg("toolTitle", theme.bold(`delegate ${model}`))}${theme.fg("muted", ` · ${tools} · ${turns}`)}`;
-	if (task) text += `\n${theme.fg("toolOutput", task.length > 180 ? `${task.slice(0, 180)}...` : task)}`;
+	let text = `${formatToolCall(theme, "Delegate", model)}${theme.fg("muted", ` · ${tools} · ${turns}`)}`;
+	if (task) text += `\n${theme.fg("toolOutput", task)}`;
 	return text;
 }
 
@@ -271,14 +270,14 @@ function formatCodeifyModelResult(
 		content: Array<{ type: string; text?: string; data?: string; mimeType?: string }>;
 		details?: CodeifyModelToolDetails;
 	},
-	options: ToolRenderResultOptions,
 	theme: Theme,
 	showImages: boolean,
 ): string {
 	const details = result.details;
-	if (!details) return "";
+	const output = getTextOutput(result, showImages).trim();
+	if (!details) return theme.fg("toolOutput", output);
 	if (details.action === "list") {
-		return `\n${theme.fg("muted", `${details.count} eligible models · tools: ${details.toolNames.join(", ") || "none"}`)}`;
+		return `\n${theme.fg("muted", `${details.count} eligible models · tools: ${details.toolNames.join(", ") || "none"}`)}\n${theme.fg("toolOutput", output)}`;
 	}
 	const status =
 		details.status === "running"
@@ -296,16 +295,7 @@ function formatCodeifyModelResult(
 	if (details.filesChanged.length > 0) parts.push(`${details.filesChanged.length} files changed`);
 	if (details.usage) parts.push(`$${details.usage.cost.total.toFixed(6)}`);
 	let text = `\n${theme.fg("muted", parts.join(" · "))}`;
-	if (details.status === "completed") {
-		const output = getTextOutput(result, showImages).trim();
-		if (output) {
-			const lines = output.split("\n");
-			const shown = options.expanded ? lines : lines.slice(0, 14);
-			text += `\n${shown.map((line) => theme.fg("toolOutput", line)).join("\n")}`;
-			if (shown.length < lines.length)
-				text += `\n${theme.fg("muted", `... (${lines.length - shown.length} more lines)`)}`;
-		}
-	}
+	if (output) text += `\n${theme.fg("toolOutput", output)}`;
 	return text;
 }
 
@@ -591,9 +581,9 @@ export function createCodeifyModelWorkerDefinition(
 			text.setText(formatCodeifyModelCall(args, theme));
 			return text;
 		},
-		renderResult(result, renderOptions, theme, context) {
+		renderResult(result, _renderOptions, theme, context) {
 			const text = (context.lastComponent as Text | undefined) ?? new Text("", 0, 0);
-			text.setText(formatCodeifyModelResult(result, renderOptions, theme, context.showImages));
+			text.setText(formatCodeifyModelResult(result, theme, context.showImages));
 			return text;
 		},
 	};

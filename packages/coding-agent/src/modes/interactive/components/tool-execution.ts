@@ -1,9 +1,10 @@
 import { Box, type Component, Container, getCapabilities, Image, Spacer, Text, type TUI } from "codeify-tui";
 import { createAllToolDefinitions, type ToolName } from "../../../core/tools/index.ts";
-import { getTextOutput as getRenderedTextOutput } from "../../../core/tools/render-utils.ts";
+import { formatToolCall, getTextOutput as getRenderedTextOutput } from "../../../core/tools/render-utils.ts";
 import type { ToolDefinition, ToolRenderContext } from "../../../core/tools/types.ts";
 import { convertToPng } from "../../../utils/image-convert.ts";
 import { theme } from "../theme/theme.ts";
+import { keyHint } from "./keybinding-hints.ts";
 import { previewOutput } from "./output-preview.ts";
 import { PrefixedComponent } from "./prefixed.ts";
 
@@ -134,8 +135,16 @@ export class ToolExecutionComponent extends Container {
 		};
 	}
 
+	private formatCallFallback(): string {
+		const name = this.toolName
+			.split(/[_\s-]+/u)
+			.map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+			.join("");
+		return formatToolCall(theme, name, JSON.stringify(this.args) ?? "");
+	}
+
 	private createCallFallback(): Component {
-		return new Text(theme.fg("toolTitle", theme.bold(this.toolName)), 0, 0);
+		return new Text(this.formatCallFallback(), 0, 0);
 	}
 
 	private createResultFallback(): Component | undefined {
@@ -230,13 +239,22 @@ export class ToolExecutionComponent extends Container {
 			if (contentLines.length === 0 && this.imageComponents.length === 0) {
 				return [];
 			}
+			if (!this.expanded && this.imageComponents.length > 0) {
+				contentLines.push(
+					...new Text(
+						keyHint("app.tools.expand", `to expand (${this.imageComponents.length} images)`),
+						0,
+						0,
+					).render(width),
+				);
+			}
 
 			const lines: string[] = [];
 			if (contentLines.length > 0) {
 				lines.push("");
 				lines.push(...previewOutput(contentLines, this.expanded, width));
 			}
-			for (let i = 0; i < this.imageComponents.length; i++) {
+			for (let i = 0; this.expanded && i < this.imageComponents.length; i++) {
 				const spacer = this.imageSpacers[i];
 				if (spacer) {
 					lines.push(...spacer.render(width));
@@ -249,12 +267,19 @@ export class ToolExecutionComponent extends Container {
 			return lines;
 		}
 
-		const lines = previewOutput(
-			this.hasRendererDefinition() ? this.contentBox.render(width) : this.contentText.render(width),
-			this.expanded,
-			width,
-		);
-		return ["", ...lines, ...this.imageComponents.flatMap((component) => ["", ...component.render(width)])];
+		const lines = this.hasRendererDefinition() ? this.contentBox.render(width) : this.contentText.render(width);
+		if (!this.expanded && this.imageComponents.length > 0) {
+			lines.push(
+				...new Text(keyHint("app.tools.expand", `to expand (${this.imageComponents.length} images)`), 0, 0).render(
+					width,
+				),
+			);
+		}
+		return [
+			"",
+			...previewOutput(lines, this.expanded, width),
+			...(this.expanded ? this.imageComponents.flatMap((component) => ["", ...component.render(width)]) : []),
+		];
 	}
 
 	private updateDisplay(): void {
@@ -368,14 +393,11 @@ export class ToolExecutionComponent extends Container {
 	}
 
 	private formatToolExecution(): string {
-		let text = theme.fg("toolTitle", theme.bold(this.toolName));
-		const content = JSON.stringify(this.args, null, 2);
-		if (content) {
-			text += `\n\n${content}`;
-		}
+		const color = this.isPartial ? "dim" : this.result?.isError ? "error" : "success";
+		let text = `${theme.fg(color, "●")} ${this.formatCallFallback()}`;
 		const output = this.getTextOutput();
 		if (output) {
-			text += `\n${output}`;
+			text += `\n  ${theme.fg("dim", "⎿")}  ${output.split("\n").join("\n     ")}`;
 		}
 		return text;
 	}

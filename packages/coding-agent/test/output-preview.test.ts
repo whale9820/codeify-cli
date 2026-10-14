@@ -32,4 +32,26 @@ describe("extension and background output previews", () => {
 			expect(component.render(80).map(stripAnsi)).toEqual(collapsed);
 		});
 	}
+
+	it("uses the configured expansion key for background notifications", () => {
+		setKeybindings(new KeybindingsManager({ "app.tools.expand": "ctrl+y" }));
+		try {
+			const component = new BackgroundTaskMessageComponent({
+				role: "custom",
+				customType: "background_task",
+				content: `Finished\n${Array.from({ length: 139 }, (_, index) => `line-${index}`).join("\n")}`,
+				display: true,
+				timestamp: Date.now(),
+				details: { id: "bg1", status: "completed", startedAt: 0, endedAt: 1000 },
+			});
+			const collapsed = stripAnsi(component.render(80).join("\n"));
+			expect(collapsed).toContain("Background(bg1)");
+			expect(collapsed).toContain("ctrl+y to expand");
+			expect(collapsed).not.toContain("line-0");
+			component.setExpanded(true);
+			expect(stripAnsi(component.render(80).join("\n"))).toContain("line-0");
+		} finally {
+			setKeybindings(new KeybindingsManager());
+		}
+	});
 });

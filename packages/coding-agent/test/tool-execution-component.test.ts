@@ -57,7 +57,7 @@ describe("ToolExecutionComponent parity", () => {
 			.render(80)
 			.map(stripAnsi)
 			.filter((line) => line.trim());
-		expect(pending).toHaveLength(1);
+		expect(pending).toHaveLength(2);
 		expect(pending[0]).toContain("AskUser(Which authorization");
 		expect(pending[0]).toContain("; Which account");
 		expect(pending[0].trimEnd()).toMatch(/\.\.\.\)$/);
@@ -418,7 +418,7 @@ describe("ToolExecutionComponent parity", () => {
 		);
 		component.updateResult({ content: [{ type: "text", text: "done" }], details: {}, isError: false }, false);
 		const rendered = stripAnsi(component.render(120).join("\n"));
-		expect(rendered).toContain("custom_tool");
+		expect(rendered).toContain("CustomTool(");
 		expect(rendered).toContain("done");
 	});
 
@@ -515,7 +515,7 @@ describe("ToolExecutionComponent parity", () => {
 			title: "AGENTS.md",
 			path: join(process.cwd(), ".codeify", "AGENTS.md"),
 			content: "Hidden resource instructions",
-			compact: "read resource .codeify/AGENTS.md",
+			compact: "Resource(.codeify/AGENTS.md)",
 			hidden: "Hidden resource instructions",
 			absent: undefined,
 		},
@@ -523,7 +523,7 @@ describe("ToolExecutionComponent parity", () => {
 			title: "outside AGENTS.md",
 			path: resolve(process.cwd(), "..", "AGENTS.md"),
 			content: "Hidden outside resource instructions",
-			compact: `read resource ${resolve(process.cwd(), "..", "AGENTS.md").replace(/\\/g, "/")}`,
+			compact: `Resource(${resolve(process.cwd(), "..", "AGENTS.md").replace(/\\/g, "/")})`,
 			hidden: "Hidden outside resource instructions",
 			absent: undefined,
 		},
