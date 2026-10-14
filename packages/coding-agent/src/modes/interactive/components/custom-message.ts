@@ -4,6 +4,7 @@ import { Box, Container, Markdown, type MarkdownTheme, Spacer, Text } from "code
 import type { CustomMessage } from "../../../core/messages.ts";
 import type { CustomMessageRenderer } from "../../../core/tools/types.ts";
 import { getMarkdownTheme, theme } from "../theme/theme.ts";
+import { previewOutput } from "./output-preview.ts";
 
 /**
  * Component that renders a custom message entry.
@@ -45,6 +46,10 @@ export class CustomMessageComponent extends Container {
 	override invalidate(): void {
 		super.invalidate();
 		this.rebuild();
+	}
+
+	override render(width: number): string[] {
+		return previewOutput(super.render(width), this._expanded, width);
 	}
 
 	private rebuild(): void {

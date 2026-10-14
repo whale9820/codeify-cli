@@ -3,6 +3,8 @@ import { Container, Spacer, Text } from "codeify-tui";
 import type { BackgroundTask } from "../../../core/background-tasks.ts";
 import type { CustomMessage } from "../../../core/messages.ts";
 import { theme } from "../theme/theme.ts";
+import { keyHint } from "./keybinding-hints.ts";
+import { previewOutput } from "./output-preview.ts";
 
 const COLLAPSED_LINES = 5;
 
@@ -26,6 +28,10 @@ export class BackgroundTaskMessageComponent extends Container {
 	override invalidate(): void {
 		super.invalidate();
 		this.rebuild();
+	}
+
+	override render(width: number): string[] {
+		return previewOutput(super.render(width), this.expanded, width);
 	}
 
 	private rebuild(): void {
@@ -62,7 +68,11 @@ export class BackgroundTaskMessageComponent extends Container {
 		const shown = this.expanded ? body : body.slice(-COLLAPSED_LINES);
 		const hidden = body.length - shown.length;
 		const lines = shown.map((line) => theme.fg("toolOutput", line));
-		if (hidden > 0) lines.unshift(theme.fg("dim", `... ${hidden} earlier lines`));
+		if (hidden > 0) {
+			lines.unshift(
+				`${theme.fg("dim", `... ${hidden} earlier lines (`)}${keyHint("app.tools.expand", "to expand")})`,
+			);
+		}
 		const prefix = `  ${theme.fg("dim", "⎿")}  `;
 		const rest = "     ";
 		this.addChild(new Text(lines.map((line, i) => (i === 0 ? prefix : rest) + line).join("\n"), 0, 0));

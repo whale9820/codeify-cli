@@ -216,24 +216,25 @@ function buildDescription(serverNames: string[]): string {
 function formatMcpCall(args: McpToolInput | undefined, theme: Theme): string {
 	let operation = "status";
 	if (args?.connect) {
-		operation = `connect ${args.connect}`;
+		operation = "";
 	} else if (args?.tool) {
-		operation = `call ${args.server ? `${args.server} / ` : ""}${args.tool}`;
+		operation = args.tool;
 	} else if (args?.describe) {
-		operation = `describe ${args.server ? `${args.server} / ` : ""}${args.describe}`;
+		operation = `describe ${args.describe}`;
 	} else if (args?.search) {
-		operation = `search "${args.search}"${args.server ? ` · ${args.server}` : ""}`;
+		operation = `search "${args.search}"`;
 	} else if (args?.server) {
-		operation = `list ${args.server}`;
+		operation = "list";
 	}
 
-	let text = `${theme.fg("toolTitle", theme.bold("mcp"))} ${theme.fg("toolOutput", operation)}`;
+	const target = args?.connect ?? args?.server ?? operation;
+	let text = `${theme.fg("toolTitle", theme.bold("MCP"))}(${theme.fg("accent", target)})`;
+	if (operation && operation !== target) text += ` ${theme.fg("toolOutput", operation)}`;
 	if (args?.tool && args.args?.trim()) {
 		let preview = args.args.trim();
 		try {
 			preview = JSON.stringify(JSON.parse(preview));
 		} catch {}
-		if (preview.length > 500) preview = `${preview.slice(0, 497)}...`;
 		text += `\n${theme.fg("muted", preview)}`;
 	}
 	return text;

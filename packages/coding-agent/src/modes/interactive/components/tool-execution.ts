@@ -4,6 +4,7 @@ import { getTextOutput as getRenderedTextOutput } from "../../../core/tools/rend
 import type { ToolDefinition, ToolRenderContext } from "../../../core/tools/types.ts";
 import { convertToPng } from "../../../utils/image-convert.ts";
 import { theme } from "../theme/theme.ts";
+import { previewOutput } from "./output-preview.ts";
 import { PrefixedComponent } from "./prefixed.ts";
 
 export interface ToolExecutionOptions {
@@ -233,7 +234,7 @@ export class ToolExecutionComponent extends Container {
 			const lines: string[] = [];
 			if (contentLines.length > 0) {
 				lines.push("");
-				lines.push(...contentLines);
+				lines.push(...previewOutput(contentLines, this.expanded, width));
 			}
 			for (let i = 0; i < this.imageComponents.length; i++) {
 				const spacer = this.imageSpacers[i];
@@ -248,7 +249,12 @@ export class ToolExecutionComponent extends Container {
 			return lines;
 		}
 
-		return super.render(width);
+		const lines = previewOutput(
+			this.hasRendererDefinition() ? this.contentBox.render(width) : this.contentText.render(width),
+			this.expanded,
+			width,
+		);
+		return ["", ...lines, ...this.imageComponents.flatMap((component) => ["", ...component.render(width)])];
 	}
 
 	private updateDisplay(): void {

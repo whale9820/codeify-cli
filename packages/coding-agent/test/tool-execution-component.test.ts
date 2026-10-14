@@ -1,12 +1,14 @@
 import { join, resolve } from "node:path";
-import { Text, type TUI } from "codeify-tui";
+import { setKeybindings, Text, type TUI } from "codeify-tui";
 import { Type } from "typebox";
 import { beforeAll, describe, expect, test } from "vitest";
+import { KeybindingsManager } from "../src/core/keybindings.ts";
 import { type BashOperations, createBashToolDefinition } from "../src/core/tools/bash.ts";
 import { createReadTool, createReadToolDefinition } from "../src/core/tools/read.ts";
 import { createRequestUserInputToolDefinition } from "../src/core/tools/request-user-input.ts";
 import type { ToolDefinition } from "../src/core/tools/types.ts";
 import { createWriteToolDefinition } from "../src/core/tools/write.ts";
+import { SkillInvocationMessageComponent } from "../src/modes/interactive/components/skill-invocation-message.ts";
 import { ToolExecutionComponent } from "../src/modes/interactive/components/tool-execution.ts";
 import { initTheme, theme } from "../src/modes/interactive/theme/theme.ts";
 import { stripAnsi } from "../src/utils/ansi.ts";
@@ -33,6 +35,7 @@ function createFakeTui(): TUI {
 describe("ToolExecutionComponent parity", () => {
 	beforeAll(() => {
 		initTheme("dark");
+		setKeybindings(new KeybindingsManager());
 	});
 
 	test("renders user questions and answers compactly with full text available on expansion", async () => {
@@ -504,7 +507,7 @@ describe("ToolExecutionComponent parity", () => {
 			title: "SKILL.md",
 			path: join(process.cwd(), "attio", "SKILL.md"),
 			content: "---\nname: attio\ndescription: CRM helper\n---\n\n# Hidden skill instructions",
-			compact: "[skill] attio",
+			compact: "Skill(attio)",
 			hidden: "Hidden skill instructions",
 			absent: "read skill attio",
 		},
@@ -554,7 +557,7 @@ describe("ToolExecutionComponent parity", () => {
 	}
 
 	for (const scenario of [
-		{ title: "SKILL.md", path: join(process.cwd(), "attio", "SKILL.md"), compact: "[skill] attio:120-329" },
+		{ title: "SKILL.md", path: join(process.cwd(), "attio", "SKILL.md"), compact: "Skill(attio:120-329)" },
 	] as const) {
 		test(`shows the read line range in compact ${scenario.title} reads before the expand hint`, () => {
 			const component = new ToolExecutionComponent(
@@ -572,4 +575,68 @@ describe("ToolExecutionComponent parity", () => {
 			expect(collapsed.indexOf(":120-329")).toBeLessThan(collapsed.indexOf("to expand"));
 		});
 	}
+
+	test("uses Skill(name) for explicit skill invocations", () => {
+		const component = new SkillInvocationMessageComponent({
+			name: "reverse-engineer-anything",
+			location: "/skills/reverse-engineer-anything/SKILL.md",
+			content: "Skill instructions",
+			userMessage: "",
+		});
+		expect(stripAnsi(component.render(120).join("\n"))).toContain("Skill(reverse-engineer-anything)");
+		component.setExpanded(true);
+		expect(stripAnsi(component.render(120).join("\n"))).toContain("Skill instructions");
+	});
+
+	for (const mode of ["unknown", "fallback", "custom", "self", "throwing"] as const) {
+		test(`caps ${mode} tool output while streaming and restores it on expansion`, () => {
+			const output = Array.from({ length: 139 }, (_, index) => `tool-${index}`).join("\n");
+			const definition = mode === "unknown" ? undefined : createBaseToolDefinition();
+			if (definition && (mode === "custom" || mode === "self")) {
+				definition.renderResult = () => new Text(output, 0, 0);
+				if (mode === "self") definition.renderShell = "self";
+			}
+			if (definition && mode === "throwing") {
+				definition.renderResult = () => {
+					throw new Error("renderer failed");
+				};
+			}
+			const component = new ToolExecutionComponent(
+				"custom_tool",
+				"preview",
+				{},
+				{},
+				definition,
+				createFakeTui(),
+				process.cwd(),
+			);
+			for (const partial of [true, false]) {
+				component.updateResult({ content: [{ type: "text", text: output }], isError: !partial }, partial);
+				const collapsed = component.render(80).map(stripAnsi);
+				expect(collapsed.length).toBeLessThanOrEqual(22);
+				expect(collapsed.join("\n")).toContain("ctrl+o to expand");
+				expect(collapsed.join("\n")).not.toContain("tool-138");
+				component.setExpanded(true);
+				expect(stripAnsi(component.render(80).join("\n"))).toContain("tool-138");
+				component.setExpanded(false);
+			}
+		});
+	}
+
+	test("caps wrapped arguments and recalculates the preview after resizing", () => {
+		const component = new ToolExecutionComponent(
+			"custom_tool",
+			"wrapped-preview",
+			{ value: "word ".repeat(200) },
+			{},
+			undefined,
+			createFakeTui(),
+			process.cwd(),
+		);
+		expect(stripAnsi(component.render(120).join("\n"))).not.toContain("to expand");
+		expect(component.render(30).length).toBeLessThanOrEqual(23);
+		expect(stripAnsi(component.render(30).join("\n"))).toContain("ctrl+o to expand");
+		component.setExpanded(true);
+		expect(component.render(30).length).toBeGreaterThan(30);
+	});
 });

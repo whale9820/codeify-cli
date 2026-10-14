@@ -118,13 +118,16 @@ function formatCompactReadCall(
 	classification: CompactReadClassification,
 	args: ReadRenderArgs | undefined,
 	theme: Theme,
+	expanded: boolean,
 ): string {
-	const expandHint = theme.fg("dim", ` (${keyText("app.tools.expand")} to expand)`);
+	const expandHint = expanded ? "" : theme.fg("dim", ` (${keyText("app.tools.expand")} to expand)`);
 	if (classification.kind === "skill") {
 		return (
-			theme.fg("customMessageLabel", `\x1b[1m[skill]\x1b[22m `) +
+			theme.fg("toolTitle", theme.bold("Skill")) +
+			"(" +
 			theme.fg("customMessageText", classification.label) +
 			formatReadLineRange(args, theme) +
+			")" +
 			expandHint
 		);
 	}
@@ -144,11 +147,13 @@ function formatReadResult(
 	options: ToolRenderResultOptions,
 	theme: Theme,
 	showImages: boolean,
-	_cwd: string,
+	cwd: string,
 	isError: boolean,
 ): string {
 	if (!options.expanded && !isError) {
-		return "";
+		return getCompactReadClassification(args, cwd) || !getTextOutput(result, showImages)
+			? ""
+			: keyHint("app.tools.expand", "to expand");
 	}
 
 	const rawPath = str(args?.file_path ?? args?.path);
@@ -380,10 +385,10 @@ export function createReadToolDefinition(
 		},
 		renderCall(args, theme, context) {
 			const text = (context.lastComponent as Text | undefined) ?? new Text("", 0, 0);
-			const classification = !context.expanded ? getCompactReadClassification(args, context.cwd) : undefined;
+			const classification = getCompactReadClassification(args, context.cwd);
 			text.setText(
-				classification
-					? formatCompactReadCall(classification, args, theme)
+				classification && (!context.expanded || classification.kind === "skill")
+					? formatCompactReadCall(classification, args, theme, context.expanded)
 					: formatReadCall(args, theme, context.cwd),
 			);
 			return text;

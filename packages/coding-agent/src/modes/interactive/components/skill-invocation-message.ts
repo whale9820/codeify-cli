@@ -31,7 +31,7 @@ export class SkillInvocationMessageComponent extends Container {
 
 		this.addChild(
 			new Text(
-				`${theme.fg("success", "●")} ${theme.bold("Skill")} ${theme.fg("muted", this.skillBlock.name)}`,
+				`${theme.fg("success", "●")} ${theme.bold("Skill")}(${theme.fg("muted", this.skillBlock.name)})`,
 				0,
 				0,
 			),

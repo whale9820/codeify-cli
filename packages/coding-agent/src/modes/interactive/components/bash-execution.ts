@@ -13,6 +13,7 @@ import { stripAnsi } from "../../../utils/ansi.ts";
 import { theme } from "../theme/theme.ts";
 import { DynamicBorder } from "./dynamic-border.ts";
 import { keyHint, keyText } from "./keybinding-hints.ts";
+import { previewOutput } from "./output-preview.ts";
 import { truncateToVisualLines } from "./visual-truncate.ts";
 
 // Preview line limit when not expanded (matches tool execution behavior)
@@ -75,6 +76,10 @@ export class BashExecutionComponent extends Container {
 	override invalidate(): void {
 		super.invalidate();
 		this.updateDisplay();
+	}
+
+	override render(width: number): string[] {
+		return previewOutput(super.render(width), this.expanded, width);
 	}
 
 	appendOutput(chunk: string): void {

@@ -48,6 +48,7 @@
 
 ### Fixed
 
+- Cap interactive tool and extension output at 20 visual lines with Ctrl+O expansion, including MCP listings, fallback renderers, and wrapped output. Display skill invocations as `Skill(name)` and MCP connections as `MCP(server)`.
 - Show background agents loading models, waiting for responses, streaming reasoning and assistant lines, preparing tool calls, and producing partial tool output in the live task view.
 - Preserve background delegated-agent progress, tool results, and credential-redacted provider diagnostics when a task fails so the parent agent can diagnose and recover.
 - Direct model delegation now always spawns background agents and returns immediately with a task ID, automatic completion delivery, and cancellation through the background task controls.
