@@ -355,6 +355,7 @@ export function createCodeifyModelWorkerDefinition(
 			let toolSet: DelegatedToolSet | undefined;
 			try {
 				const modelId = params.model.replace(/^codeify\//u, "");
+				options.onOutput?.(`Loading delegated model: ${redactDiagnostics(modelId)}\n`);
 				const models = await getCodeifyModels(runtime);
 				const model = models.find((candidate) => candidate.id === modelId);
 				if (!model) throw new DelegationInputError(`Codeify CLI model is not available: ${modelId}`);
@@ -390,6 +391,25 @@ export function createCodeifyModelWorkerDefinition(
 				let currentTool: string | undefined;
 				let lastStopReason: AssistantMessage["stopReason"] | undefined;
 				let lastError: string | undefined;
+				const contentOffsets = new Map<number, number>();
+				const contentStarted = new Set<number>();
+				const toolOutput = new Map<string, string>();
+				const emitContent = (message: AssistantMessage, complete: boolean) => {
+					for (const [index, block] of message.content.entries()) {
+						if (block.type !== "text" && block.type !== "thinking") continue;
+						if (!contentStarted.has(index)) {
+							options.onOutput?.(`\n${block.type === "thinking" ? "Thinking" : "Assistant"}:\n`);
+							contentStarted.add(index);
+						}
+						const text = block.type === "text" ? block.text : block.thinking;
+						const end = complete ? text.length : text.lastIndexOf("\n") + 1;
+						const start = contentOffsets.get(index) ?? 0;
+						if (end > start) {
+							options.onOutput?.(redactDiagnostics(text.slice(start, end)));
+							contentOffsets.set(index, end);
+						}
+					}
+				};
 				const progressDetails = (
 					status: "running" | "completed",
 				): Extract<CodeifyModelToolDetails, { action: "run" }> => ({
@@ -446,12 +466,25 @@ export function createCodeifyModelWorkerDefinition(
 						shouldStopAfterTurn: () => maxTurns !== undefined && turns >= maxTurns,
 					},
 					(event) => {
+						if (event.type === "turn_start") {
+							contentOffsets.clear();
+							contentStarted.clear();
+							options.onOutput?.(`\nTurn ${turns + 1}: waiting for ${model.id}\n`);
+						}
+						if (event.type === "message_update" && event.message.role === "assistant") {
+							const update = event.assistantMessageEvent;
+							if (update.type.startsWith("text_") || update.type.startsWith("thinking_")) {
+								emitContent(event.message, update.type === "text_end" || update.type === "thinking_end");
+							} else if (update.type === "toolcall_start") {
+								options.onOutput?.("\nPreparing tool call...\n");
+							}
+						}
 						if (event.type === "message_end" && event.message.role === "assistant") {
 							addUsage(usage, event.message.usage);
 							lastStopReason = event.message.stopReason;
 							lastError = event.message.errorMessage;
-							const text = responseText([event.message]);
-							if (text) options.onOutput?.(`\nAssistant:\n${redactDiagnostics(text)}\n`);
+							emitContent(event.message, true);
+							options.onOutput?.("\n");
 						}
 						if (event.type === "turn_end") {
 							turns++;
@@ -466,7 +499,22 @@ export function createCodeifyModelWorkerDefinition(
 							);
 							emitProgress();
 						}
+						if (event.type === "tool_execution_update") {
+							const result = event.partialResult as { content?: Array<{ type: string; text?: string }> };
+							const output = (result.content ?? [])
+								.filter((block) => block.type === "text")
+								.map((block) => block.text)
+								.join("\n");
+							const complete = output.slice(0, output.lastIndexOf("\n") + 1);
+							const previous = toolOutput.get(event.toolCallId) ?? "";
+							if (complete && complete !== previous) {
+								const added = complete.startsWith(previous) ? complete.slice(previous.length) : complete;
+								options.onOutput?.(`\nTool ${event.toolName} output:\n${redactDiagnostics(added)}`);
+								toolOutput.set(event.toolCallId, complete);
+							}
+						}
 						if (event.type === "tool_execution_end") {
+							toolOutput.delete(event.toolCallId);
 							completedToolCalls++;
 							currentTool = undefined;
 							const content: Array<{ type: string; text?: string }> = event.result.content ?? [];

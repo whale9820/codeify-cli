@@ -48,6 +48,7 @@
 
 ### Fixed
 
+- Show background agents loading models, waiting for responses, streaming reasoning and assistant lines, preparing tool calls, and producing partial tool output in the live task view.
 - Preserve background delegated-agent progress, tool results, and credential-redacted provider diagnostics when a task fails so the parent agent can diagnose and recover.
 - Direct model delegation now always spawns background agents and returns immediately with a task ID, automatic completion delivery, and cancellation through the background task controls.
 - Block agent bash sleep commands while background tasks or their undelivered completion notifications are pending and tell the agent to end its turn so notifications can arrive automatically.

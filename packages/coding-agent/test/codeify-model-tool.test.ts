@@ -116,6 +116,104 @@ afterEach(async () => {
 });
 
 describe("codeify_model tool", () => {
+	it("shows model loading, streamed reasoning and text, and tool output before completion", async () => {
+		const selected = model("worker");
+		const finished = vi.fn();
+		const backgroundTasks = new BackgroundTaskManager(finished);
+		let load!: (models: Model<"openai-responses">[]) => void;
+		let finishRead!: () => void;
+		let startRead!: () => void;
+		let resumeStream!: () => void;
+		const pendingStream = new Promise<void>((resolve) => {
+			resumeStream = resolve;
+		});
+		const loading = new Promise<Model<"openai-responses">[]>((resolve) => {
+			load = resolve;
+		});
+		const pendingRead = new Promise<void>((resolve) => {
+			finishRead = resolve;
+		});
+		const startedRead = new Promise<void>((resolve) => {
+			startRead = resolve;
+		});
+		const { runtime } = runtimeWith(
+			[selected],
+			[
+				{
+					thinking: "Inspecting the project\napi_key=secret-reasoning\n",
+					text: "Reading notes\nAuthorization: Bearer secret-text\n",
+					toolCalls: [{ name: "read", args: { path: "notes.txt" } }],
+				},
+				"done",
+			],
+		);
+		runtime.getAvailable = () => loading;
+		const streamSimple = runtime.streamSimple;
+		runtime.streamSimple = (model, context, options) => {
+			const stream = createAssistantMessageEventStream();
+			void (async () => {
+				for await (const event of streamSimple(model, context, options)) {
+					stream.push(event);
+					if (
+						event.type === "text_delta" &&
+						event.partial.content.some((block) => block.type === "text" && block.text.includes("Reading notes\n"))
+					) {
+						await pendingStream;
+					}
+				}
+			})();
+			return stream;
+		};
+		const tool = createCodeifyModelToolDefinition(process.cwd(), runtime, {
+			backgroundTasks,
+			createDelegatedTools: () => ({
+				tools: [
+					{
+						...readTool(),
+						execute: async (_id, _args, _signal, onUpdate) => {
+							onUpdate?.({
+								content: [{ type: "text", text: "Reading first section\napi_key=secret-tool\n" }],
+								details: {},
+							});
+							startRead();
+							await pendingRead;
+							return { content: [{ type: "text", text: "notes" }], details: {} };
+						},
+					},
+				],
+			}),
+		});
+		try {
+			await tool.execute("spawn", { action: "run", model: "worker", task: "Read" }, undefined, undefined, {
+				cwd: process.cwd(),
+			});
+			expect(backgroundTasks.readOutput("bg1")?.text).toContain("Loading delegated model: worker");
+			load([selected]);
+			await vi.waitFor(() =>
+				expect(backgroundTasks.readOutput("bg1")?.text).toContain("Assistant:\nReading notes\n"),
+			);
+			expect(backgroundTasks.readOutput("bg1")?.text).not.toContain("Tool read started");
+			resumeStream();
+			await startedRead;
+			const output = backgroundTasks.readOutput("bg1")!.text;
+			expect(output).toContain("Turn 1: waiting for worker");
+			expect(output).toContain("Thinking:\nInspecting the project");
+			expect(output).toContain("Assistant:\nReading notes");
+			expect(output).toContain("Preparing tool call");
+			expect(output).toContain("Tool read output:\nReading first section");
+			expect(output).not.toMatch(/secret-(reasoning|text|tool)/u);
+			expect(backgroundTasks.get("bg1")?.status).toBe("running");
+			expect(finished).not.toHaveBeenCalled();
+			finishRead();
+			await vi.waitFor(() => expect(finished).toHaveBeenCalledOnce());
+		} finally {
+			load([selected]);
+			resumeStream();
+			finishRead();
+			backgroundTasks.detach();
+		}
+	});
+
 	it.each(["codeify_model", "background_task"])(
 		"keeps the parent working and delivers one completion through %s",
 		async (toolName) => {
