@@ -31,6 +31,7 @@ Codeify runs in the current working directory. The header shows session state an
 | `/trust` | Save project trust for the current directory |
 | `/fork` | Fork a session from an earlier user message |
 | `/clone` | Duplicate the current branch into a new session |
+| `/revert` | Undo the last user message. Repeat to walk further back |
 | `/compact [prompt]` | Compact context with optional instructions |
 | `/copy` | Copy the last assistant message |
 | `/export [file]` | Export a session to HTML or JSONL |

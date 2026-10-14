@@ -2511,12 +2511,27 @@ export class AgentSession {
 
 	async revertLastTurn(): Promise<{ editorText: string } | undefined> {
 		await this.abort();
-		const lastUser = this.getUserMessagesForForking().at(-1);
+		const lastUser = this.getBranchUserMessages().at(-1);
 		if (!lastUser) return undefined;
 		this.pauseGoal();
 		const result = await this.navigateTree(lastUser.entryId);
 		if (result.cancelled) return undefined;
 		return { editorText: result.editorText ?? lastUser.text };
+	}
+
+	/**
+	 * User messages on the active branch, oldest first.
+	 * Each /revert removes the last of these, so repeating /revert walks upward.
+	 */
+	getBranchUserMessages(): Array<{ entryId: string; text: string }> {
+		const result: Array<{ entryId: string; text: string }> = [];
+		for (const entry of this.sessionManager.getBranch()) {
+			if (entry.type !== "message") continue;
+			if (entry.message.role !== "user") continue;
+			const text = contentText(entry.message.content, "");
+			if (text) result.push({ entryId: entry.id, text });
+		}
+		return result;
 	}
 
 	/**

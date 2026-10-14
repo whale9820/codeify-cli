@@ -4089,7 +4089,7 @@ export class InteractiveMode {
 			this.chatContainer.clear();
 			this.renderInitialMessages();
 			this.editor.setText(result.editorText);
-			this.showStatus("Reverted the last turn. Edit your prompt and resend, or use /tree to get it back.");
+			this.showStatus("Reverted one turn. /revert again to go further back, or /tree to restore it.");
 		} catch (error) {
 			this.showError(error instanceof Error ? error.message : String(error));
 		}

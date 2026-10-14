@@ -46,4 +46,55 @@ describe("revertLastTurn", () => {
 
 		expect(harness.session.getGoal()?.status).toBe("paused");
 	});
+
+	it("walks up one user message each time it is repeated", async () => {
+		const harness = await createHarness();
+		harnesses.push(harness);
+		harness.setResponses([
+			fauxAssistantMessage("first reply"),
+			fauxAssistantMessage("second reply"),
+			fauxAssistantMessage("third reply"),
+		]);
+
+		await harness.session.prompt("first prompt");
+		await harness.session.prompt("second prompt");
+		await harness.session.prompt("third prompt");
+
+		const third = await harness.session.revertLastTurn();
+		expect(third?.editorText).toBe("third prompt");
+		expect(harness.session.messages).toHaveLength(4);
+
+		const second = await harness.session.revertLastTurn();
+		expect(second?.editorText).toBe("second prompt");
+		expect(harness.session.messages).toHaveLength(2);
+		expect(harness.session.messages[0].role).toBe("user");
+		expect(harness.session.messages[1].role).toBe("assistant");
+
+		const first = await harness.session.revertLastTurn();
+		expect(first?.editorText).toBe("first prompt");
+		expect(harness.session.messages).toHaveLength(0);
+
+		expect(await harness.session.revertLastTurn()).toBeUndefined();
+	});
+
+	it("does not revert a user message that is off the active branch", async () => {
+		const harness = await createHarness();
+		harnesses.push(harness);
+		harness.setResponses([fauxAssistantMessage("first reply"), fauxAssistantMessage("second reply")]);
+
+		await harness.session.prompt("first prompt");
+		await harness.session.prompt("second prompt");
+		const first = harness.session.getBranchUserMessages()[0];
+		if (!first) throw new Error("expected a user message");
+
+		await harness.session.navigateTree(first.entryId);
+		expect(harness.session.messages).toHaveLength(0);
+		expect(harness.session.getUserMessagesForForking().map((message) => message.text)).toEqual([
+			"first prompt",
+			"second prompt",
+		]);
+
+		expect(await harness.session.revertLastTurn()).toBeUndefined();
+		expect(harness.session.messages).toHaveLength(0);
+	});
 });

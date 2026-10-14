@@ -23,6 +23,7 @@
 
 ### Changed
 
+- `/revert` can be repeated to walk back through the chat. Each use undoes the last user message still on the active branch and restores that prompt to the editor. A second `/revert` now moves to the previous message instead of targeting the same one again.
 - Display user-input requests as compact `AskUser(question)` entries with readable answers and full questions available when expanded.
 - Restyled compaction, branch summary, and skill messages in interactive mode to match tool calls: a `●` header with the detail under `⎿`, without the tinted background box and bracketed label.
 - `ctrl+b` no longer moves the editor cursor left (use the left arrow); it now moves the running command to the background.

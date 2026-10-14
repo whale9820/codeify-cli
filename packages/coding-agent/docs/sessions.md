@@ -30,6 +30,7 @@ For the JSONL file format and SessionManager API, see [Session Format](session-f
 | `/tree` | Navigate the current session tree |
 | `/fork` | Create a new session from a previous user message |
 | `/clone` | Duplicate the current active branch into a new session |
+| `/revert` | Undo the last user message. Repeat to walk further back |
 | `/compact [prompt]` | Summarize older context; see [Compaction](compaction.md) |
 | `/export [file]` | Export session to HTML |
 | `/share` | Upload as private GitHub gist with shareable HTML link |
@@ -125,6 +126,10 @@ Selecting the root user message resets the leaf to an empty conversation and pla
 | Summary | Optional branch summary | None | None |
 
 Use `/tree` when you want to keep alternatives together. Use `/fork` or `/clone` when you want a separate session file.
+
+## `/revert`
+
+`/revert` undoes the last user message on the active branch and puts that prompt back in the editor. Run it again to undo the message above that, and so on, until the branch is empty. Each step leaves the undone turns in the session tree. Use `/tree` to return to them.
 
 ## Branch Summaries
 
