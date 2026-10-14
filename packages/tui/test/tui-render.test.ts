@@ -698,15 +698,19 @@ describe("TUI differential rendering", () => {
 		await terminal.waitForRender();
 
 		assert.deepStrictEqual(terminal.getViewport(), [
-			"Chat 13",
-			"Chat 14",
 			"Chat 15",
 			"Chat 16",
 			"Chat 17",
 			"Chat 18",
 			"Chat 19",
 			"Editor",
+			"",
+			"",
 		]);
+		assert.deepStrictEqual(
+			terminal.getScrollBuffer().filter((line) => line.startsWith("Chat ")),
+			chat.lines,
+		);
 
 		tui.stop();
 	});

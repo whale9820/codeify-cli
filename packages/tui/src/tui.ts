@@ -1337,7 +1337,12 @@ export class TUI extends Container {
 				fullRender(true);
 				return;
 			}
-			const start = Math.min(prevViewportTop, Math.max(0, newLines.length - height));
+			const preserveScrollback =
+				newLines.length > prevViewportTop &&
+				newLines.slice(0, prevViewportTop).every((line, index) => line === this.previousLines[index]);
+			const start = preserveScrollback
+				? prevViewportTop
+				: Math.min(prevViewportTop, Math.max(0, newLines.length - height));
 			const currentScreenRow = Math.max(0, Math.min(height - 1, hardwareCursorRow - prevViewportTop));
 			let buffer = "\x1b[?2026h";
 			if (currentScreenRow > 0) buffer += `\x1b[${currentScreenRow}A`;
