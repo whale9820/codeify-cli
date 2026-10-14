@@ -1,3 +1,5 @@
+import type { Usage } from "codeify-ai";
+
 export type BackgroundTaskStatus = "running" | "completed" | "failed" | "stopped";
 
 export interface BackgroundTaskRunContext {
@@ -14,9 +16,11 @@ export interface BackgroundTask {
 	endedAt?: number;
 	exitCode?: number | null;
 	error?: string;
+	usage?: Usage;
 }
 
 export interface BackgroundTaskRunResult {
+	usage?: Usage;
 	exitCode?: number | null;
 	text?: string;
 }
@@ -128,6 +132,7 @@ export class BackgroundTaskManager {
 
 		void completion
 			.then((result) => {
+				if (result?.usage) entry.task.usage = result.usage;
 				if (result?.text) append(result.text);
 				if (entry.stopRequested) {
 					finish("stopped", { exitCode: result?.exitCode });

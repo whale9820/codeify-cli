@@ -4,9 +4,15 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { AgentTool } from "codeify-agent-core";
 import type { Api, Context, Model, ModelsSimpleStreamOptions, Usage } from "codeify-ai";
+import { createAssistantMessageEventStream } from "codeify-ai";
 import { type Static, Type } from "typebox";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
-import { type CodeifyModelToolRuntime, createCodeifyModelToolDefinition } from "../src/core/tools/codeify-model.ts";
+import { BackgroundTaskManager } from "../src/core/background-tasks.ts";
+import {
+	type CodeifyModelToolRuntime,
+	createCodeifyModelToolDefinition,
+	createCodeifyModelWorkerDefinition,
+} from "../src/core/tools/codeify-model.ts";
 import { initTheme, theme } from "../src/modes/interactive/theme/theme.ts";
 import { createFauxStreamFn, createHarness, type FauxResponseInput } from "./test-harness.ts";
 
@@ -110,12 +116,175 @@ afterEach(async () => {
 });
 
 describe("codeify_model tool", () => {
+	it.each(["codeify_model", "background_task"])(
+		"keeps the parent working and delivers one completion through %s",
+		async (toolName) => {
+			const selected = model("worker");
+			let finish!: () => void;
+			const pending = new Promise<void>((resolve) => {
+				finish = resolve;
+			});
+			const harness = await createHarness({
+				settings: { smartModelUsage: true },
+				responses: [
+					{
+						toolCalls: [
+							{
+								name: toolName,
+								args: {
+									action: toolName === "codeify_model" ? "run" : "start",
+									model: "worker",
+									task: "Work",
+									allowedTools: [],
+								},
+							},
+						],
+					},
+					"Independent work",
+					"Reviewed delegated result",
+				],
+			});
+			const delegated = createFauxStreamFn([{ text: "delegated answer", usage }]);
+			vi.spyOn(harness.session.modelRuntime, "getAvailable").mockResolvedValue([selected]);
+			vi.spyOn(harness.session.modelRuntime, "streamSimple").mockImplementation((model, context, options) => {
+				const stream = createAssistantMessageEventStream();
+				void pending.then(async () => {
+					for await (const event of delegated.streamFn(model, context, options)) stream.push(event);
+				});
+				return stream;
+			});
+			let continued = false;
+			harness.session.subscribe((event) => {
+				if (
+					event.type === "message_end" &&
+					event.message.role === "assistant" &&
+					event.message.content.some((block) => block.type === "text" && block.text === "Independent work")
+				) {
+					continued = true;
+					expect(harness.session.getBackgroundTasks()).toMatchObject([{ kind: "agent", status: "running" }]);
+					finish();
+				}
+			});
+			try {
+				await harness.session.prompt("Delegate and continue working");
+				expect(continued).toBe(true);
+				expect(harness.session.getBackgroundTasks()).toHaveLength(1);
+				expect(harness.session.getBackgroundTasks()[0].status).toBe("completed");
+				expect(
+					harness.session.messages.filter(
+						(message) => message.role === "custom" && message.customType === "background_task",
+					),
+				).toHaveLength(1);
+				expect(harness.session.getLastAssistantText()).toBe("Reviewed delegated result");
+				expect(harness.session.getSessionStats().tokens.input).toBe(420);
+			} finally {
+				finish();
+				harness.cleanup();
+			}
+		},
+	);
+
+	it("returns before delegated tools finish and delivers the full result in the background", async () => {
+		const selected = model("worker");
+		const finished = vi.fn();
+		const backgroundTasks = new BackgroundTaskManager(finished);
+		let finishRead!: (value: string) => void;
+		const pendingRead = new Promise<string>((resolve) => {
+			finishRead = resolve;
+		});
+		let startRead!: () => void;
+		const startedRead = new Promise<void>((resolve) => {
+			startRead = resolve;
+		});
+		const dispose = vi.fn();
+		const summary = "result ".repeat(10_000);
+		const { runtime } = runtimeWith(
+			[selected],
+			[
+				{ toolCalls: [{ name: "read", args: { path: "notes.txt" } }], usage },
+				{ text: summary, usage },
+			],
+		);
+		const tool = createCodeifyModelToolDefinition(process.cwd(), runtime, {
+			backgroundTasks,
+			createDelegatedTools: () => ({
+				tools: [
+					readTool(async () => {
+						startRead();
+						return pendingRead;
+					}),
+				],
+				dispose,
+			}),
+		});
+		const controller = new AbortController();
+		try {
+			const result = await tool.execute(
+				"spawn",
+				{ action: "run", model: "worker", task: "Read" },
+				controller.signal,
+				undefined,
+				{ cwd: process.cwd() },
+			);
+			expect(result.details).toMatchObject({ action: "run", status: "running", taskId: "bg1" });
+			await startedRead;
+			controller.abort();
+			expect(backgroundTasks.get("bg1")?.status).toBe("running");
+			expect(finished).not.toHaveBeenCalled();
+			expect(dispose).not.toHaveBeenCalled();
+			finishRead("notes");
+			await vi.waitFor(() => expect(finished).toHaveBeenCalledOnce());
+			expect(backgroundTasks.get("bg1")).toMatchObject({ status: "completed", usage: { input: 240 } });
+			expect(backgroundTasks.readOutput("bg1")?.text).toContain(summary.trim());
+			expect(dispose).toHaveBeenCalledOnce();
+		} finally {
+			finishRead("notes");
+			backgroundTasks.detach();
+		}
+	});
+
+	it("reports background failures without exposing provider credentials", async () => {
+		const selected = model("worker");
+		const finished = vi.fn();
+		const backgroundTasks = new BackgroundTaskManager(finished);
+		const { runtime } = runtimeWith([selected], [{ error: "Bearer secret-codeify-key" }]);
+		const tool = createCodeifyModelToolDefinition(process.cwd(), runtime, { backgroundTasks });
+		await tool.execute("spawn", { action: "run", model: "worker", task: "Work" }, undefined, undefined, {
+			cwd: process.cwd(),
+		});
+		await vi.waitFor(() => expect(finished).toHaveBeenCalledOnce());
+		expect(backgroundTasks.get("bg1")).toMatchObject({
+			status: "failed",
+			error: "Delegated Codeify CLI agent request failed.",
+		});
+		expect(JSON.stringify(backgroundTasks.list())).not.toContain("secret-codeify-key");
+	});
+
+	it("cancels a spawned agent through the background task manager", async () => {
+		const selected = model("worker");
+		const finished = vi.fn();
+		const backgroundTasks = new BackgroundTaskManager(finished);
+		const { runtime } = runtimeWith([selected], [{ text: "done", delayMs: 100 }]);
+		const dispose = vi.fn();
+		const tool = createCodeifyModelToolDefinition(process.cwd(), runtime, {
+			backgroundTasks,
+			createDelegatedTools: () => ({ tools: [], dispose }),
+		});
+		await tool.execute("spawn", { action: "run", model: "worker", task: "Work" }, undefined, undefined, {
+			cwd: process.cwd(),
+		});
+		expect(backgroundTasks.stop("bg1")).toBe(true);
+		await vi.waitFor(() => expect(finished).toHaveBeenCalledOnce());
+		expect(backgroundTasks.get("bg1")?.status).toBe("stopped");
+		expect(dispose).toHaveBeenCalledOnce();
+	});
+
 	it("accepts explicit budgets above the former caps and lists every model by default", async () => {
 		const models = Array.from({ length: 110 }, (_, index) => model(`worker-${index}`));
 		const { runtime } = runtimeWith(models, ["done"], (_selected, _context, options) => {
 			expect(options?.maxTokens).toBe(30_000);
 		});
-		const tool = createCodeifyModelToolDefinition(process.cwd(), runtime);
+		const tool = createCodeifyModelWorkerDefinition(process.cwd(), runtime);
 		for (const field of ["maxOutputTokens", "maxTurns", "maxToolCalls", "limit"]) {
 			expect(tool.parameters).not.toHaveProperty(`properties.${field}.maximum`);
 		}
@@ -144,7 +313,7 @@ describe("codeify_model tool", () => {
 		const cheapVision = model("cheap-vision", { inputCost: 0.05, outputCost: 0.4 });
 		const textOnly = model("text-only", { vision: false, inputCost: 0, outputCost: 0 });
 		const { runtime } = runtimeWith([main, cheapVision, textOnly]);
-		const tool = createCodeifyModelToolDefinition(process.cwd(), runtime, {
+		const tool = createCodeifyModelWorkerDefinition(process.cwd(), runtime, {
 			getDelegatedToolNames: () => ["read", "write"],
 		});
 
@@ -178,7 +347,7 @@ describe("codeify_model tool", () => {
 				expect(context.systemPrompt).toContain("Only inspect notes.txt");
 			},
 		);
-		const tool = createCodeifyModelToolDefinition(process.cwd(), runtime, {
+		const tool = createCodeifyModelWorkerDefinition(process.cwd(), runtime, {
 			getDelegatedToolNames: () => ["read"],
 			createDelegatedTools: () => ({ tools: [readTool(executeRead)] }),
 		});
@@ -222,7 +391,7 @@ describe("codeify_model tool", () => {
 		const cheap = model("cheap");
 		const recursive = { ...readTool(), name: "codeify_model", label: "codeify_model" } as unknown as AgentTool;
 		const { runtime, contexts } = runtimeWith([main, cheap]);
-		const tool = createCodeifyModelToolDefinition(process.cwd(), runtime, {
+		const tool = createCodeifyModelWorkerDefinition(process.cwd(), runtime, {
 			createDelegatedTools: () => ({ tools: [readTool(), writeTool(), recursive] }),
 		});
 
@@ -250,7 +419,7 @@ describe("codeify_model tool", () => {
 				"done",
 			],
 		);
-		const tool = createCodeifyModelToolDefinition(process.cwd(), runtime, {
+		const tool = createCodeifyModelWorkerDefinition(process.cwd(), runtime, {
 			createDelegatedTools: () => ({ tools: [readTool(executeRead)] }),
 		});
 
@@ -276,7 +445,7 @@ describe("codeify_model tool", () => {
 			[main, cheap],
 			[{ toolCalls: [{ name: "read", args: { path: "one.txt" } }] }, "final summary"],
 		);
-		const tool = createCodeifyModelToolDefinition(process.cwd(), runtime, {
+		const tool = createCodeifyModelWorkerDefinition(process.cwd(), runtime, {
 			createDelegatedTools: () => ({ tools: [readTool(executeRead)] }),
 		});
 
@@ -298,7 +467,7 @@ describe("codeify_model tool", () => {
 		const main = model("main");
 		const cheap = model("cheap");
 		const { runtime } = runtimeWith([main, cheap], [{ text: "", stopReason: "length" }]);
-		const tool = createCodeifyModelToolDefinition(process.cwd(), runtime, {
+		const tool = createCodeifyModelWorkerDefinition(process.cwd(), runtime, {
 			createDelegatedTools: () => ({ tools: [] }),
 		});
 
@@ -336,7 +505,7 @@ describe("codeify_model tool", () => {
 			expect(message.content.some((item) => item.type === "image" && item.mimeType === "image/png")).toBe(true);
 			expect(message.content.filter((item) => item.type === "image")).toHaveLength(6);
 		});
-		const tool = createCodeifyModelToolDefinition(directory, runtime);
+		const tool = createCodeifyModelWorkerDefinition(directory, runtime);
 
 		await tool.execute(
 			"vision",
@@ -350,7 +519,7 @@ describe("codeify_model tool", () => {
 	it("allows delegation to the main model", async () => {
 		const main = model("main");
 		const { runtime, contexts } = runtimeWith([main], ["self delegated answer"]);
-		const tool = createCodeifyModelToolDefinition(process.cwd(), runtime);
+		const tool = createCodeifyModelWorkerDefinition(process.cwd(), runtime);
 
 		const result = await tool.execute(
 			"run-main",
@@ -371,7 +540,7 @@ describe("codeify_model tool", () => {
 		const main = model("main");
 		const cheap = model("cheap");
 		const { runtime } = runtimeWith([main, cheap], [{ error: "Authorization: Bearer secret-codeify-key" }]);
-		const tool = createCodeifyModelToolDefinition(process.cwd(), runtime);
+		const tool = createCodeifyModelWorkerDefinition(process.cwd(), runtime);
 
 		const request = tool.execute(
 			"failure",
@@ -395,7 +564,7 @@ describe("codeify_model tool", () => {
 				throw new Error("unused");
 			},
 		};
-		const tool = createCodeifyModelToolDefinition(process.cwd(), runtime);
+		const tool = createCodeifyModelWorkerDefinition(process.cwd(), runtime);
 
 		const request = tool.execute("list-failure", { action: "list" }, undefined, undefined, {
 			cwd: process.cwd(),
@@ -409,7 +578,7 @@ describe("codeify_model tool", () => {
 		const main = model("main");
 		const cheap = model("cheap");
 		const { runtime } = runtimeWith([main, cheap], [{ text: "done", delayMs: 100 }]);
-		const tool = createCodeifyModelToolDefinition(process.cwd(), runtime);
+		const tool = createCodeifyModelWorkerDefinition(process.cwd(), runtime);
 		const context = { cwd: process.cwd(), model: main };
 		const requests = Array.from({ length: 8 }, (_, index) =>
 			tool.execute(
@@ -440,7 +609,7 @@ describe("codeify_model tool", () => {
 			expect(options?.maxTokens).toBe(selected.maxTokens);
 			expect(options?.timeoutMs).toBeUndefined();
 		});
-		const tool = createCodeifyModelToolDefinition(process.cwd(), runtime, {
+		const tool = createCodeifyModelWorkerDefinition(process.cwd(), runtime, {
 			createDelegatedTools: () => ({ tools: [readTool(executeRead)] }),
 		});
 		const result = await tool.execute(
@@ -472,7 +641,7 @@ describe("codeify_model tool", () => {
 			[selected],
 			[{ toolCalls: [{ name: "read", args: { path: "notes.txt" } }] }, "done"],
 		);
-		const tool = createCodeifyModelToolDefinition(process.cwd(), runtime, {
+		const tool = createCodeifyModelWorkerDefinition(process.cwd(), runtime, {
 			createDelegatedTools: () => ({
 				tools: [
 					readTool(async () => {
@@ -505,7 +674,7 @@ describe("codeify_model tool", () => {
 		const main = model("main");
 		const cheap = model("cheap");
 		const { runtime } = runtimeWith([main, cheap]);
-		const tool = createCodeifyModelToolDefinition(process.cwd(), runtime);
+		const tool = createCodeifyModelWorkerDefinition(process.cwd(), runtime);
 		const controller = new AbortController();
 		controller.abort();
 
@@ -521,7 +690,7 @@ describe("codeify_model tool", () => {
 		const main = model("main");
 		const cheap = model("cheap");
 		const { runtime } = runtimeWith([main, cheap]);
-		const tool = createCodeifyModelToolDefinition(process.cwd(), runtime);
+		const tool = createCodeifyModelWorkerDefinition(process.cwd(), runtime);
 		const renderContext = {
 			args: { action: "run" as const, model: "cheap", task: "Inspect files", allowedTools: ["read"] },
 			toolCallId: "render",

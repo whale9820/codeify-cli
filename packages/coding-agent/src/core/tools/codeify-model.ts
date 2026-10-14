@@ -18,9 +18,10 @@ import type { Theme } from "../../modes/interactive/theme/theme.ts";
 import { processImage } from "../../utils/image-process.ts";
 import { detectSupportedImageMimeTypeFromFile } from "../../utils/mime.ts";
 import { resolvePath } from "../../utils/paths.ts";
+import type { BackgroundTask, BackgroundTaskManager } from "../background-tasks.ts";
 import { CODEIFY_PROVIDER_ID } from "../codeify-provider.ts";
 import { getTextOutput } from "./render-utils.ts";
-import type { ToolDefinition, ToolRenderResultOptions } from "./types.ts";
+import type { ToolDefinition, ToolExecutionContext, ToolRenderResultOptions } from "./types.ts";
 
 const DEFAULT_READ_ONLY_TOOLS = ["read", "grep", "find", "glob", "ls"];
 
@@ -96,6 +97,7 @@ export type CodeifyModelToolDetails =
 	| { action: "list"; count: number; toolNames: string[] }
 	| {
 			action: "run";
+			taskId?: string;
 			model: string;
 			status: "running" | "completed";
 			turns: number;
@@ -270,6 +272,7 @@ function formatCodeifyModelResult(
 				: details.stopReason || "completed";
 	const parts = [
 		status,
+		...(details.taskId ? [details.taskId] : []),
 		`${details.turns} turn${details.turns === 1 ? "" : "s"}`,
 		`${details.completedToolCalls}/${details.toolCalls} tools`,
 	];
@@ -290,7 +293,7 @@ function formatCodeifyModelResult(
 	return text;
 }
 
-export function createCodeifyModelToolDefinition(
+export function createCodeifyModelWorkerDefinition(
 	cwd: string,
 	runtime: CodeifyModelToolRuntime,
 	options: CodeifyModelToolOptions = {},
@@ -508,6 +511,69 @@ export function createCodeifyModelToolDefinition(
 			const text = (context.lastComponent as Text | undefined) ?? new Text("", 0, 0);
 			text.setText(formatCodeifyModelResult(result, renderOptions, theme, context.showImages));
 			return text;
+		},
+	};
+}
+
+export function createCodeifyModelToolDefinition(
+	cwd: string,
+	runtime: CodeifyModelToolRuntime,
+	options: CodeifyModelToolOptions & { backgroundTasks: BackgroundTaskManager },
+): ToolDefinition<typeof codeifyModelSchema, CodeifyModelToolDetails> & {
+	startTask: (params: CodeifyModelToolInput, ctx: ToolExecutionContext, description?: string) => BackgroundTask;
+} {
+	const worker = createCodeifyModelWorkerDefinition(cwd, runtime, options);
+	const startTask = (params: CodeifyModelToolInput, ctx: ToolExecutionContext, description?: string) => {
+		if (!params.model?.trim()) throw new Error("The run action requires a model ID from the list action.");
+		if (!params.task?.trim()) throw new Error("The run action requires a standalone task.");
+		return options.backgroundTasks.start({
+			kind: "agent",
+			description: description || params.task.replace(/\s+/gu, " ").trim().slice(0, 80),
+			run: async ({ signal }) => {
+				const result = await worker.execute("delegated", params, signal, undefined, ctx);
+				return {
+					text: result.content
+						.filter((block) => block.type === "text")
+						.map((block) => block.text)
+						.join("\n"),
+					usage: result.usage,
+				};
+			},
+		});
+	};
+	return {
+		...worker,
+		description: `${worker.description} Every delegated agent runs in the background: run returns immediately with a task ID and completion is delivered automatically. Use background_task to inspect output or stop it.`,
+		promptGuidelines: [
+			...(worker.promptGuidelines ?? []),
+			"Spawning a delegated agent is always non-blocking. Continue independent work after spawning; if its result is needed, end your response and wait for the automatic completion notification. Do not poll or sleep.",
+		],
+		startTask,
+		async execute(toolCallId, params, signal, onUpdate, ctx) {
+			if (params.action === "list") return worker.execute(toolCallId, params, signal, onUpdate, ctx);
+			if (signal?.aborted) throw new Error("Delegated Codeify CLI agent request was cancelled.");
+			const task = startTask(params, ctx);
+			return {
+				content: [
+					{
+						type: "text",
+						text: `Started background agent task ${task.id}. Its result will arrive automatically. Continue only with independent work; if you need this result, end your response and wait for the automatic notification. Do not poll, sleep, or rerun the task. Use background_task with action "output" or "stop" and id ${task.id} to inspect or cancel it.`,
+					},
+				],
+				details: {
+					action: "run",
+					taskId: task.id,
+					model: params.model!,
+					status: "running",
+					turns: 0,
+					toolCalls: 0,
+					completedToolCalls: 0,
+					allowedTools:
+						params.allowedTools ??
+						DEFAULT_READ_ONLY_TOOLS.filter((name) => delegatedToolNames(options).includes(name)),
+					filesChanged: [],
+				},
+			};
 		},
 	};
 }

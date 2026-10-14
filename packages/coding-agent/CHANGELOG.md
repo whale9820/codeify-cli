@@ -47,6 +47,7 @@
 
 ### Fixed
 
+- Direct model delegation now always spawns background agents and returns immediately with a task ID, automatic completion delivery, and cancellation through the background task controls.
 - Block agent bash sleep commands while background tasks or their undelivered completion notifications are pending and tell the agent to end its turn so notifications can arrive automatically.
 - Fixed `codeify update` failing after attribution history was rewritten. Clean installations with an identical source snapshot in the new history recover automatically, retain a backup branch, and keep dependencies until the source update succeeds. Local changes and divergent source snapshots are preserved.
 - Override backends now inherit thinking levels and other model metadata from the Codeify catalog when refreshing models, not only when first added, so models such as grok-4.6 no longer offer `max` on backends like cpa.

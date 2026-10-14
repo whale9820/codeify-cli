@@ -94,7 +94,7 @@ import { createUpdateGoalToolDefinition } from "./tools/goal.ts";
 import { createAllToolDefinitions } from "./tools/index.ts";
 import { createRequestUserInputToolDefinition } from "./tools/request-user-input.ts";
 import { createToolDefinitionFromAgentTool, wrapToolDefinition } from "./tools/tool-definition-wrapper.ts";
-import type { ToolDefinition, ToolExecutionContext, ToolInfo } from "./tools/types.ts";
+import { defineTool, type ToolDefinition, type ToolExecutionContext, type ToolInfo } from "./tools/types.ts";
 import { addUsageToTotals, createUsageTotals } from "./usage-totals.ts";
 import { UserInputManager, type UserInputRequest } from "./user-input.ts";
 
@@ -2004,8 +2004,10 @@ export class AgentSession {
 						},
 					},
 				});
+		let delegate: ReturnType<typeof createCodeifyModelToolDefinition> | undefined;
 		if (!this._baseToolsOverride && this.settingsManager.getSmartModelUsage()) {
-			baseToolDefinitions.codeify_model = createCodeifyModelToolDefinition(this._cwd, this._modelRuntime, {
+			delegate = createCodeifyModelToolDefinition(this._cwd, this._modelRuntime, {
+				backgroundTasks: this._backgroundTasks,
 				imagesBlocked: () => this.settingsManager.getBlockImages(),
 				autoResizeImages: () => this.settingsManager.getImageAutoResize(),
 				// context_usage reports the parent session's window, so it is meaningless to a
@@ -2030,6 +2032,7 @@ export class AgentSession {
 					),
 				}),
 			});
+			baseToolDefinitions.codeify_model = defineTool(delegate);
 		}
 		if (!this._baseToolsOverride) {
 			baseToolDefinitions.browser = createBrowserToolDefinition(this._cwd, this._browserBridge, {
@@ -2045,7 +2048,6 @@ export class AgentSession {
 				},
 			});
 			const bashOperations = createLocalBashOperations({ shellPath });
-			const delegate = baseToolDefinitions.codeify_model;
 			baseToolDefinitions.background_task = createBackgroundTaskToolDefinition({
 				startCommand: (command, description, timeout) =>
 					this._backgroundTasks.start({
@@ -2062,21 +2064,11 @@ export class AgentSession {
 					}),
 				startAgent: delegate
 					? (model, task, allowedTools, description) =>
-							this._backgroundTasks.start({
-								kind: "agent",
+							delegate!.startTask(
+								{ action: "run", model, task, allowedTools },
+								{ cwd: this._cwd, model: this.model },
 								description,
-								run: async ({ signal }) => {
-									const result = await delegate.execute(
-										`background-${Date.now()}`,
-										{ action: "run", model, task, allowedTools },
-										signal,
-										undefined,
-										{ cwd: this._cwd, model: this.model },
-									);
-									const block = result.content.find((item) => item.type === "text");
-									return { text: block?.type === "text" ? block.text : "" };
-								},
-							})
+							)
 					: undefined,
 				list: () => this._backgroundTasks.list(),
 				get: (id) => this._backgroundTasks.get(id),
@@ -2568,6 +2560,10 @@ export class AgentSession {
 		const usageTotals = createUsageTotals();
 
 		for (const entry of this.sessionManager.getEntries()) {
+			if (entry.type === "custom_message" && entry.customType === "background_task") {
+				const task = entry.details as BackgroundTask | undefined;
+				if (task?.usage) addUsageToTotals(usageTotals, task.usage);
+			}
 			if ((entry.type === "branch_summary" || entry.type === "compaction") && entry.usage) {
 				addUsageToTotals(usageTotals, entry.usage);
 			}
