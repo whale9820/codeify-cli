@@ -48,6 +48,7 @@
 
 ### Fixed
 
+- Retry transient subagent upstream errors up to three times per model turn with cancellable backoff, preserving completed tool work and reporting redacted retry diagnostics.
 - Standardize all built-in tool labels as `Name(args)`, including smart-model listings, delegation, background actions and completions, goals, context usage, resources, and fallback tools. Restore expandable model listings and delegated results, show expansion hints for shortened questions and answers, and collapse image output until expanded.
 - Cap interactive tool and extension output at 20 visual lines with Ctrl+O expansion, including MCP listings, fallback renderers, and wrapped output. Display skill invocations as `Skill(name)` and MCP connections as `MCP(server)`.
 - Show background agents loading models, waiting for responses, streaming reasoning and assistant lines, preparing tool calls, and producing partial tool output in the live task view.

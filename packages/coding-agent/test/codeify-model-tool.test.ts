@@ -116,6 +116,132 @@ afterEach(async () => {
 });
 
 describe("codeify_model tool", () => {
+	it("retries upstream errors three times without repeating completed tools or consuming turn budgets", async () => {
+		vi.useFakeTimers();
+		const selected = model("worker");
+		const executeRead = vi.fn(async () => "notes");
+		const { runtime, contexts } = runtimeWith(
+			[selected],
+			[
+				{ toolCalls: [{ name: "read", args: { path: "notes.txt" } }] },
+				...Array.from({ length: 3 }, () => ({ error: "upstream_error: unexpected EOF", usage })),
+				"recovered summary",
+			],
+		);
+		const onOutput = vi.fn();
+		const tool = createCodeifyModelWorkerDefinition(process.cwd(), runtime, {
+			onOutput,
+			createDelegatedTools: () => ({ tools: [readTool(executeRead)] }),
+		});
+		const request = tool.execute(
+			"retry",
+			{ action: "run", model: "worker", task: "Read", maxTurns: 2 },
+			undefined,
+			undefined,
+			{ cwd: process.cwd() },
+		);
+		await vi.runAllTimersAsync();
+		const result = await request;
+		expect(result.details).toMatchObject({ turns: 2, completedToolCalls: 1, stopReason: "stop" });
+		expect(result.content[0]).toMatchObject({ text: expect.stringContaining("recovered summary") });
+		expect(result.usage?.input).toBe(560);
+		expect(executeRead).toHaveBeenCalledOnce();
+		expect(contexts).toHaveLength(5);
+		for (const context of contexts.slice(1)) {
+			expect(context.messages.at(-1)?.role).toBe("toolResult");
+			expect(context.tools).toEqual([]);
+		}
+		expect(onOutput.mock.calls.flat().join("")).toContain("Retrying delegated model (3/3)");
+	});
+
+	it("fails after exactly three upstream retries and redacts retry diagnostics", async () => {
+		vi.useFakeTimers();
+		const { runtime, contexts } = runtimeWith(
+			[model("worker")],
+			Array.from({ length: 5 }, () => ({ error: "503 upstream_error: api_key=secret-retry" })),
+		);
+		const onOutput = vi.fn();
+		const dispose = vi.fn();
+		const tool = createCodeifyModelWorkerDefinition(process.cwd(), runtime, {
+			onOutput,
+			createDelegatedTools: () => ({ tools: [], dispose }),
+		});
+		const request = tool.execute(
+			"exhausted",
+			{ action: "run", model: "worker", task: "Work" },
+			undefined,
+			undefined,
+			{ cwd: process.cwd() },
+		);
+		const assertion = expect(request).rejects.toThrow("503 upstream_error: api_key=[redacted]");
+		await vi.runAllTimersAsync();
+		await assertion;
+		expect(contexts).toHaveLength(4);
+		expect(onOutput.mock.calls.flat().join("")).not.toContain("secret-retry");
+		expect(dispose).toHaveBeenCalledOnce();
+	});
+
+	it("keeps failed partial messages and tool calls out of later turns", async () => {
+		const executeRead = vi.fn(async () => "notes");
+		const { runtime, contexts } = runtimeWith(
+			[model("worker")],
+			[
+				{
+					text: "Incomplete response",
+					toolCalls: [{ name: "read", args: { path: "wrong.txt" } }],
+					error: "upstream_error: connection lost",
+				},
+				{ text: "Recovered", toolCalls: [{ name: "read", args: { path: "notes.txt" } }] },
+				"done",
+			],
+		);
+		const onOutput = vi.fn();
+		const tool = createCodeifyModelWorkerDefinition(process.cwd(), runtime, {
+			onOutput,
+			createDelegatedTools: () => ({ tools: [readTool(executeRead)] }),
+		});
+		await tool.execute("partial", { action: "run", model: "worker", task: "Read" }, undefined, undefined, {
+			cwd: process.cwd(),
+		});
+		expect(executeRead).toHaveBeenCalledExactlyOnceWith({ path: "notes.txt" });
+		expect(contexts[2]?.messages.map((message) => message.role)).toEqual(["user", "assistant", "toolResult"]);
+		expect(JSON.stringify(contexts[2])).not.toContain("Incomplete response");
+		expect(onOutput.mock.calls.flat().join("")).toContain("Assistant:\nRecovered");
+	});
+
+	it.each(["401 invalid API key", "insufficient_quota", "context length exceeded"])(
+		"does not retry permanent errors: %s",
+		async (error) => {
+			const { runtime, contexts } = runtimeWith([model("worker")], [{ error }, "unexpected retry"]);
+			const tool = createCodeifyModelWorkerDefinition(process.cwd(), runtime);
+			await expect(
+				tool.execute("permanent", { action: "run", model: "worker", task: "Work" }, undefined, undefined, {
+					cwd: process.cwd(),
+				}),
+			).rejects.toThrow(error);
+			expect(contexts).toHaveLength(1);
+		},
+	);
+
+	it("cancels during retry backoff without another request", async () => {
+		const controller = new AbortController();
+		const { runtime, contexts } = runtimeWith([model("worker")], [{ error: "503 upstream error" }, "done"]);
+		const dispose = vi.fn();
+		const tool = createCodeifyModelWorkerDefinition(process.cwd(), runtime, {
+			onOutput: (text) => {
+				if (text.includes("Retrying delegated model")) controller.abort();
+			},
+			createDelegatedTools: () => ({ tools: [], dispose }),
+		});
+		await expect(
+			tool.execute("cancel", { action: "run", model: "worker", task: "Work" }, controller.signal, undefined, {
+				cwd: process.cwd(),
+			}),
+		).rejects.toThrow("cancelled");
+		expect(contexts).toHaveLength(1);
+		expect(dispose).toHaveBeenCalledOnce();
+	});
+
 	it("shows model loading, streamed reasoning and text, and tool output before completion", async () => {
 		const selected = model("worker");
 		const finished = vi.fn();
@@ -367,7 +493,7 @@ describe("codeify_model tool", () => {
 			[model("worker")],
 			[
 				{ text: "Inspecting notes", toolCalls: [{ name: "read", args: { path: "missing.txt" } }] },
-				{ error: "HTTP 429: rate limit exceeded; api_key=secret-key" },
+				...Array.from({ length: 4 }, () => ({ error: "HTTP 429: rate limit exceeded; api_key=secret-key" })),
 			],
 		);
 		const tool = createCodeifyModelToolDefinition(process.cwd(), runtime, {
@@ -383,7 +509,7 @@ describe("codeify_model tool", () => {
 		await tool.execute("spawn", { action: "run", model: "worker", task: "Read notes" }, undefined, undefined, {
 			cwd: process.cwd(),
 		});
-		await vi.waitFor(() => expect(finished).toHaveBeenCalledOnce());
+		await vi.waitFor(() => expect(finished).toHaveBeenCalledOnce(), { timeout: 10_000 });
 		const task = backgroundTasks.get("bg1")!;
 		const output = backgroundTasks.readOutput("bg1")!;
 		const message = buildCompletionMessage(task, output);

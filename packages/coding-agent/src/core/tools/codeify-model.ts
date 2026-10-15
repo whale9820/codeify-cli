@@ -1,4 +1,5 @@
 import { readFile, stat } from "node:fs/promises";
+import { setTimeout as delay } from "node:timers/promises";
 import { type AgentMessage, type AgentTool, runAgentLoop } from "codeify-agent-core";
 import type {
 	Api,
@@ -11,7 +12,7 @@ import type {
 	ModelsSimpleStreamOptions,
 	Usage,
 } from "codeify-ai";
-import { getSupportedThinkingLevels } from "codeify-ai";
+import { createAssistantMessageEventStream, getSupportedThinkingLevels, isRetryableAssistantError } from "codeify-ai";
 import { Text } from "codeify-tui";
 import { type Static, Type } from "typebox";
 import type { Theme } from "../../modes/interactive/theme/theme.ts";
@@ -432,7 +433,7 @@ export function createCodeifyModelWorkerDefinition(
 						model,
 						maxTokens,
 						reasoning: params.reasoningEffort === "off" ? undefined : params.reasoningEffort,
-						maxRetries: 1,
+						maxRetries: 0,
 						toolExecution: "parallel",
 						convertToLlm: (agentMessages) =>
 							agentMessages.filter(
@@ -526,8 +527,71 @@ export function createCodeifyModelWorkerDefinition(
 						}
 					},
 					signal,
-					(streamModel, streamContext, streamOptions) =>
-						runtime.streamSimple(streamModel, streamContext, streamOptions),
+					(streamModel, streamContext, streamOptions) => {
+						const stream = createAssistantMessageEventStream();
+						void (async () => {
+							let started = false;
+							let response: AssistantMessage = {
+								role: "assistant",
+								content: [],
+								api: streamModel.api,
+								provider: streamModel.provider,
+								model: streamModel.id,
+								usage: emptyUsage(),
+								stopReason: "error",
+								timestamp: Date.now(),
+							};
+							try {
+								for (let attempt = 0; ; attempt++) {
+									if (signal?.aborted) {
+										response = { ...response, stopReason: "aborted", errorMessage: undefined };
+										break;
+									}
+									try {
+										const upstream = runtime.streamSimple(streamModel, streamContext, streamOptions);
+										for await (const event of upstream) {
+											if (event.type === "done" || event.type === "error") continue;
+											if (event.type === "start") {
+												if (started) continue;
+												started = true;
+											}
+											stream.push(event);
+										}
+										response = await upstream.result();
+									} catch (error) {
+										response = {
+											...response,
+											content: [],
+											usage: emptyUsage(),
+											stopReason: signal?.aborted ? "aborted" : "error",
+											errorMessage: error instanceof Error ? error.message : String(error),
+										};
+									}
+									if (attempt >= 3 || signal?.aborted || !isRetryableAssistantError(response)) break;
+									addUsage(usage, response.usage);
+									options.onOutput?.(
+										`\nRetrying delegated model (${attempt + 1}/3): ${redactDiagnostics(response.errorMessage || "Upstream error")}\n`,
+									);
+									contentOffsets.clear();
+									contentStarted.clear();
+									await delay(1000 * 2 ** attempt, undefined, { signal });
+								}
+							} catch (error) {
+								response = {
+									...response,
+									usage: emptyUsage(),
+									stopReason: signal?.aborted ? "aborted" : "error",
+									errorMessage: error instanceof Error ? error.message : String(error),
+								};
+							}
+							if (response.stopReason === "error" || response.stopReason === "aborted") {
+								stream.push({ type: "error", reason: response.stopReason, error: response });
+							} else {
+								stream.push({ type: "done", reason: response.stopReason, message: response });
+							}
+						})();
+						return stream;
+					},
 				);
 				if (signal?.aborted || lastStopReason === "aborted") {
 					throw new Error("Delegated Codeify CLI agent request was cancelled.");
