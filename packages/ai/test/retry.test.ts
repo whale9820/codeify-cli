@@ -96,6 +96,8 @@ describe("provider retry classification", () => {
 		"upstream_error: connection reset",
 		"upstream_error: ANYTHING_HERE",
 		"Error: upstream_error: timeout",
+		"Error: upstream stream failed: ReadError: ReadError",
+		"upstream stream failed: ReadError: ReadError",
 		"unexpected EOF",
 		"Error: unexpected eof",
 		"UnexpectedEOF",
@@ -224,6 +226,7 @@ describe("retryAssistantCall", () => {
 			"Request timed out.",
 			"no output within 30s",
 			"upstream_error: connection reset",
+			"Error: upstream stream failed: ReadError: ReadError",
 			"unexpected EOF",
 		]) {
 			const produce = vi.fn(async () => fauxAssistantMessage("", { stopReason: "error", errorMessage }));

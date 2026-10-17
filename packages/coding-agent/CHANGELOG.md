@@ -49,6 +49,7 @@
 
 ### Fixed
 
+- Retry `upstream stream failed: ReadError: ReadError` errors with the existing `Reconnecting (1/5)...` indicator.
 - Recover installer updates blocked by an unstaged npm lockfile rewrite, preserving the old lockfile in a Git-directory backup. Windows dependency updates no longer rewrite the tracked lockfile, and other local changes list the affected paths.
 - Retry transient subagent upstream errors up to three times per model turn with cancellable backoff, preserving completed tool work and reporting redacted retry diagnostics.
 - Standardize all built-in tool labels as `Name(args)`, including smart-model listings, delegation, background actions and completions, goals, context usage, resources, and fallback tools. Restore expandable model listings and delegated results, show expansion hints for shortened questions and answers, and collapse image output until expanded.

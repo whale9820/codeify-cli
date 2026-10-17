@@ -152,6 +152,7 @@ describe("AgentSession retry", () => {
 		"no output within 30s",
 		"upstream_error: connection reset",
 		"upstream_error: ANYTHING_HERE",
+		"Error: upstream stream failed: ReadError: ReadError",
 		"unexpected EOF",
 	])("retries %s five times before stopping", async (errorMessage) => {
 		const created = await createSession({ failCount: 99, maxRetries: 1, errorMessage });
