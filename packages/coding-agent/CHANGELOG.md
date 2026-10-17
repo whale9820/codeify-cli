@@ -4,6 +4,7 @@
 
 ### Added
 
+- Show tokens-per-second in the interactive footer after the provider: a live `~42.3 tps` estimate while streaming (after 300ms, updated at most every 500ms) and the exact `113.5 tps` rate once the response finishes.
 - Suggested answers now offer an optional details step: select a choice, append your own text, or submit the choice alone.
 - Added `request_user_input` in interactive and RPC modes: the agent can ask up to three questions with suggested or custom answers and wait for explicit replies. Escape cancels the turn; RPC clients answer through `user_input_response`.
 - Added Ctrl+B (`app.tools.background`) to move a running bash command to the background. The tool call returns immediately with a task ID, the process keeps running (even if the turn is aborted), its output keeps being captured, and the result is delivered back to the agent when it finishes. The running command shows a "ctrl+b to run in background" hint.

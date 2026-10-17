@@ -17,6 +17,7 @@ export {
 	type FirstTimeSetupResult,
 } from "./first-time-setup.ts";
 export { FooterComponent } from "./footer.ts";
+export { estimateStreamTokens, FooterTpsTracker, formatTps } from "./footer-tps.ts";
 export { InputDialogComponent } from "./input-dialog.ts";
 export { keyHint, keyText, rawKeyHint } from "./keybinding-hints.ts";
 export { LoginDialogComponent } from "./login-dialog.ts";

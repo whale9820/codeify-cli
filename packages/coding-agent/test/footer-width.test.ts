@@ -3,6 +3,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 import type { AgentSession } from "../src/core/agent-session.ts";
 import type { ReadonlyFooterDataProvider } from "../src/core/footer-data-provider.ts";
 import { FooterComponent, formatCwdForFooter } from "../src/modes/interactive/components/footer.ts";
+import { FooterTpsTracker } from "../src/modes/interactive/components/footer-tps.ts";
 import { initTheme } from "../src/modes/interactive/theme/theme.ts";
 import { stripAnsi } from "../src/utils/ansi.ts";
 
@@ -175,6 +176,19 @@ describe("FooterComponent width handling", () => {
 		expect(lines[0].trimEnd().endsWith("gpt-test • high")).toBe(true);
 		expect(lines[0]).not.toContain("$");
 		expect(lines[0]).not.toContain("%");
+	});
+
+	it("shows tokens-per-second after the provider", () => {
+		const tracker = new FooterTpsTracker();
+		tracker.start(0);
+		tracker.addChunk("abcd", 301);
+		tracker.finish(227, 2000);
+		const session = createSession({ sessionName: "", modelId: "gpt-test" });
+		const footer = new FooterComponent(session, createFooterData(1), tracker);
+
+		const lines = footer.render(80).map((line) => stripAnsi(line));
+		expect(lines).toHaveLength(1);
+		expect(lines[0]).toContain("/tmp/project (main) • test • 113.5 tps");
 	});
 
 	it("shows background tasks after the directory", () => {

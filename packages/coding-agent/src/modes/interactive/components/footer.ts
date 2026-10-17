@@ -5,6 +5,7 @@ import { CODEIFY_PROVIDER_ID } from "../../../core/codeify-provider.ts";
 import { areExperimentalFeaturesEnabled } from "../../../core/experimental.ts";
 import type { ReadonlyFooterDataProvider } from "../../../core/footer-data-provider.ts";
 import { theme } from "../theme/theme.ts";
+import { FooterTpsTracker } from "./footer-tps.ts";
 
 /**
  * Format token counts for compact footer display.
@@ -37,10 +38,16 @@ export function formatCwdForFooter(cwd: string, home: string | undefined): strin
 export class FooterComponent implements Component {
 	private session: AgentSession;
 	private footerData: ReadonlyFooterDataProvider;
+	private tpsTracker: FooterTpsTracker;
 
-	constructor(session: AgentSession, footerData: ReadonlyFooterDataProvider) {
+	constructor(
+		session: AgentSession,
+		footerData: ReadonlyFooterDataProvider,
+		tpsTracker: FooterTpsTracker = new FooterTpsTracker(),
+	) {
 		this.session = session;
 		this.footerData = footerData;
+		this.tpsTracker = tpsTracker;
 	}
 
 	setSession(session: AgentSession): void {
@@ -79,6 +86,11 @@ export class FooterComponent implements Component {
 					? CODEIFY_PROVIDER_ID
 					: (this.session.modelRuntime.getProvider(state.model.provider)?.name ?? state.model.provider);
 			pwd = `${pwd} • ${providerLabel}`;
+		}
+
+		const tpsLabel = this.tpsTracker.getLabel();
+		if (tpsLabel) {
+			pwd = `${pwd} • ${tpsLabel}`;
 		}
 
 		const runningTasks = this.session.getBackgroundTasks().filter((task) => task.status === "running").length;

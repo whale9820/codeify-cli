@@ -117,6 +117,7 @@ import { EarendilAnnouncementComponent } from "./components/earendil-announcemen
 import { EditorDialogComponent } from "./components/editor-dialog.ts";
 import { ErrorDetailsComponent } from "./components/error-details.ts";
 import { FooterComponent, formatTokens } from "./components/footer.ts";
+import { FooterTpsTracker } from "./components/footer-tps.ts";
 import { InputDialogComponent } from "./components/input-dialog.ts";
 import { formatKeyText, keyDisplayText, keyHint, keyText, rawKeyHint } from "./components/keybinding-hints.ts";
 import { LoginDialogComponent } from "./components/login-dialog.ts";
@@ -338,6 +339,7 @@ export class InteractiveMode {
 	private editorContainer: Container;
 	private footer: FooterComponent;
 	private footerDataProvider: FooterDataProvider;
+	private footerTpsTracker: FooterTpsTracker;
 	// Shared keybinding manager for editors and dialogs.
 	private keybindings: KeybindingsManager;
 	private version: string;
@@ -455,7 +457,8 @@ export class InteractiveMode {
 		this.editorContainer = new Container();
 		this.editorContainer.addChild(this.editor as Component);
 		this.footerDataProvider = new FooterDataProvider(this.sessionManager.getCwd());
-		this.footer = new FooterComponent(this.session, this.footerDataProvider);
+		this.footerTpsTracker = new FooterTpsTracker();
+		this.footer = new FooterComponent(this.session, this.footerDataProvider, this.footerTpsTracker);
 
 		// Load hide thinking block setting
 		this.hideThinkingBlock = this.settingsManager.getHideThinkingBlock();
@@ -1376,6 +1379,7 @@ export class InteractiveMode {
 		this.compactionQueuedMessages = [];
 		this.streamingComponent = undefined;
 		this.streamingMessage = undefined;
+		this.footerTpsTracker.reset();
 		this.pendingTools.clear();
 		this.renderInitialMessages();
 	}
@@ -2015,6 +2019,7 @@ export class InteractiveMode {
 						this.outputPad,
 					);
 					this.streamingMessage = event.message;
+					this.footerTpsTracker.start();
 					this.chatContainer.addChild(this.streamingComponent);
 					this.applyCitationSources(this.streamingComponent, this.streamingMessage);
 					this.streamingComponent.updateContent(this.streamingMessage);
@@ -2025,6 +2030,15 @@ export class InteractiveMode {
 			case "message_update":
 				if (this.streamingComponent && event.message.role === "assistant") {
 					this.streamingMessage = event.message;
+					const assistantEvent = event.assistantMessageEvent;
+					if (
+						assistantEvent.type === "text_delta" ||
+						assistantEvent.type === "thinking_delta" ||
+						assistantEvent.type === "toolcall_delta" ||
+						assistantEvent.type === "server_tool_use_delta"
+					) {
+						this.footerTpsTracker.addChunk(assistantEvent.delta);
+					}
 					this.applyCitationSources(this.streamingComponent, this.streamingMessage);
 					this.streamingComponent.updateContent(this.streamingMessage);
 
@@ -2073,6 +2087,7 @@ export class InteractiveMode {
 						this.pendingTools.clear();
 						this.streamingComponent = undefined;
 						this.streamingMessage = undefined;
+						this.footerTpsTracker.cancel();
 						this.footer.invalidate();
 						this.ui.requestRender();
 						break;
@@ -2114,6 +2129,7 @@ export class InteractiveMode {
 					}
 					this.streamingComponent = undefined;
 					this.streamingMessage = undefined;
+					this.footerTpsTracker.finish(event.message.usage.output);
 					this.footer.invalidate();
 				}
 				this.ui.requestRender();
@@ -2172,6 +2188,7 @@ export class InteractiveMode {
 					this.streamingComponent = undefined;
 					this.streamingMessage = undefined;
 				}
+				this.footerTpsTracker.cancel();
 				this.pendingTools.clear();
 
 				this.ui.requestRender();
