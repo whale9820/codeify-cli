@@ -250,8 +250,16 @@ function installBuildCompiler() {
 
 function updateSourceCheckout() {
 	const args = ["-C", installHome];
-	if (run("git", [...args, "status", "--porcelain", "--untracked-files=normal"], undefined, true).trim()) {
-		throw new Error(`The installation at ${installHome} contains local changes. Preserve them before updating.`);
+	const status = run("git", [...args, "status", "--porcelain", "-z", "--untracked-files=normal"], undefined, true);
+	if (status === " M package-lock.json\0") {
+		const backupRoot = run("git", [...args, "rev-parse", "--path-format=absolute", "--git-path", "codeify-install-backups"], undefined, true).trim();
+		mkdirSync(backupRoot, { recursive: true });
+		const backupPath = join(mkdtempSync(join(backupRoot, "lockfile-")), "package-lock.json");
+		cpSync(join(installHome, "package-lock.json"), backupPath, { errorOnExist: true, force: false });
+		console.log(`Preserved the locally modified npm lockfile at ${backupPath}`);
+		run("git", [...args, "restore", "--worktree", "--", "package-lock.json"]);
+	} else if (status.trim()) {
+		throw new Error(`The installation at ${installHome} contains local changes. Preserve them before updating.\n${status.split("\0").filter(Boolean).join("\n")}`);
 	}
 	run("git", [...args, "fetch", "--quiet", "origin", "+refs/heads/main:refs/remotes/origin/main"]);
 	let canFastForward = true;
@@ -365,6 +373,7 @@ task("Installing dependencies", "Installed dependencies", () =>
 		npmCommand,
 		[
 			updatingExisting && isWindows ? "install" : "ci",
+			...(updatingExisting && isWindows ? ["--no-save"] : []),
 			...(minimalInstall ? ["--omit=dev"] : []),
 			"--ignore-scripts",
 			"--loglevel=error",

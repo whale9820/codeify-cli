@@ -190,7 +190,7 @@ describe("Codeify install script", () => {
 
 		expect(calls).toContainEqual({
 			command: "C:\\Windows\\System32\\cmd.exe",
-			args: ["/d", "/s", "/c", "npm.cmd install --omit=dev --ignore-scripts --loglevel=error"],
+			args: ["/d", "/s", "/c", "npm.cmd install --no-save --omit=dev --ignore-scripts --loglevel=error"],
 		});
 		expect(calls).toContainEqual({
 			command: "git",
