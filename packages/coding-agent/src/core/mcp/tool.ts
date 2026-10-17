@@ -228,8 +228,9 @@ function formatMcpCall(args: McpToolInput | undefined, theme: Theme): string {
 	}
 
 	const target = args?.connect ?? args?.server ?? operation;
-	let text = `${theme.fg("toolTitle", theme.bold("MCP"))}(${theme.fg("accent", target)})`;
-	if (operation && operation !== target) text += ` ${theme.fg("toolOutput", operation)}`;
+	let text = `${theme.fg("toolTitle", theme.bold("MCP"))}(${theme.fg("accent", target)}`;
+	if (operation && operation !== target) text += `, ${theme.fg("toolOutput", operation)}`;
+	text += ")";
 	if (args?.tool && args.args?.trim()) {
 		let preview = args.args.trim();
 		try {

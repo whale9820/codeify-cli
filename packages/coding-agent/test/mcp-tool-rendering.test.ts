@@ -44,17 +44,20 @@ describe("MCP tool rendering", () => {
 		);
 
 		const rendered = stripAnsi(component.render(120).join("\n"));
-		expect(rendered).toContain("MCP(Roblox Studio) create_script");
+		expect(rendered).toContain("● MCP(Roblox Studio, create_script)");
 		expect(rendered).toContain('{"name":"Main","enabled":true}');
 	});
 
-	for (const args of [
-		{ connect: "rea" },
-		{ server: "rea" },
-		{ search: "inspect", server: "rea" },
-		{ describe: "inspect", server: "rea" },
-		{ tool: "inspect", server: "rea" },
-	]) {
+	for (const [args, label] of [
+		[{ connect: "rea" }, "MCP(rea)"],
+		[{ server: "rea" }, "MCP(rea, list)"],
+		[{ search: "inspect", server: "rea" }, 'MCP(rea, search "inspect")'],
+		[{ describe: "inspect", server: "rea" }, "MCP(rea, describe inspect)"],
+		[{ tool: "inspect", server: "rea" }, "MCP(rea, inspect)"],
+		[{ tool: "app_settings_get", server: "WhaleCut" }, "MCP(WhaleCut, app_settings_get)"],
+		[{ tool: "inspect" }, "MCP(inspect)"],
+		[{}, "MCP(status)"],
+	] as const) {
 		it(`caps large MCP results for ${JSON.stringify(args)}`, () => {
 			const manager = new McpManager({ mcpServers: {} });
 			const component = new ToolExecutionComponent(
@@ -66,13 +69,14 @@ describe("MCP tool rendering", () => {
 				createFakeTui(),
 				process.cwd(),
 			);
+			expect(stripAnsi(component.render(120).join("\n"))).toContain(`● ${label}`);
 			const output = ["Connected (139 tools):", ...Array.from({ length: 139 }, (_, index) => `tool-${index}`)].join(
 				"\n",
 			);
 			component.updateResult({ content: [{ type: "text", text: output }], isError: false });
 			const collapsed = component.render(80).map(stripAnsi);
 			expect(collapsed.length).toBeLessThanOrEqual(22);
-			expect(collapsed.join("\n")).toContain("MCP(rea)");
+			expect(collapsed.join("\n")).toContain(label);
 			expect(collapsed.join("\n")).toContain("ctrl+o to expand");
 			expect(collapsed.join("\n")).not.toContain("tool-138");
 			component.setExpanded(true);
