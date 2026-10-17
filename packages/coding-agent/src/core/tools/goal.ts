@@ -68,7 +68,7 @@ export function createUpdateGoalToolDefinition(
 			};
 		},
 		renderCall(args, theme) {
-			const suffix = args?.summary ? ` · ${args.summary}` : "";
+			const suffix = args?.summary ? ` (${args.summary})` : "";
 			return new Text(
 				`${formatToolCall(theme, "Goal", args?.status ?? "...")}${theme.fg("toolOutput", suffix)}`,
 				0,

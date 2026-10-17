@@ -261,7 +261,7 @@ function formatCodeifyModelCall(args: CodeifyModelToolInput | undefined, theme: 
 	const tools = args?.allowedTools?.length ? args.allowedTools.join(", ") : "read-only";
 	const turns = args?.maxTurns === undefined ? "unlimited turns" : `up to ${args.maxTurns} turns`;
 	const task = args?.task?.replace(/\s+/gu, " ").trim();
-	let text = `${formatToolCall(theme, "Delegate", model)}${theme.fg("muted", ` · ${tools} · ${turns}`)}`;
+	let text = formatToolCall(theme, "Delegate", `${model}, ${tools}, ${turns}`);
 	if (task) text += `\n${theme.fg("toolOutput", task)}`;
 	return text;
 }

@@ -61,7 +61,7 @@ const scenarios: Array<{
 	{
 		definition: modelTool,
 		args: { action: "run", model: "claude-haiku-5-5" },
-		label: "Delegate(claude-haiku-5-5)",
+		label: "Delegate(claude-haiku-5-5, read-only, unlimited turns)",
 		details: {
 			action: "run",
 			model: "claude-haiku-5-5",
@@ -80,6 +80,16 @@ const scenarios: Array<{
 	})),
 	{ definition: goal, args: { status: "complete" }, label: "Goal(complete)" },
 	{ definition: goal, args: { status: "blocked" }, label: "Goal(blocked)" },
+	{
+		definition: goal,
+		args: { status: "complete", summary: "All checks passed" },
+		label: "Goal(complete) (All checks passed)",
+	},
+	{
+		definition: goal,
+		args: { status: "blocked", summary: "Needs input" },
+		label: "Goal(blocked) (Needs input)",
+	},
 	{ definition: context, args: {}, label: "Context(usage)" },
 	{ definition: context, args: { request_compaction: true }, label: "Context(request compaction)" },
 	{ definition: browser, args: { action: "snapshot" }, label: "Browser(snapshot)" },
@@ -91,6 +101,21 @@ describe("built-in tool label and output inventory", () => {
 	beforeAll(() => {
 		initTheme("dark");
 		setKeybindings(new KeybindingsManager());
+	});
+
+	it("keeps delegated tools and turn limits inside the call label", () => {
+		const component = new ToolExecutionComponent(
+			"codeify_model",
+			"configured-delegate",
+			{ action: "run", model: "claude-haiku-5-5", allowedTools: ["read", "grep"], maxTurns: 5 },
+			{},
+			modelTool,
+			ui,
+			cwd,
+		);
+		expect(stripAnsi(component.render(160).join("\n")).trim()).toBe(
+			"● Delegate(claude-haiku-5-5, read, grep, up to 5 turns)",
+		);
 	});
 
 	for (const [name, definition] of Object.entries(createAllToolDefinitions(cwd))) {
