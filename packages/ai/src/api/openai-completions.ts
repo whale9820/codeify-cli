@@ -617,7 +617,11 @@ function buildParams(
 
 	const deferredToolNames =
 		compat.deferredToolsMode === "kimi" ? getDeferredToolNames(context.messages) : new Set<string>();
-	const activeTools = context.tools?.filter((tool) => !deferredToolNames.has(tool.name));
+	const activeTools = context.tools?.filter(
+		(tool) =>
+			!deferredToolNames.has(tool.name) &&
+			(model.provider !== "codeify" || !["web_search", "websearch", "search_web"].includes(tool.name.toLowerCase())),
+	);
 	if (activeTools && activeTools.length > 0) {
 		params.tools = convertTools(activeTools, compat);
 		if (compat.zaiToolStream) {
@@ -626,6 +630,10 @@ function buildParams(
 	} else if (hasToolHistory(context.messages)) {
 		// Anthropic (via LiteLLM/proxy) requires tools param when conversation has tool_calls/tool_results
 		params.tools = [];
+	}
+
+	if (model.provider === "codeify") {
+		params.web_search_options = {};
 	}
 
 	if (cacheControl) {

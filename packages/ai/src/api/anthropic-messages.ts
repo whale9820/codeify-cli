@@ -1070,6 +1070,13 @@ function buildParams(
 		];
 	}
 
+	if (model.provider === "codeify") {
+		params.tools = (params.tools ?? []).filter(
+			(tool) => !["web_search", "websearch", "search_web"].includes(tool.name.toLowerCase()),
+		);
+		params.tools.push({ type: "web_search_20250305", name: "web_search" });
+	}
+
 	// Configure thinking mode: adaptive, budget-based, or explicitly disabled.
 	if (model.reasoning) {
 		if (options?.thinkingEnabled) {
