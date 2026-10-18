@@ -45,7 +45,7 @@
 	"license": "MIT",
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/earendil-works/pi.git",
+		"url": "git+https://github.com/whale9820/codeify-cli.git",
 		"directory": "packages/agent"
 	},
 	"engines": {
