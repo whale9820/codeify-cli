@@ -98,6 +98,7 @@ describe("override backend model refresh", () => {
 			overridesPath,
 			allowModelNetwork: false,
 		});
+		runtime.unregisterProvider("codeify");
 		const ids = () =>
 			runtime
 				.getModels()
