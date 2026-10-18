@@ -1,6 +1,7 @@
 import type { AssistantMessage } from "codeify-ai";
 import type { TUI } from "codeify-tui";
 import { describe, expect, test, vi } from "vitest";
+import { FooterTpsTracker } from "../src/modes/interactive/components/footer-tps.ts";
 import { RetryStatusIndicator } from "../src/modes/interactive/components/status-indicator.ts";
 import { InteractiveMode } from "../src/modes/interactive/interactive-mode.ts";
 import { initTheme } from "../src/modes/interactive/theme/theme.ts";
@@ -37,6 +38,7 @@ describe("InteractiveMode server tool stream failures", () => {
 			isInitialized: true,
 			footer: { invalidate: vi.fn() },
 			streamingComponent: errorComponent,
+			footerTpsTracker: new FooterTpsTracker(),
 			streamingMessage: undefined as AssistantMessage | undefined,
 			pendingTools: new Map([["tool-1", toolComponent]]),
 			chatContainer: { removeChild: vi.fn() },

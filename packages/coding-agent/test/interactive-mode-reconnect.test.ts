@@ -1,5 +1,6 @@
 import type { TUI } from "codeify-tui";
 import { describe, expect, test, vi } from "vitest";
+import { FooterTpsTracker } from "../src/modes/interactive/components/footer-tps.ts";
 import {
 	ReconnectStatusIndicator,
 	RetryStatusIndicator,
@@ -10,6 +11,7 @@ import { initTheme } from "../src/modes/interactive/theme/theme.ts";
 type MessageEndHost = {
 	isInitialized: boolean;
 	footer: { invalidate: () => void };
+	footerTpsTracker: FooterTpsTracker;
 	streamingComponent: { updateContent: () => void } | undefined;
 	streamingMessage: unknown;
 	pendingTools: Map<string, unknown>;
@@ -25,6 +27,7 @@ function messageEndHost(willRetry: boolean) {
 	const host = {
 		isInitialized: true,
 		footer: { invalidate: vi.fn() },
+		footerTpsTracker: new FooterTpsTracker(),
 		streamingComponent: errorComponent as MessageEndHost["streamingComponent"],
 		streamingMessage: undefined as unknown,
 		pendingTools: new Map<string, unknown>(),
@@ -39,7 +42,10 @@ function messageEndHost(willRetry: boolean) {
 
 const handleMessageEnd = Reflect.get(InteractiveMode.prototype, "handleEvent") as (
 	this: MessageEndHost,
-	event: { type: "message_end"; message: { role: string; stopReason: string; errorMessage: string } },
+	event: {
+		type: "message_end";
+		message: { role: string; stopReason: string; errorMessage: string; usage: { output: number } };
+	},
 ) => Promise<void>;
 
 describe("InteractiveMode reconnect status", () => {
@@ -52,6 +58,7 @@ describe("InteractiveMode reconnect status", () => {
 				role: "assistant",
 				stopReason: "error",
 				errorMessage: "API Error (522): 522 status code (no body)",
+				usage: { output: 0 },
 			},
 		});
 
@@ -65,7 +72,7 @@ describe("InteractiveMode reconnect status", () => {
 
 		await handleMessageEnd.call(host, {
 			type: "message_end",
-			message: { role: "assistant", stopReason: "error", errorMessage: "overloaded_error" },
+			message: { role: "assistant", stopReason: "error", errorMessage: "overloaded_error", usage: { output: 0 } },
 		});
 
 		expect(errorComponent.updateContent).not.toHaveBeenCalled();
@@ -77,7 +84,7 @@ describe("InteractiveMode reconnect status", () => {
 
 		await handleMessageEnd.call(host, {
 			type: "message_end",
-			message: { role: "assistant", stopReason: "error", errorMessage: "overloaded_error" },
+			message: { role: "assistant", stopReason: "error", errorMessage: "overloaded_error", usage: { output: 0 } },
 		});
 
 		expect(errorComponent.updateContent).toHaveBeenCalled();

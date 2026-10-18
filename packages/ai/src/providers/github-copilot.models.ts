@@ -17,6 +17,10 @@ export const GITHUB_COPILOT_MODELS = values as {
 		id: "claude-haiku-4.5";
 		provider: "github-copilot";
 	};
+	"claude-haiku-5.5": Model<"anthropic-messages"> & {
+		id: "claude-haiku-5.5";
+		provider: "github-copilot";
+	};
 	"claude-opus-4.7": Model<"anthropic-messages"> & {
 		id: "claude-opus-4.7";
 		provider: "github-copilot";
@@ -59,6 +63,10 @@ export const GITHUB_COPILOT_MODELS = values as {
 	};
 	"gemini-3.8-flash": Model<"openai-completions"> & {
 		id: "gemini-3.8-flash";
+		provider: "github-copilot";
+	};
+	"gemini-4-argon": Model<"openai-completions"> & {
+		id: "gemini-4-argon";
 		provider: "github-copilot";
 	};
 	"gpt-5-mini": Model<"openai-responses"> & {

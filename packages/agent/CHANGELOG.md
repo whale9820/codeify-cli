@@ -6,6 +6,7 @@
 
 - Added `on` as a thinking level for models that expose a thinking toggle without effort modalities.
 - Added transparent tool alias and case-insensitive resolution in the agent loop.
+- Forward server-side tool use and result events through agent message updates.
 
 ## [0.81.1] - 2026-07-21
 

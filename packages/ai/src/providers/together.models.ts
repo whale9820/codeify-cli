@@ -45,8 +45,16 @@ export const TOGETHER_MODELS = values as {
 		id: "meta-llama/Llama-3.3-70B-Instruct-Turbo";
 		provider: "together";
 	};
+	"meta-models/Muse-Spark-Open-816B-A42B": Model<"openai-completions"> & {
+		id: "meta-models/Muse-Spark-Open-816B-A42B";
+		provider: "together";
+	};
 	"moonshotai/Kimi-K3": Model<"openai-completions"> & {
 		id: "moonshotai/Kimi-K3";
+		provider: "together";
+	};
+	"nvidia/NVIDIA-Nemotron-3.5-Super-VL": Model<"openai-completions"> & {
+		id: "nvidia/NVIDIA-Nemotron-3.5-Super-VL";
 		provider: "together";
 	};
 	"nvidia/nemotron-3-ultra-550b-a55b": Model<"openai-completions"> & {
@@ -55,6 +63,10 @@ export const TOGETHER_MODELS = values as {
 	};
 	"openai/gpt-oss-120b": Model<"openai-completions"> & {
 		id: "openai/gpt-oss-120b";
+		provider: "together";
+	};
+	"reflection/Beam-1.0-501B-A23B": Model<"openai-completions"> & {
+		id: "reflection/Beam-1.0-501B-A23B";
 		provider: "together";
 	};
 	"thinkingmachines/Inkling": Model<"openai-completions"> & {

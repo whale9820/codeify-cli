@@ -5,6 +5,10 @@ import values from "./data/opencode.json" with { type: "json" };
 import type { Model } from "../types.ts";
 
 export const OPENCODE_MODELS = values as {
+	"beam-free": Model<"openai-completions"> & {
+		id: "beam-free";
+		provider: "opencode";
+	};
 	"big-pickle": Model<"openai-completions"> & {
 		id: "big-pickle";
 		provider: "opencode";
@@ -19,6 +23,10 @@ export const OPENCODE_MODELS = values as {
 	};
 	"claude-haiku-4-5": Model<"anthropic-messages"> & {
 		id: "claude-haiku-4-5";
+		provider: "opencode";
+	};
+	"claude-haiku-5-5": Model<"anthropic-messages"> & {
+		id: "claude-haiku-5-5";
 		provider: "opencode";
 	};
 	"claude-opus-4-5": Model<"anthropic-messages"> & {
@@ -81,8 +89,8 @@ export const OPENCODE_MODELS = values as {
 		id: "deepseek-v4.1-flash";
 		provider: "opencode";
 	};
-	"fledge-alpha-free": Model<"openai-completions"> & {
-		id: "fledge-alpha-free";
+	"deepseek-v4.1-flash-free": Model<"openai-completions"> & {
+		id: "deepseek-v4.1-flash-free";
 		provider: "opencode";
 	};
 	"glm-5": Model<"openai-completions"> & {
@@ -103,6 +111,10 @@ export const OPENCODE_MODELS = values as {
 	};
 	"glm-5.3-flash": Model<"openai-completions"> & {
 		id: "glm-5.3-flash";
+		provider: "opencode";
+	};
+	"glm-5.3-flash-free": Model<"openai-completions"> & {
+		id: "glm-5.3-flash-free";
 		provider: "opencode";
 	};
 	"gpt-5": Model<"openai-responses"> & {
@@ -229,14 +241,6 @@ export const OPENCODE_MODELS = values as {
 		id: "kimi-k3";
 		provider: "opencode";
 	};
-	"ling-3.0-flash-fin-free": Model<"openai-completions"> & {
-		id: "ling-3.0-flash-fin-free";
-		provider: "opencode";
-	};
-	"ling-3.1-flash-free": Model<"openai-completions"> & {
-		id: "ling-3.1-flash-free";
-		provider: "opencode";
-	};
 	"longcat-2.5-preview-free": Model<"openai-completions"> & {
 		id: "longcat-2.5-preview-free";
 		provider: "opencode";
@@ -257,6 +261,10 @@ export const OPENCODE_MODELS = values as {
 		id: "minimax-m3";
 		provider: "opencode";
 	};
+	"mistral-large-4": Model<"openai-completions"> & {
+		id: "mistral-large-4";
+		provider: "opencode";
+	};
 	"muse-spark-1.2": Model<"openai-responses"> & {
 		id: "muse-spark-1.2";
 		provider: "opencode";
@@ -265,16 +273,16 @@ export const OPENCODE_MODELS = values as {
 		id: "muse-spark-1.3";
 		provider: "opencode";
 	};
-	"muse-spark-1.3-contributor-free": Model<"openai-responses"> & {
-		id: "muse-spark-1.3-contributor-free";
-		provider: "opencode";
-	};
 	"nemotron-3-ultra-free": Model<"openai-completions"> & {
 		id: "nemotron-3-ultra-free";
 		provider: "opencode";
 	};
 	"nemotron-3.5-lightning-free": Model<"openai-completions"> & {
 		id: "nemotron-3.5-lightning-free";
+		provider: "opencode";
+	};
+	"nemotron-3.5-super-vl-free": Model<"openai-completions"> & {
+		id: "nemotron-3.5-super-vl-free";
 		provider: "opencode";
 	};
 	"qwen3.5-plus": Model<"anthropic-messages"> & {

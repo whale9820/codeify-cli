@@ -164,6 +164,7 @@ describe("edit tool TUI rendering", () => {
 		await waitForRender();
 
 		component.setArgsComplete();
+		component.setExpanded(true);
 		tui.requestRender();
 		await waitForRender();
 		await waitForRender();
@@ -242,6 +243,7 @@ describe("edit tool TUI rendering", () => {
 		await waitForRender();
 		await waitForRender();
 
+		component.setExpanded(true);
 		const rendered = component.render(80).join("\n");
 		expect(rendered).toContain("line 50 changed");
 		expect(rendered).toContain("line 150 changed");

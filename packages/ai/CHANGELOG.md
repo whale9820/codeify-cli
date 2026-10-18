@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Breaking Changes
+
+- Removed the Bedrock, Google, Vertex, Mistral, Azure, Codex, and pi-messages API backends, their provider modules and OAuth flows, the `oauth`, `bun-oauth`, and `bedrock-provider` package exports, and the `pi-ai` executable. Migrate integrations to Anthropic Messages, OpenAI Responses, or OpenAI Chat Completions.
+
 ### Added
 
 - Added the `on` thinking level and send Codeify OpenAI Responses `thinking: { type: "adaptive" | "disabled" }` payloads for toggle-style models.
@@ -11,8 +15,9 @@
 
 ### Fixed
 
+- Enable hosted web search automatically on Codeify Anthropic Messages and Chat Completions requests, including requests without local tools, and replace client search aliases with the API-specific hosted search declaration.
+- Surface safeguard refusals from Anthropic Messages and OpenAI Responses as explicit errors instead of empty successful replies.
 - Retry upstream stream failures reporting `ReadError` at least five times using the reconnect retry budget.
-- Serialize Radius catalog refreshes so a cache-only in-flight refresh cannot swallow a following network refresh.
 - Refuse passing reasoning effort levels in OpenAI responses streams when the model marks them unsupported in its thinking level map.
 - Classify malformed JSON property, unterminated-string, and double-quoted-property responses as retryable and cap their assistant-call retry budget at three. Capture OpenAI Responses parser dumps as diagnostics instead of printing them directly.
 - Classify `server_tool_stream_failed` and Python `JSONDecodeError` responses, including illegal trailing commas, as retryable malformed JSON.

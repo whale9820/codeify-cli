@@ -21,6 +21,10 @@ export const ANTHROPIC_MODELS = values as {
 		id: "claude-haiku-4-5-20251001";
 		provider: "anthropic";
 	};
+	"claude-haiku-5-5": Model<"anthropic-messages"> & {
+		id: "claude-haiku-5-5";
+		provider: "anthropic";
+	};
 	"claude-opus-4-5": Model<"anthropic-messages"> & {
 		id: "claude-opus-4-5";
 		provider: "anthropic";

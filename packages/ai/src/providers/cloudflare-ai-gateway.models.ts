@@ -17,6 +17,10 @@ export const CLOUDFLARE_AI_GATEWAY_MODELS = values as {
 		id: "claude-haiku-4.5";
 		provider: "cloudflare-ai-gateway";
 	};
+	"claude-haiku-5.5": Model<"anthropic-messages"> & {
+		id: "claude-haiku-5.5";
+		provider: "cloudflare-ai-gateway";
+	};
 	"claude-opus-4.5": Model<"anthropic-messages"> & {
 		id: "claude-opus-4.5";
 		provider: "cloudflare-ai-gateway";
@@ -51,6 +55,10 @@ export const CLOUDFLARE_AI_GATEWAY_MODELS = values as {
 	};
 	"claude-sonnet-5": Model<"anthropic-messages"> & {
 		id: "claude-sonnet-5";
+		provider: "cloudflare-ai-gateway";
+	};
+	"claude-sonnet-5.5": Model<"anthropic-messages"> & {
+		id: "claude-sonnet-5.5";
 		provider: "cloudflare-ai-gateway";
 	};
 	"gpt-4.1": Model<"openai-responses"> & {
@@ -135,6 +143,10 @@ export const CLOUDFLARE_AI_GATEWAY_MODELS = values as {
 	};
 	"gpt-6-sol": Model<"openai-responses"> & {
 		id: "gpt-6-sol";
+		provider: "cloudflare-ai-gateway";
+	};
+	"gpt-6.1-sol": Model<"openai-responses"> & {
+		id: "gpt-6.1-sol";
 		provider: "cloudflare-ai-gateway";
 	};
 	"o3": Model<"openai-responses"> & {

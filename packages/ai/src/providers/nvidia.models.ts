@@ -41,10 +41,6 @@ export const NVIDIA_MODELS = values as {
 		id: "moonshotai/kimi-k2.6";
 		provider: "nvidia";
 	};
-	"moonshotai/kimi-k3": Model<"openai-completions"> & {
-		id: "moonshotai/kimi-k3";
-		provider: "nvidia";
-	};
 	"nvidia/cosmos-reason2-8b": Model<"openai-completions"> & {
 		id: "nvidia/cosmos-reason2-8b";
 		provider: "nvidia";
@@ -61,16 +57,16 @@ export const NVIDIA_MODELS = values as {
 		id: "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning";
 		provider: "nvidia";
 	};
-	"nvidia/nemotron-3-super-120b-a12b": Model<"openai-completions"> & {
-		id: "nvidia/nemotron-3-super-120b-a12b";
-		provider: "nvidia";
-	};
 	"nvidia/nemotron-3-ultra-550b-a55b": Model<"openai-completions"> & {
 		id: "nvidia/nemotron-3-ultra-550b-a55b";
 		provider: "nvidia";
 	};
 	"nvidia/nemotron-3.5-lightning-30b-a3b": Model<"openai-completions"> & {
 		id: "nvidia/nemotron-3.5-lightning-30b-a3b";
+		provider: "nvidia";
+	};
+	"nvidia/nemotron-3.5-super-vl-120b-a12b": Model<"openai-completions"> & {
+		id: "nvidia/nemotron-3.5-super-vl-120b-a12b";
 		provider: "nvidia";
 	};
 	"openai/gpt-oss-20b": Model<"openai-completions"> & {

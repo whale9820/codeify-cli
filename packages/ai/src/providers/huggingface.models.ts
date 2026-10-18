@@ -5,6 +5,10 @@ import values from "./data/huggingface.json" with { type: "json" };
 import type { Model } from "../types.ts";
 
 export const HUGGINGFACE_MODELS = values as {
+	"MiniMaxAI/MiniMax-M1-80k": Model<"openai-completions"> & {
+		id: "MiniMaxAI/MiniMax-M1-80k";
+		provider: "huggingface";
+	};
 	"MiniMaxAI/MiniMax-M2": Model<"openai-completions"> & {
 		id: "MiniMaxAI/MiniMax-M2";
 		provider: "huggingface";
@@ -75,6 +79,10 @@ export const HUGGINGFACE_MODELS = values as {
 	};
 	"Qwen/Qwen3-VL-235B-A22B-Thinking": Model<"openai-completions"> & {
 		id: "Qwen/Qwen3-VL-235B-A22B-Thinking";
+		provider: "huggingface";
+	};
+	"Qwen/Qwen3-VL-30B-A3B-Instruct": Model<"openai-completions"> & {
+		id: "Qwen/Qwen3-VL-30B-A3B-Instruct";
 		provider: "huggingface";
 	};
 	"Qwen/Qwen3.5-122B-A10B": Model<"openai-completions"> & {

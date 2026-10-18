@@ -5,12 +5,12 @@ import values from "./data/opencode-go.json" with { type: "json" };
 import type { Model } from "../types.ts";
 
 export const OPENCODE_GO_MODELS = values as {
-	"deepseek-v4-flash": Model<"openai-completions"> & {
-		id: "deepseek-v4-flash";
+	"beam-free": Model<"openai-completions"> & {
+		id: "beam-free";
 		provider: "opencode-go";
 	};
-	"deepseek-v4-flash-vision-exp": Model<"openai-completions"> & {
-		id: "deepseek-v4-flash-vision-exp";
+	"claude-haiku-5-5": Model<"anthropic-messages"> & {
+		id: "claude-haiku-5-5";
 		provider: "opencode-go";
 	};
 	"deepseek-v4-pro": Model<"openai-completions"> & {
@@ -39,10 +39,6 @@ export const OPENCODE_GO_MODELS = values as {
 	};
 	"gpt-6-luna": Model<"openai-responses"> & {
 		id: "gpt-6-luna";
-		provider: "opencode-go";
-	};
-	"grok-4.6": Model<"openai-responses"> & {
-		id: "grok-4.6";
 		provider: "opencode-go";
 	};
 	"grok-4.7": Model<"openai-responses"> & {
@@ -89,10 +85,6 @@ export const OPENCODE_GO_MODELS = values as {
 		id: "mimo-v2.6-pro";
 		provider: "opencode-go";
 	};
-	"minimax-m2.7": Model<"openai-completions"> & {
-		id: "minimax-m2.7";
-		provider: "opencode-go";
-	};
 	"minimax-m3": Model<"anthropic-messages"> & {
 		id: "minimax-m3";
 		provider: "opencode-go";
@@ -105,7 +97,7 @@ export const OPENCODE_GO_MODELS = values as {
 		id: "muse-spark-1.3-contributor";
 		provider: "opencode-go";
 	};
-	"qwen3.7-plus": Model<"openai-completions"> & {
+	"qwen3.7-plus": Model<"anthropic-messages"> & {
 		id: "qwen3.7-plus";
 		provider: "opencode-go";
 	};
@@ -113,12 +105,16 @@ export const OPENCODE_GO_MODELS = values as {
 		id: "qwen3.8-flash";
 		provider: "opencode-go";
 	};
-	"qwen3.8-max": Model<"openai-completions"> & {
+	"qwen3.8-max": Model<"anthropic-messages"> & {
 		id: "qwen3.8-max";
 		provider: "opencode-go";
 	};
-	"space-bunny-free": Model<"openai-completions"> & {
-		id: "space-bunny-free";
+	"space-bunny": Model<"openai-completions"> & {
+		id: "space-bunny";
+		provider: "opencode-go";
+	};
+	"step-5-preview": Model<"openai-completions"> & {
+		id: "step-5-preview";
 		provider: "opencode-go";
 	};
 };

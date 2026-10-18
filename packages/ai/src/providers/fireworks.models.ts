@@ -37,6 +37,10 @@ export const FIREWORKS_MODELS = values as {
 		id: "accounts/fireworks/models/minimax-m3";
 		provider: "fireworks";
 	};
+	"accounts/fireworks/models/muse-spark-open": Model<"anthropic-messages"> & {
+		id: "accounts/fireworks/models/muse-spark-open";
+		provider: "fireworks";
+	};
 	"accounts/fireworks/models/nemotron-3-ultra-nvfp4": Model<"anthropic-messages"> & {
 		id: "accounts/fireworks/models/nemotron-3-ultra-nvfp4";
 		provider: "fireworks";

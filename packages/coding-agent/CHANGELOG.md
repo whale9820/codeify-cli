@@ -4,6 +4,8 @@
 
 ### Added
 
+- Added `/override` backends with persisted configuration, backend-specific model discovery, and model selection scoped to the active backend.
+- Added `/revert` to undo the latest user turn and restore its prompt to the editor.
 - Show tokens-per-second in the interactive footer after the provider: a live `~42.3 tps` estimate while streaming (after 300ms, updated at most every 500ms) and the exact `113.5 tps` rate once the response finishes.
 - Suggested answers now offer an optional details step: select a choice, append your own text, or submit the choice alone.
 - Added `request_user_input` in interactive and RPC modes: the agent can ask up to three questions with suggested or custom answers and wait for explicit replies. Escape cancels the turn; RPC clients answer through `user_input_response`.
@@ -24,6 +26,7 @@
 
 ### Changed
 
+- Route Codeify `claude-*` and `glm-*` models through Anthropic Messages, `gpt-*` models through OpenAI Responses, and other models through Chat Completions.
 - `/usage` now shows current context tokens and capacity, followed by the session cached-input percentage, before the existing token totals.
 - Removed CLI-imposed subagent concurrency, runtime, turn, tool-call, token, input-size, and result-size caps. Delegation runs without budgets by default, uses the model output maximum, and still supports explicit task budgets and cancellation.
 - `/revert` can be repeated to walk back through the chat. Each use undoes the last user message still on the active branch and restores that prompt to the editor. A second `/revert` now moves to the previous message instead of targeting the same one again.
@@ -49,6 +52,10 @@
 
 ### Fixed
 
+- Enable server-side web search for Codeify Anthropic Messages and Chat Completions models as well as Responses models.
+- Retry override requests with alternative API protocols when an endpoint returns HTTP 404.
+- Show explicit safeguard-block messages and pause active goals when the model refuses a request.
+- Group MCP server and operation names in one call label, and include delegated model and goal status details in tool calls.
 - Retry `upstream stream failed: ReadError: ReadError` errors with the existing `Reconnecting (1/5)...` indicator.
 - Recover installer updates blocked by an unstaged npm lockfile rewrite, preserving the old lockfile in a Git-directory backup. Windows dependency updates no longer rewrite the tracked lockfile, and other local changes list the affected paths.
 - Retry transient subagent upstream errors up to three times per model turn with cancellable backoff, preserving completed tool work and reporting redacted retry diagnostics.
