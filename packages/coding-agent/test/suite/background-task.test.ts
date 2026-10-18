@@ -14,49 +14,54 @@ describe("background_task integration", () => {
 	});
 
 	it.each([
-		{ command: "echo bg-done", status: "completed" },
-		{ command: "echo bg-done; exit 1", status: "failed" },
-	])("blocks sleep when a $status task notification is still queued", async ({ command, status }) => {
-		const harness = await createHarness({ initialActiveToolNames: ["background_task", "bash"] });
-		harnesses.push(harness);
-		harness.setResponses([
-			fauxAssistantMessage([fauxToolCall("background_task", { action: "start", command })], {
-				stopReason: "toolUse",
-			}),
-			async () => {
-				await vi.waitFor(() => expect(harness.session.getBackgroundTasks()[0]?.status).toBe(status));
-				expect(harness.session.messages.some((message) => message.role === "custom")).toBe(false);
-				return fauxAssistantMessage([fauxToolCall("bash", { command: "sleep 2; touch slept" })], {
+		{ command: "echo bg-done", status: "completed", waitCommand: "sleep 2; touch slept" },
+		{ command: "echo bg-done; exit 1", status: "failed", waitCommand: "sleep 2; touch slept" },
+		{ command: "echo bg-done", status: "completed", waitCommand: "true" },
+		{ command: "echo bg-done; exit 1", status: "failed", waitCommand: ":" },
+	])(
+		"blocks $waitCommand when a $status task notification is still queued",
+		async ({ command, status, waitCommand }) => {
+			const harness = await createHarness({ initialActiveToolNames: ["background_task", "bash"] });
+			harnesses.push(harness);
+			harness.setResponses([
+				fauxAssistantMessage([fauxToolCall("background_task", { action: "start", command })], {
 					stopReason: "toolUse",
-				});
-			},
-			() => {
-				const result = harness.session.messages.find(
-					(message) => message.role === "toolResult" && message.toolName === "bash",
-				);
-				expect(result).toMatchObject({ isError: true });
-				expect(getMessageText(result)).toContain("Just end your turn");
-				const report = harness.session.messages.find(
-					(message) => message.role === "custom" && message.customType === "background_task",
-				);
-				expect(getMessageText(report)).toContain("bg-done");
-				return fauxAssistantMessage([fauxToolCall("bash", { command: "sleep 0; echo allowed" })], {
-					stopReason: "toolUse",
-				});
-			},
-			fauxAssistantMessage("finished"),
-		]);
+				}),
+				async () => {
+					await vi.waitFor(() => expect(harness.session.getBackgroundTasks()[0]?.status).toBe(status));
+					expect(harness.session.messages.some((message) => message.role === "custom")).toBe(false);
+					return fauxAssistantMessage([fauxToolCall("bash", { command: waitCommand })], {
+						stopReason: "toolUse",
+					});
+				},
+				() => {
+					const result = harness.session.messages.find(
+						(message) => message.role === "toolResult" && message.toolName === "bash",
+					);
+					expect(result).toMatchObject({ isError: true });
+					expect(getMessageText(result)).toContain("Just end your turn");
+					const report = harness.session.messages.find(
+						(message) => message.role === "custom" && message.customType === "background_task",
+					);
+					expect(getMessageText(report)).toContain("bg-done");
+					return fauxAssistantMessage([fauxToolCall("bash", { command: "sleep 0; echo allowed" })], {
+						stopReason: "toolUse",
+					});
+				},
+				fauxAssistantMessage("finished"),
+			]);
 
-		await harness.session.prompt("start a background task and then sleep");
+			await harness.session.prompt("start a background task and then sleep");
 
-		const results = harness.session.messages.filter(
-			(message) => message.role === "toolResult" && message.toolName === "bash",
-		);
-		expect(results).toHaveLength(2);
-		expect(results[1]).toMatchObject({ isError: false });
-		expect(getMessageText(results[1])).toContain("allowed");
-		expect(existsSync(join(harness.tempDir, "slept"))).toBe(false);
-	});
+			const results = harness.session.messages.filter(
+				(message) => message.role === "toolResult" && message.toolName === "bash",
+			);
+			expect(results).toHaveLength(2);
+			expect(results[1]).toMatchObject({ isError: false });
+			expect(getMessageText(results[1])).toContain("allowed");
+			expect(existsSync(join(harness.tempDir, "slept"))).toBe(false);
+		},
+	);
 
 	it("waits without extra model calls when the agent yields for a required result", async () => {
 		const harness = await createHarness({ initialActiveToolNames: ["background_task"] });

@@ -387,10 +387,21 @@ export function createBashToolDefinition(
 		prepareArguments: prepareBashArguments,
 		async execute(_toolCallId, input: BashToolInput, signal?: AbortSignal, onUpdate?, _ctx?) {
 			const { command, timeout } = input;
-			if (options?.hasPendingBackgroundTasks?.() && hasSleepCommand(command)) {
-				throw new Error(
-					"Sleep blocked while a background task or its completion notification is pending. Just end your turn rather than waiting: the task will ping you automatically. No need to sleep or poll. Continue only with independent work if any remains.",
-				);
+			if (options?.hasPendingBackgroundTasks?.()) {
+				const noOp =
+					/^(?:(?:command|builtin|exec)\s+)*(?:(?:\/[\w./-]+\/)?true|:)(?:\s*(?:;|&&|\|\||\||\n)\s*(?:(?:command|builtin|exec)\s+)*(?:(?:\/[\w./-]+\/)?true|:))*\s*;?$/u.test(
+						command.trim(),
+					);
+				if (noOp) {
+					throw new Error(
+						"No-op command blocked while a background task or its completion notification is pending. Just end your turn rather than waiting: the task will ping you automatically. Do not run filler commands to pass time. Continue only with useful independent work if any remains.",
+					);
+				}
+				if (hasSleepCommand(command)) {
+					throw new Error(
+						"Sleep blocked while a background task or its completion notification is pending. Just end your turn rather than waiting: the task will ping you automatically. No need to sleep or poll. Continue only with independent work if any remains.",
+					);
+				}
 			}
 			const rawCwd = (input as Record<string, unknown>).Cwd ?? (input as Record<string, unknown>).cwd;
 			const effectiveCwd = typeof rawCwd === "string" ? resolveToCwd(rawCwd, cwd) : cwd;
@@ -535,7 +546,7 @@ export function createBashToolDefinition(
 							content: [
 								{
 									type: "text",
-									text: `The user moved this command to the background as task ${adopted.task.id}. It is still running; its result will arrive automatically. Continue only with independent work; if you need this result or have no useful work left, end your response and wait for the automatic notification. Do not poll, sleep, or rerun the command. Use background_task with action "output" and id ${adopted.task.id} to read more output, or "stop" to cancel it.${tail ? `\n\nOutput so far:\n${tail}` : ""}`,
+									text: `The user moved this command to the background as task ${adopted.task.id}. It is still running; its result will arrive automatically. Continue only with independent work; if you need this result or have no useful work left, end your response and wait for the automatic notification. Do not poll, sleep, rerun the command, or run filler commands such as true to pass time. Use background_task with action "output" and id ${adopted.task.id} to read more output, or "stop" to cancel it.${tail ? `\n\nOutput so far:\n${tail}` : ""}`,
 								},
 							],
 							details: undefined,

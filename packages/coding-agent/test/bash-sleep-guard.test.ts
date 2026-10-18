@@ -1,7 +1,30 @@
 import { describe, expect, it, vi } from "vitest";
 import { createBashToolDefinition } from "../src/core/tools/bash.ts";
 
-describe("bash sleep guard", () => {
+describe("bash background wait guard", () => {
+	it.each([
+		"true",
+		" true ",
+		":",
+		"true;",
+		"true && :",
+		"true\ntrue",
+		"/bin/true",
+		"command true",
+		"builtin :",
+		"exec true",
+	])("blocks no-op %s before execution while background work is pending", async (command) => {
+		const exec = vi.fn(async () => ({ exitCode: 0 }));
+		const tool = createBashToolDefinition(process.cwd(), {
+			operations: { exec },
+			hasPendingBackgroundTasks: () => true,
+		});
+		await expect(tool.execute("call", { command }, undefined, undefined, undefined as never)).rejects.toThrow(
+			"No-op command blocked",
+		);
+		expect(exec).not.toHaveBeenCalled();
+	});
+
 	it.each([
 		"sleep 30",
 		"/bin/sleep 30",
@@ -37,6 +60,12 @@ describe("bash sleep guard", () => {
 		"echo ready # sleep 30",
 		"echo ready\n# sleep 30",
 		"sleepy 30",
+		"true && echo ready",
+		"echo true",
+		"printf '%s' ':'",
+		"true > marker",
+		": > marker",
+		"while true; do echo ready; break; done",
 	])("allows %s while background tasks run", async (command) => {
 		const exec = vi.fn(async () => ({ exitCode: 0 }));
 		const tool = createBashToolDefinition(process.cwd(), {
@@ -47,25 +76,25 @@ describe("bash sleep guard", () => {
 		expect(exec).toHaveBeenCalledOnce();
 	});
 
-	it("checks current task state on every call and allows sleep after tasks finish", async () => {
+	it.each(["sleep 30", "true", ":"])("allows %s after pending work is delivered", async (command) => {
 		let running = true;
 		const exec = vi.fn(async () => ({ exitCode: 0 }));
 		const tool = createBashToolDefinition(process.cwd(), {
 			operations: { exec },
 			hasPendingBackgroundTasks: () => running,
 		});
-		await expect(
-			tool.execute("blocked", { command: "sleep 30" }, undefined, undefined, undefined as never),
-		).rejects.toThrow("Sleep blocked");
+		await expect(tool.execute("blocked", { command }, undefined, undefined, undefined as never)).rejects.toThrow(
+			"blocked while a background task",
+		);
 		running = false;
-		await tool.execute("allowed", { command: "sleep 30" }, undefined, undefined, undefined as never);
+		await tool.execute("allowed", { command }, undefined, undefined, undefined as never);
 		expect(exec).toHaveBeenCalledOnce();
 	});
 
-	it("allows sleep for standalone tools without background task state", async () => {
+	it.each(["sleep 30", "true", ":"])("allows standalone %s without background task state", async (command) => {
 		const exec = vi.fn(async () => ({ exitCode: 0 }));
 		const tool = createBashToolDefinition(process.cwd(), { operations: { exec } });
-		await tool.execute("call", { command: "sleep 30" }, undefined, undefined, undefined as never);
+		await tool.execute("call", { command }, undefined, undefined, undefined as never);
 		expect(exec).toHaveBeenCalledOnce();
 	});
 });

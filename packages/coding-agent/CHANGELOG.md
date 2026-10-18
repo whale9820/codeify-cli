@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Block pure no-op Bash commands while background tasks or completion notifications are pending, and discourage filler tool calls while waiting for automatic results.
 - Route all `qwen*` models through OpenAI Responses and all `glm*` models through Anthropic Messages so hosted `web_search` is declared on each.
 
 ## [0.83.0] - 2026-10-18

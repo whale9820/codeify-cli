@@ -83,9 +83,9 @@ export function createBackgroundTaskToolDefinition(
 			"Use plain bash only for quick commands whose output you need immediately to decide your very next step.",
 			"Start independent background tasks together. Continue only with useful work that does not depend on their results. If a background task is the main task or its result is needed for your next step, briefly say what you are waiting for and end your response without tool calls. The session will wait and resume you automatically when the result arrives; the user can still send messages.",
 			"After starting a background task, briefly tell the user it is running. Completion results arrive during your work; incorporate them into your next steps and final answer. Avoid repeating acknowledgments for results you already reviewed.",
-			"Do not busy-wait on a background task with sleep or repeated list calls.",
+			"Do not busy-wait on a background task with sleep, repeated list/output calls, or filler Bash commands such as true, :, echo, date, or repeated status checks. Every tool call must advance the user's task; never call a tool just to pass time or keep the turn alive. End your response when no useful independent work remains; this lets the session wait without tool calls and resume you automatically.",
 			"Do not invent extra work, rerun the same task, make speculative changes, or claim completion while a required background result is pending.",
-			"Your turn stays open until every running background task has finished and you have reacted to its result. Stop long-lived tasks (dev servers, watchers) with the stop action once you no longer need them, or the turn will never end.",
+			"The session keeps the user's request open while background tasks run, even after you end your response. You do not need to keep producing messages or tool calls. Stop long-lived tasks (dev servers, watchers) with the stop action once you no longer need them.",
 		],
 		parameters: backgroundTaskSchema,
 		executionMode: "parallel",
@@ -98,7 +98,7 @@ export function createBackgroundTaskToolDefinition(
 					if (command) {
 						const task = ops.startCommand(command, params.description?.trim() || command, params.timeout);
 						return text(
-							`Started background task ${task.id}. Its result will arrive automatically. Continue only with independent work; if you need this result or have no useful work left, end your response and wait for the automatic notification. Do not poll, sleep, or rerun the task.`,
+							`Started background task ${task.id}. Its result will arrive automatically. Continue only with independent work; if you need this result or have no useful work left, end your response and wait for the automatic notification. Do not poll, sleep, rerun the task, or run filler commands such as true to pass time.`,
 							{ action: "start", task },
 						);
 					}
@@ -112,7 +112,7 @@ export function createBackgroundTaskToolDefinition(
 							params.description?.trim() || prompt.replace(/\s+/gu, " ").slice(0, 80),
 						);
 						return text(
-							`Started background agent task ${task.id}. Its result will arrive automatically. Continue only with independent work; if you need this result or have no useful work left, end your response and wait for the automatic notification. Do not poll, sleep, or rerun the task.`,
+							`Started background agent task ${task.id}. Its result will arrive automatically. Continue only with independent work; if you need this result or have no useful work left, end your response and wait for the automatic notification. Do not poll, sleep, rerun the task, or run filler commands such as true to pass time.`,
 							{ action: "start", task },
 						);
 					}
