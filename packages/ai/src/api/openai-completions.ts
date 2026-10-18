@@ -22,6 +22,8 @@ import type {
 	OpenAICompletionsCompat,
 	ProviderEnv,
 	ProviderHeaders,
+	ServerToolResult,
+	ServerToolUse,
 	SimpleStreamOptions,
 	StopReason,
 	StreamFunction,
@@ -231,12 +233,19 @@ export const stream: StreamFunction<"openai-completions", OpenAICompletionsOptio
 				partialArgs?: string;
 				streamIndex?: number;
 			}
-			type StreamingBlock = TextContent | ThinkingContent | StreamingToolCallBlock;
+			type StreamingBlock =
+				| TextContent
+				| ThinkingContent
+				| StreamingToolCallBlock
+				| ServerToolUse
+				| ServerToolResult;
 			type StreamingToolCallDelta = NonNullable<ChatCompletionChunk.Choice.Delta["tool_calls"]>[number];
 
 			let textBlock: TextContent | null = null;
 			let thinkingBlock: ThinkingContent | null = null;
 			let hasFinishReason = false;
+			let webSearchRequests = 0;
+			const finishedBlocks = new Set<StreamingBlock>();
 			const toolCallBlocksByIndex = new Map<number, StreamingToolCallBlock>();
 			const toolCallBlocksById = new Map<string, StreamingToolCallBlock>();
 			const pendingReasoningDetailsByToolCallId = new Map<string, string>();
@@ -244,9 +253,10 @@ export const stream: StreamFunction<"openai-completions", OpenAICompletionsOptio
 			const getContentIndex = (block: StreamingBlock) => blocks.indexOf(block);
 			const finishBlock = (block: StreamingBlock) => {
 				const contentIndex = getContentIndex(block);
-				if (contentIndex === -1) {
+				if (contentIndex === -1 || finishedBlocks.has(block)) {
 					return;
 				}
+				finishedBlocks.add(block);
 				if (block.type === "text") {
 					stream.push({
 						type: "text_end",
@@ -354,7 +364,60 @@ export const stream: StreamFunction<"openai-completions", OpenAICompletionsOptio
 					output.responseModel ||= chunk.model;
 				}
 				if (chunk.usage) {
-					output.usage = parseChunkUsage(chunk.usage, model);
+					const searches = (chunk.usage as { server_tool_use?: { web_search_requests?: unknown } }).server_tool_use
+						?.web_search_requests;
+					if (typeof searches === "number") {
+						while (webSearchRequests < searches) {
+							webSearchRequests++;
+							if (textBlock) finishBlock(textBlock);
+							if (thinkingBlock) finishBlock(thinkingBlock);
+							textBlock = null;
+							thinkingBlock = null;
+							const use: ServerToolUse = {
+								type: "serverToolUse",
+								id: `${output.responseId || "web_search"}_${webSearchRequests}`,
+								name: "web_search",
+								input: {},
+							};
+							blocks.push(use);
+							const useIndex = getContentIndex(use);
+							stream.push({
+								type: "server_tool_use_start",
+								contentIndex: useIndex,
+								serverToolUse: use,
+								partial: output,
+							});
+							stream.push({
+								type: "server_tool_use_end",
+								contentIndex: useIndex,
+								serverToolUse: use,
+								partial: output,
+							});
+							const result: ServerToolResult = {
+								type: "serverToolResult",
+								toolUseId: use.id,
+								resultType: "web_search_tool_result",
+								content: [],
+							};
+							blocks.push(result);
+							const resultIndex = getContentIndex(result);
+							stream.push({
+								type: "server_tool_result_start",
+								contentIndex: resultIndex,
+								serverToolResult: result,
+								partial: output,
+							});
+							stream.push({
+								type: "server_tool_result_end",
+								contentIndex: resultIndex,
+								serverToolResult: result,
+								partial: output,
+							});
+						}
+					}
+					if (chunk.usage.prompt_tokens !== undefined || chunk.usage.completion_tokens !== undefined) {
+						output.usage = parseChunkUsage(chunk.usage, model);
+					}
 				}
 
 				const choice = Array.isArray(chunk.choices) ? chunk.choices[0] : undefined;

@@ -86,3 +86,60 @@ describe.each<SearchApi>(["anthropic-messages", "openai-completions"])("Codeify 
 		]);
 	});
 });
+
+describe("Codeify openai-completions web search stream", () => {
+	afterEach(() => vi.restoreAllMocks());
+
+	it("surfaces server-side searches and keeps final usage", async () => {
+		const chunk = (delta: Record<string, unknown>, extra: Record<string, unknown> = {}) =>
+			`data: ${JSON.stringify({ id: "chat_1", choices: [{ index: 0, delta, finish_reason: null }], ...extra })}\n\n`;
+		const body = [
+			chunk({ role: "assistant", content: "Searching." }),
+			chunk({}, { usage: { server_tool_use: { web_search_requests: 1 } } }),
+			chunk({}, { usage: { server_tool_use: { web_search_requests: 2 } } }),
+			chunk({ content: "Answer" }),
+			`data: ${JSON.stringify({
+				id: "chat_1",
+				choices: [{ index: 0, delta: {}, finish_reason: "stop" }],
+				usage: { prompt_tokens: 50, completion_tokens: 7, server_tool_use: { web_search_requests: 2 } },
+			})}\n\n`,
+			"data: [DONE]\n\n",
+		].join("");
+		vi.spyOn(globalThis, "fetch").mockImplementation(
+			async () => new Response(body, { headers: { "content-type": "text/event-stream" } }),
+		);
+		const model: Model<"openai-completions"> = {
+			id: "deepseek-v3",
+			name: "test",
+			provider: "codeify",
+			api: "openai-completions",
+			baseUrl: "https://codeify.cc/v1",
+			reasoning: false,
+			input: ["text"],
+			cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+			contextWindow: 1000,
+			maxTokens: 100,
+		};
+		const response = streamCompletions(
+			model,
+			{ messages: [{ role: "user", content: "Search", timestamp: 0 }] },
+			{ apiKey: "test-key", maxRetries: 0 },
+		);
+		const events: string[] = [];
+		for await (const event of response) events.push(event.type);
+		const message = await response.result();
+		expect(message.content.map((block) => block.type)).toEqual([
+			"text",
+			"serverToolUse",
+			"serverToolResult",
+			"serverToolUse",
+			"serverToolResult",
+			"text",
+		]);
+		expect(message.content[1]).toMatchObject({ id: "chat_1_1", name: "web_search" });
+		expect(message.content[4]).toMatchObject({ toolUseId: "chat_1_2" });
+		expect(events.filter((type) => type === "server_tool_use_start")).toHaveLength(2);
+		expect(events.filter((type) => type === "text_end")).toHaveLength(2);
+		expect(message.usage).toMatchObject({ input: 50, output: 7 });
+	});
+});

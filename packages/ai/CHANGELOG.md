@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Surface Codeify server-side web searches on Chat Completions (`web_search_options`) as `serverToolUse` blocks and keep final usage from being overwritten by interim search usage chunks.
+
 ## [0.83.0] - 2026-10-18
 
 ### Breaking Changes

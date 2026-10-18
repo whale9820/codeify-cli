@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Route Qwen 3.8 models through Anthropic Messages to expose the hosted `web_search` tool and server-side search events.
+
 ## [0.83.0] - 2026-10-18
 
 ### Added
