@@ -330,8 +330,8 @@ function resolveMaxTokens(model: CodeifyModel): number {
 	return positiveNumber(raw) ?? 32_768;
 }
 
-const ANTHROPIC_MODEL_PATTERN = /^(?:(?:claude|glm)-|qwen3\.8-)/i;
-const OPENAI_RESPONSES_MODEL_PATTERN = /^gpt-/i;
+const ANTHROPIC_MODEL_PATTERN = /^(?:claude-|glm)/i;
+const OPENAI_RESPONSES_MODEL_PATTERN = /^(?:gpt-|qwen)/i;
 
 export function apiForModelId(id: string): "anthropic-messages" | "openai-responses" | "openai-completions" {
 	if (ANTHROPIC_MODEL_PATTERN.test(id)) return "anthropic-messages";

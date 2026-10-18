@@ -4,7 +4,7 @@
 
 ### Fixed
 
-- Route Qwen 3.8 models through Anthropic Messages to expose the hosted `web_search` tool and server-side search events.
+- Route all `qwen*` models through OpenAI Responses and all `glm*` models through Anthropic Messages so hosted `web_search` is declared on each.
 
 ## [0.83.0] - 2026-10-18
 
