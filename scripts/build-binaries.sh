@@ -95,7 +95,10 @@ if [[ "$SKIP_DEPS" == "false" ]]; then
     # We need the base clipboard package and all platform bindings for bun cross-compilation
     # Use --force to bypass platform checks (os/cpu restrictions in package.json)
     # Install all in one command to avoid npm removing packages from previous installs
-    npm install --include=optional --no-save --package-lock=false --force --ignore-scripts \
+    NATIVE_BINDINGS_DIR=$(mktemp -d)
+    trap 'rm -rf "$NATIVE_BINDINGS_DIR"' EXIT
+    printf '{"private":true}\n' > "$NATIVE_BINDINGS_DIR/package.json"
+    npm install --prefix "$NATIVE_BINDINGS_DIR" --workspaces=false --include=optional --no-save --package-lock=false --force --ignore-scripts \
         @mariozechner/clipboard@"$CLIPBOARD_VERSION" \
         @mariozechner/clipboard-darwin-arm64@"$CLIPBOARD_VERSION" \
         @mariozechner/clipboard-darwin-x64@"$CLIPBOARD_VERSION" \
@@ -103,6 +106,10 @@ if [[ "$SKIP_DEPS" == "false" ]]; then
         @mariozechner/clipboard-linux-arm64-gnu@"$CLIPBOARD_VERSION" \
         @mariozechner/clipboard-win32-x64-msvc@"$CLIPBOARD_VERSION" \
         @mariozechner/clipboard-win32-arm64-msvc@"$CLIPBOARD_VERSION"
+    mkdir -p node_modules/@mariozechner
+    cp -R "$NATIVE_BINDINGS_DIR/node_modules/@mariozechner/." node_modules/@mariozechner/
+    rm -rf "$NATIVE_BINDINGS_DIR"
+    trap - EXIT
 else
     echo "==> Skipping cross-platform native bindings (--skip-deps)"
 fi
