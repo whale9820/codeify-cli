@@ -72,14 +72,7 @@ function addModelThinkingConfig(
 }
 
 export function isThinkingLevel(value: unknown): value is ThinkingLevel {
-	return (
-		value === "off" ||
-		value === "minimal" ||
-		value === "low" ||
-		value === "medium" ||
-		value === "high" ||
-		value === "xhigh"
-	);
+	return typeof value === "string" && value.length > 0;
 }
 
 function getAssistantUsage(message: unknown):

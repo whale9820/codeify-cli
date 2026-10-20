@@ -135,7 +135,7 @@ export function parseModelPattern(
 	const prefix = pattern.substring(0, lastColonIndex);
 	const suffix = pattern.substring(lastColonIndex + 1);
 
-	if (isValidThinkingLevel(suffix)) {
+	if (isValidThinkingLevel(suffix, availableModels)) {
 		// Valid thinking level - recurse on prefix and use this level
 		const result = parseModelPattern(prefix, availableModels, options);
 		if (result.model) {
@@ -209,7 +209,7 @@ export async function resolveModelScopeWithDiagnostics(
 
 			if (colonIdx !== -1) {
 				const suffix = pattern.substring(colonIdx + 1);
-				if (isValidThinkingLevel(suffix)) {
+				if (isValidThinkingLevel(suffix, availableModels)) {
 					thinkingLevel = suffix;
 					globPattern = pattern.substring(0, colonIdx);
 				}
@@ -425,7 +425,7 @@ export function resolveCliModel(options: {
 			const lastColon = pattern.lastIndexOf(":");
 			if (lastColon !== -1) {
 				const suffix = pattern.substring(lastColon + 1);
-				if (isValidThinkingLevel(suffix)) {
+				if (isValidThinkingLevel(suffix, availableModels)) {
 					fallbackPattern = pattern.substring(0, lastColon);
 					fallbackThinking = suffix;
 				}

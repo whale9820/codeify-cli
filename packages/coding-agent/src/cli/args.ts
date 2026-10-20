@@ -4,6 +4,7 @@
 
 import chalk from "chalk";
 import type { ThinkingLevel } from "codeify-agent-core";
+import type { Api, Model } from "codeify-ai";
 import { APP_NAME, APP_TITLE, CONFIG_DIR_NAME, ENV_AGENT_DIR, ENV_SESSION_DIR } from "../config.ts";
 
 export type Mode = "text" | "json" | "rpc";
@@ -49,10 +50,14 @@ export interface Args {
 	diagnostics: Array<{ type: "warning" | "error"; message: string }>;
 }
 
-const VALID_THINKING_LEVELS = ["off", "on", "minimal", "low", "medium", "high", "xhigh", "max"] as const;
-
-export function isValidThinkingLevel(level: string): level is ThinkingLevel {
-	return VALID_THINKING_LEVELS.includes(level as ThinkingLevel);
+export function isValidThinkingLevel(level: string, models?: readonly Model<Api>[]): level is ThinkingLevel {
+	if (!level.length || /\s/u.test(level) || level.startsWith("-")) return false;
+	return (
+		models === undefined ||
+		models.some((model) =>
+			(model.thinkingLevels ?? ["off", "on", "minimal", "low", "medium", "high", "xhigh", "max"]).includes(level),
+		)
+	);
 }
 
 export function parseArgs(args: string[]): Args {
@@ -136,7 +141,7 @@ export function parseArgs(args: string[]): Args {
 			} else {
 				result.diagnostics.push({
 					type: "warning",
-					message: `Invalid thinking level "${level}". Valid values: ${VALID_THINKING_LEVELS.join(", ")}`,
+					message: `Invalid thinking level "${level}". Use an effort supported by the selected model.`,
 				});
 			}
 		} else if (arg === "--print" || arg === "-p") {
@@ -228,7 +233,7 @@ ${chalk.bold("Options:")}
                                  Applies to built-in and custom tools
   --exclude-tools, -xt <tools>   Comma-separated denylist of tool names to disable
                                  Applies to built-in and custom tools
-  --thinking <level>             Set thinking level: off, on, minimal, low, medium, high, xhigh, max
+  --thinking <level>             Set an effort supported by the selected model
   --skill <path>                 Load a skill file or directory (can be used multiple times)
   --no-skills, -ns               Disable skills discovery and loading
   --prompt-template <path>       Load a prompt template file or directory (can be used multiple times)

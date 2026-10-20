@@ -41,16 +41,6 @@ function redactDiagnostics(text: string): string {
 		.replace(/(https?:\/\/)[^\s/@]+:[^\s/@]+@/giu, "$1[redacted]@");
 }
 
-const effortSchema = Type.Union([
-	Type.Literal("off"),
-	Type.Literal("minimal"),
-	Type.Literal("low"),
-	Type.Literal("medium"),
-	Type.Literal("high"),
-	Type.Literal("xhigh"),
-	Type.Literal("max"),
-]);
-
 const codeifyModelSchema = Type.Object({
 	action: Type.Union([Type.Literal("list"), Type.Literal("run")], {
 		description: "List eligible Codeify CLI models or run a fully agentic task on one model",
@@ -73,7 +63,9 @@ const codeifyModelSchema = Type.Object({
 			description: "Image files to attach for a vision task",
 		}),
 	),
-	reasoningEffort: Type.Optional(effortSchema),
+	reasoningEffort: Type.Optional(
+		Type.String({ minLength: 1, description: "Exact reasoning effort returned by the model list action" }),
+	),
 	maxOutputTokens: Type.Optional(
 		Type.Integer({
 			description: "Optional response token budget per delegated turn; defaults to the model maximum",

@@ -57,6 +57,7 @@ export interface RuntimeProviderConfig {
 		baseUrl?: string;
 		reasoning: boolean;
 		thinkingLevelMap?: Model<Api>["thinkingLevelMap"];
+		thinkingLevels?: Model<Api>["thinkingLevels"];
 		input: ("text" | "image")[];
 		cost: Model<Api>["cost"];
 		contextWindow: number;

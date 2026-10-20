@@ -30,6 +30,7 @@ import type {
 	StreamOptions,
 	TextContent,
 	ThinkingContent,
+	ThinkingLevel,
 	Tool,
 	ToolCall,
 	ToolResultMessage,
@@ -132,7 +133,7 @@ function isEncryptedReasoningDetail(detail: unknown): detail is OpenAIEncryptedR
 
 export interface OpenAICompletionsOptions extends StreamOptions {
 	toolChoice?: "auto" | "none" | "required" | { type: "function"; function: { name: string } };
-	reasoningEffort?: "on" | "minimal" | "low" | "medium" | "high" | "xhigh" | "max";
+	reasoningEffort?: ThinkingLevel;
 }
 
 interface OpenAICompatCacheControl {

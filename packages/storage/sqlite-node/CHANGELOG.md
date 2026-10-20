@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Preserve custom reasoning effort names in materialized session summaries.
+
 ## [0.83.0] - 2026-10-18
 
 ## [0.81.1] - 2026-07-21

@@ -87,6 +87,7 @@ export function inheritCodeifyMetadata(
 			...definition,
 			reasoning: inherited.reasoning,
 			thinkingLevelMap: inherited.thinkingLevelMap,
+			thinkingLevels: inherited.thinkingLevels,
 			input: inherited.input,
 			cost: inherited.cost,
 			contextWindow: inherited.contextWindow,

@@ -63,11 +63,14 @@ export function adjustMaxTokensForThinking(
 		medium: 8192,
 		high: 16384,
 	};
-	const budgets = { ...defaultBudgets, ...customBudgets };
+	const budgets: Partial<Record<ThinkingLevel, number>> = { ...defaultBudgets, ...customBudgets };
 
 	const minOutputTokens = 1024;
 	const level = clampReasoning(reasoningLevel)!;
-	let thinkingBudget = budgets[level]!;
+	let thinkingBudget = budgets[level];
+	if (thinkingBudget === undefined) {
+		throw new Error(`Thinking level "${level}" has no token budget`);
+	}
 	const maxTokens =
 		baseMaxTokens === undefined ? modelMaxTokens : Math.min(baseMaxTokens + thinkingBudget, modelMaxTokens);
 

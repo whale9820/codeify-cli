@@ -229,22 +229,11 @@ function resolveThinkingLevelMap(
 			return emptyThinkingModalitiesMap(supportsToggle ? "disabled" : null);
 		}
 
-		const normalized = new Set(declaredLevels.map((l) => l.trim().toLowerCase()));
-		const hasNone = normalized.has("none");
-		const hasOff = normalized.has("off") || normalized.has("disabled");
-		const hasOn = normalized.has("on") || normalized.has("adaptive");
-		const offValue: string | null = supportsToggle ? "disabled" : hasNone ? "none" : hasOff ? "off" : null;
-
 		return {
-			off: offValue,
-			...(hasOn ? { on: "adaptive" } : {}),
-			minimal: normalized.has("minimal") ? "minimal" : null,
-			low: normalized.has("low") ? "low" : null,
-			medium: normalized.has("medium") ? "medium" : null,
-			high: normalized.has("high") ? "high" : null,
-			xhigh:
-				normalized.has("xhigh") || normalized.has("extra-high") || normalized.has("extra_high") ? "xhigh" : null,
-			max: normalized.has("max") || normalized.has("maximum") ? "max" : null,
+			off: null,
+			...Object.fromEntries(declaredLevels.map((level) => [level, level])),
+			...(supportsToggle ? { off: "disabled" } : {}),
+			...(declaredLevels.includes("on") ? { on: "adaptive" } : {}),
 		};
 	}
 
@@ -352,6 +341,12 @@ export function routeModels(models: readonly CodeifyModelDefinition[], baseUrl: 
 
 export function toModelDefinition(model: CodeifyModel): CodeifyModelDefinition {
 	const reasoning = supportsReasoning(model.id, model);
+	const declaredLevels = extractDeclaredThinkingLevels(model);
+	const thinkingLevels = declaredLevels?.length
+		? extractSupportsThinkingToggle(model) && !declaredLevels.includes("off")
+			? ["off", ...declaredLevels]
+			: declaredLevels
+		: undefined;
 	const contextWindow = resolveContextWindow(model);
 	const maxTokens = resolveMaxTokens(model);
 	return {
@@ -360,6 +355,7 @@ export function toModelDefinition(model: CodeifyModel): CodeifyModelDefinition {
 		api: "openai-responses",
 		reasoning,
 		thinkingLevelMap: resolveThinkingLevelMap(model, reasoning),
+		thinkingLevels,
 		input: resolveInput(model),
 		cost: pricingToCost(model.pricing) ?? model.cost ?? { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
 		contextWindow,

@@ -646,12 +646,9 @@ describe("Codeify provider", () => {
 		expect(model?.reasoning).toBe(true);
 		expect(model?.thinkingLevelMap).toEqual({
 			off: null,
-			minimal: null,
 			low: "low",
 			medium: "medium",
 			high: "high",
-			xhigh: null,
-			max: null,
 		});
 		expect(
 			getSupportedThinkingLevels({
@@ -708,12 +705,8 @@ describe("Codeify provider", () => {
 		expect(step35?.reasoning).toBe(true);
 		expect(step35?.thinkingLevelMap).toEqual({
 			off: null,
-			minimal: null,
 			low: "low",
-			medium: null,
 			high: "high",
-			xhigh: null,
-			max: null,
 		});
 		expect(
 			getSupportedThinkingLevels({
@@ -728,13 +721,10 @@ describe("Codeify provider", () => {
 		expect(custom).toBeDefined();
 		expect(custom?.reasoning).toBe(true);
 		expect(custom?.thinkingLevelMap).toEqual({
-			off: "none",
-			minimal: null,
+			off: null,
+			none: "none",
 			low: "low",
 			medium: "medium",
-			high: null,
-			xhigh: null,
-			max: null,
 		});
 		expect(
 			getSupportedThinkingLevels({
@@ -743,7 +733,7 @@ describe("Codeify provider", () => {
 				provider: "codeify",
 				baseUrl: CODEIFY_BASE_URL,
 			}),
-		).toEqual(["off", "low", "medium"]);
+		).toEqual(["none", "low", "medium"]);
 
 		// Test offline cache retention of declared thinking levels
 		const offline = await codeifyProvider().refreshModels?.({
@@ -856,12 +846,9 @@ describe("Codeify provider", () => {
 		const toggleEfforts = live?.find((m) => m.id === "toggle-efforts");
 		expect(toggleEfforts?.thinkingLevelMap).toEqual({
 			off: "disabled",
-			minimal: null,
 			low: "low",
 			medium: "medium",
 			high: "high",
-			xhigh: null,
-			max: null,
 		});
 		expect(
 			getSupportedThinkingLevels({

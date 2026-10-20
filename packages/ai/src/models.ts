@@ -671,6 +671,7 @@ const EXTENDED_THINKING_LEVELS: ModelThinkingLevel[] = [
 
 export function getSupportedThinkingLevels<TApi extends Api>(model: Model<TApi>): ModelThinkingLevel[] {
 	if (!model.reasoning) return ["off"];
+	if (model.thinkingLevels) return [...model.thinkingLevels];
 
 	return EXTENDED_THINKING_LEVELS.filter((level) => {
 		const mapped = model.thinkingLevelMap?.[level];
