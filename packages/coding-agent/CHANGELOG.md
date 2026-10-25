@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Resume stopped agents after high-confidence tool invocations emitted as text, with bounded recovery and protection against examples and duplicate retries.
 - Use server-declared reasoning efforts in thinking selectors, CLI arguments, cached catalogs, backend overrides, and delegated model calls instead of filtering through fixed effort names.
 - Block pure no-op Bash commands while background tasks or completion notifications are pending, and discourage filler tool calls while waiting for automatic results.
 - Route all `qwen*` models through OpenAI Responses and all `glm*` models through Anthropic Messages so hosted `web_search` is declared on each.

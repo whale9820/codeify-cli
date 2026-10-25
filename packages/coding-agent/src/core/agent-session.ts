@@ -84,6 +84,7 @@ import { CURRENT_SESSION_VERSION, getLatestCompactionEntry, type SessionHeader }
 import type { SettingsManager } from "./settings-manager.ts";
 import { createSyntheticSourceInfo, type SourceInfo } from "./source-info.ts";
 import { type BuildSystemPromptOptions, buildSystemPrompt } from "./system-prompt.ts";
+import { hasTextToolCall } from "./text-tool-call.ts";
 import { createBackgroundTaskToolDefinition } from "./tools/background-task.ts";
 import { type BashOperations, createLocalBashOperations } from "./tools/bash.ts";
 import { createBrowserToolDefinition } from "./tools/browser.ts";
@@ -330,6 +331,8 @@ export class AgentSession {
 	// Retry state
 	private _retryAbortController: AbortController | undefined = undefined;
 	private _retryAttempt = 0;
+	private _textToolRecoveryAttempts = 0;
+	private _textToolRecoveryCandidates = new Set<string>();
 
 	// Bash execution state
 	private _bashAbortController: AbortController | undefined = undefined;
@@ -515,6 +518,8 @@ export class AgentSession {
 		// This ensures the UI sees the updated queue state
 		if (event.type === "message_start" && event.message.role === "user") {
 			this._overflowRecoveryAttempted = false;
+			this._textToolRecoveryAttempts = 0;
+			this._textToolRecoveryCandidates.clear();
 			const messageText = contentText(event.message.content, "");
 			if (messageText) {
 				// Check steering queue first
@@ -944,6 +949,8 @@ export class AgentSession {
 	private async _runAgentPrompt(messages: AgentMessage | AgentMessage[]): Promise<void> {
 		this._isAgentRunActive = true;
 		this._abortRequested = false;
+		this._textToolRecoveryAttempts = 0;
+		this._textToolRecoveryCandidates.clear();
 		try {
 			await this.agent.prompt(messages);
 			while ((await this._handlePostAgentRun()) || (await this._waitForBackgroundTasks())) {
@@ -992,6 +999,31 @@ export class AgentSession {
 
 		if (await this._checkCompaction(msg)) {
 			return true;
+		}
+
+		if (!this._abortRequested && !this.agent.hasQueuedMessages() && this._textToolRecoveryAttempts < 2) {
+			const text = contentText(msg.content).trim();
+			const lastUser = this.agent.state.messages
+				.slice()
+				.reverse()
+				.find((message) => message.role === "user");
+			if (
+				!this._textToolRecoveryCandidates.has(text) &&
+				hasTextToolCall(msg, this.getActiveToolNames(), lastUser ? contentText(lastUser.content) : "")
+			) {
+				this._textToolRecoveryAttempts++;
+				this._textToolRecoveryCandidates.add(text);
+				await this.sendCustomMessage(
+					{
+						customType: "tool_call_recovery",
+						content:
+							"Your last response appears to contain a tool invocation emitted as text. No structured tool call was received for that response. If you intended to invoke a tool, reissue it through the available tool interface with valid arguments. Otherwise, finish your response. Continue only within the user's existing request and permissions.",
+						display: true,
+					},
+					{ deliverAs: "followUp" },
+				);
+				return !this._abortRequested;
+			}
 		}
 
 		// The agent loop drains both queues before emitting agent_end. Any messages
