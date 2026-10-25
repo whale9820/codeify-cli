@@ -7,6 +7,7 @@ export interface McpServerConfig {
 	env?: Record<string, string>;
 	transport: string;
 	lifecycle: string;
+	timeoutMs?: number;
 }
 
 export interface McpConfig {
@@ -45,6 +46,7 @@ export function loadMcpConfig(agentDir: string): { config: McpConfig; diagnostic
 			env?: unknown;
 			transport?: unknown;
 			lifecycle?: unknown;
+			timeoutMs?: unknown;
 		};
 		if (!entry || typeof entry.command !== "string") {
 			diagnostics.push(`MCP server "${name}" is missing a "command"; skipping.`);
@@ -59,12 +61,25 @@ export function loadMcpConfig(agentDir: string): { config: McpConfig; diagnostic
 			entry.env && typeof entry.env === "object" && !Array.isArray(entry.env)
 				? Object.fromEntries(Object.entries(entry.env as Record<string, unknown>).map(([k, v]) => [k, String(v)]))
 				: undefined;
+		const timeoutMs = entry.timeoutMs;
+		if (
+			timeoutMs !== undefined &&
+			(typeof timeoutMs !== "number" || !Number.isInteger(timeoutMs) || timeoutMs <= 0 || timeoutMs > 2_147_483_647)
+		) {
+			diagnostics.push(
+				`MCP server "${name}" has invalid "timeoutMs"; expected a positive integer up to 2147483647. Using the default timeout.`,
+			);
+		}
 		mcpServers[name] = {
 			command: entry.command,
 			args: Array.isArray(entry.args) ? entry.args.map((arg) => String(arg)) : [],
 			env,
 			transport,
 			lifecycle: typeof entry.lifecycle === "string" ? entry.lifecycle : "lazy",
+			timeoutMs:
+				typeof timeoutMs === "number" && Number.isInteger(timeoutMs) && timeoutMs > 0 && timeoutMs <= 2_147_483_647
+					? timeoutMs
+					: undefined,
 		};
 	}
 

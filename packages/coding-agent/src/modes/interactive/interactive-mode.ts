@@ -349,8 +349,6 @@ export class InteractiveMode {
 	private activeStatusIndicator: StatusIndicator | undefined = undefined;
 	private readonly idleStatus = new IdleStatus();
 	private readonly defaultWorkingMessage = "Working...";
-	private readonly defaultHiddenThinkingLabel = "Thinking...";
-	private hiddenThinkingLabel = this.defaultHiddenThinkingLabel;
 
 	private lastSigintTime = 0;
 	private lastEscapeTime = 0;
@@ -369,8 +367,7 @@ export class InteractiveMode {
 	// Tool output expansion state
 	private toolOutputExpanded = false;
 
-	// Thinking block visibility state
-	private hideThinkingBlock = false;
+	private shrinkThinking = false;
 	private outputPad = 1;
 
 	// Skill commands: command name -> skill file path
@@ -460,8 +457,7 @@ export class InteractiveMode {
 		this.footerTpsTracker = new FooterTpsTracker();
 		this.footer = new FooterComponent(this.session, this.footerDataProvider, this.footerTpsTracker);
 
-		// Load hide thinking block setting
-		this.hideThinkingBlock = this.settingsManager.getHideThinkingBlock();
+		this.shrinkThinking = this.settingsManager.getShrinkThinking();
 		this.outputPad = this.settingsManager.getOutputPad();
 
 		// Register themes from resource loader and initialize
@@ -749,7 +745,7 @@ export class InteractiveMode {
 				rawKeyHint(`${keyText("app.model.cycleForward")}/${keyText("app.model.cycleBackward")}`, "to cycle models"),
 				hint("app.model.select", "to select model"),
 				hint("app.tools.expand", "to expand tools"),
-				hint("app.thinking.toggle", "to expand thinking"),
+				hint("app.thinking.toggle", "to shrink/expand thinking"),
 				hint("app.editor.external", "for external editor"),
 				rawKeyHint("/", "for commands"),
 				rawKeyHint("!", "to run bash"),
@@ -1329,7 +1325,7 @@ export class InteractiveMode {
 		configureHttpDispatcher(this.settingsManager.getHttpIdleTimeoutMs());
 		this.footer.setSession(this.session);
 		this.footerDataProvider.setCwd(this.sessionManager.getCwd());
-		this.hideThinkingBlock = this.settingsManager.getHideThinkingBlock();
+		this.shrinkThinking = this.settingsManager.getShrinkThinking();
 		this.outputPad = this.settingsManager.getOutputPad();
 		this.ui.setShowHardwareCursor(this.settingsManager.getShowHardwareCursor());
 		const clearOnShrink = this.settingsManager.getClearOnShrink();
@@ -1681,7 +1677,7 @@ export class InteractiveMode {
 		this.defaultEditor.onAction("app.model.select", () => this.showModelSelector());
 		this.defaultEditor.onAction("app.tools.expand", () => this.toggleToolOutputExpansion());
 		this.defaultEditor.onAction("app.tools.background", () => this.handleBackgroundCommand());
-		this.defaultEditor.onAction("app.thinking.toggle", () => this.toggleThinkingBlockVisibility());
+		this.defaultEditor.onAction("app.thinking.toggle", () => this.toggleThinkingShrink());
 		this.defaultEditor.onAction("app.editor.external", () => this.openExternalEditor());
 		this.defaultEditor.onAction("app.message.copy", () => void this.handleCopyCommand());
 		this.defaultEditor.onAction("app.message.followUp", () => this.handleFollowUp());
@@ -2013,9 +2009,8 @@ export class InteractiveMode {
 				} else if (event.message.role === "assistant") {
 					this.streamingComponent = new AssistantMessageComponent(
 						undefined,
-						this.hideThinkingBlock,
+						this.shrinkThinking,
 						this.getMarkdownThemeWithSettings(),
-						this.hiddenThinkingLabel,
 						this.outputPad,
 					);
 					this.streamingMessage = event.message;
@@ -2466,9 +2461,8 @@ export class InteractiveMode {
 			case "assistant": {
 				const assistantComponent = new AssistantMessageComponent(
 					message,
-					this.hideThinkingBlock,
+					this.shrinkThinking,
 					this.getMarkdownThemeWithSettings(),
-					this.hiddenThinkingLabel,
 					this.outputPad,
 				);
 				this.applyCitationSources(assistantComponent, message);
@@ -3224,22 +3218,20 @@ export class InteractiveMode {
 		this.ui.requestRender();
 	}
 
-	private toggleThinkingBlockVisibility(): void {
-		this.hideThinkingBlock = !this.hideThinkingBlock;
-		this.settingsManager.setHideThinkingBlock(this.hideThinkingBlock);
+	private toggleThinkingShrink(): void {
+		this.setShrinkThinking(!this.shrinkThinking);
+		this.showStatus(`Thinking blocks: ${this.shrinkThinking ? "single line" : "expanded"}`);
+	}
 
-		// Rebuild chat from session messages
-		this.chatContainer.clear();
-		this.rebuildChatFromMessages();
-
-		// If streaming, re-add the streaming component with updated visibility and re-render
-		if (this.streamingComponent && this.streamingMessage) {
-			this.streamingComponent.setHideThinkingBlock(this.hideThinkingBlock);
-			this.streamingComponent.updateContent(this.streamingMessage);
-			this.chatContainer.addChild(this.streamingComponent);
+	private setShrinkThinking(shrink: boolean): void {
+		this.shrinkThinking = shrink;
+		this.settingsManager.setShrinkThinking(shrink);
+		for (const child of this.chatContainer.children) {
+			if (child instanceof AssistantMessageComponent) {
+				child.setShrinkThinking(shrink);
+			}
 		}
-
-		this.showStatus(`Thinking blocks: ${this.hideThinkingBlock ? "hidden" : "visible"}`);
+		this.ui.requestRender();
 	}
 
 	private async openExternalEditor(): Promise<void> {
@@ -3512,7 +3504,7 @@ export class InteractiveMode {
 					currentTheme: this.settingsManager.getThemeSetting() || "dark",
 					terminalTheme: this.themeController.getTerminalTheme(),
 					availableThemes: getAvailableThemes(),
-					hideThinkingBlock: this.hideThinkingBlock,
+					shrinkThinking: this.shrinkThinking,
 					doubleEscapeAction: this.settingsManager.getDoubleEscapeAction(),
 					treeFilterMode: this.settingsManager.getTreeFilterMode(),
 					showHardwareCursor: this.settingsManager.getShowHardwareCursor(),
@@ -3581,18 +3573,7 @@ export class InteractiveMode {
 						void this.themeController.applyFromSettings();
 					},
 					onThemePreview: (themeName) => this.themeController.preview(themeName),
-					onHideThinkingBlockChange: (hidden) => {
-						this.hideThinkingBlock = hidden;
-						this.settingsManager.setHideThinkingBlock(hidden);
-						for (const child of this.chatContainer.children) {
-							if (child instanceof AssistantMessageComponent) {
-								child.setHideThinkingBlock(hidden);
-								child.setExpanded(this.toolOutputExpanded);
-							}
-						}
-						this.chatContainer.clear();
-						this.rebuildChatFromMessages();
-					},
+					onShrinkThinkingChange: (shrink) => this.setShrinkThinking(shrink),
 					onShowCacheMissNoticesChange: (shown) => {
 						this.settingsManager.setShowCacheMissNotices(shown);
 						this.rebuildChatFromMessages();
@@ -4853,7 +4834,7 @@ export class InteractiveMode {
 			if (chatRestoredBeforeSessionStart) {
 				return;
 			}
-			this.hideThinkingBlock = this.settingsManager.getHideThinkingBlock();
+			this.shrinkThinking = this.settingsManager.getShrinkThinking();
 			this.outputPad = this.settingsManager.getOutputPad();
 			this.rebuildChatFromMessages();
 			chatRestoredBeforeSessionStart = true;
@@ -5297,7 +5278,7 @@ export class InteractiveMode {
 | \`${selectModel}\` | Open model selector |
 | \`${expandTools}\` | Toggle tool output expansion |
 | \`${backgroundTools}\` | Move the running bash command to the background |
-| \`${toggleThinking}\` | Toggle thinking block visibility |
+| \`${toggleThinking}\` | Toggle single-line thinking |
 | \`${externalEditor}\` | Edit message in external editor |
 | \`${copyMessage}\` | Copy last assistant message |
 | \`${followUp}\` | Queue follow-up message |

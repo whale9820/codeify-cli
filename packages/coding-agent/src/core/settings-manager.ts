@@ -69,7 +69,7 @@ export interface Settings {
 	compaction?: CompactionSettings;
 	branchSummary?: BranchSummarySettings;
 	retry?: RetrySettings;
-	hideThinkingBlock?: boolean;
+	shrinkThinking?: boolean;
 	showCacheMissNotices?: boolean; // default: false - show transcript notices for significant prompt-cache misses
 	externalEditor?: string; // Command for Ctrl+G external editor; takes precedence over VISUAL/EDITOR
 	shellPath?: string; // Custom shell path (e.g., for Cygwin users on Windows); supports leading ~ expansion
@@ -815,8 +815,8 @@ export class SettingsManager {
 		return parseTimeoutSetting(this.settings.websocketConnectTimeoutMs, "websocketConnectTimeoutMs");
 	}
 
-	getHideThinkingBlock(): boolean {
-		return this.settings.hideThinkingBlock ?? false;
+	getShrinkThinking(): boolean {
+		return this.settings.shrinkThinking ?? false;
 	}
 
 	getShowCacheMissNotices(): boolean {
@@ -835,9 +835,9 @@ export class SettingsManager {
 		return process.platform === "win32" ? "notepad" : "nano";
 	}
 
-	setHideThinkingBlock(hide: boolean): void {
-		this.globalSettings.hideThinkingBlock = hide;
-		this.markModified("hideThinkingBlock");
+	setShrinkThinking(shrink: boolean): void {
+		this.globalSettings.shrinkThinking = shrink;
+		this.markModified("shrinkThinking");
 		this.save();
 	}
 

@@ -1,4 +1,5 @@
 import type { AssistantMessage } from "codeify-ai";
+import { visibleWidth } from "codeify-tui";
 import { describe, expect, test } from "vitest";
 import { AssistantMessageComponent } from "../src/modes/interactive/components/assistant-message.ts";
 import { UserMessageComponent } from "../src/modes/interactive/components/user-message.ts";
@@ -88,13 +89,83 @@ describe("AssistantMessageComponent", () => {
 				{ type: "thinking", thinking: "second thought" },
 				{ type: "text", text: "answer" },
 			]),
-			true,
+			false,
 		);
 		const rendered = stripAnsi(component.render(80).join("\n"));
 
 		expect(rendered).toContain("first thought");
 		expect(rendered).toContain("second thought");
 		expect(rendered).toContain("answer");
+	});
+
+	test("keeps streaming thinking on one line and follows the latest text", () => {
+		initTheme("dark");
+		const component = new AssistantMessageComponent(undefined, true);
+		component.updateContent(createAssistantMessage([{ type: "thinking", thinking: "old thought ".repeat(40) }]));
+		const before = component
+			.render(40)
+			.map(stripAnsi)
+			.filter((line) => line.trim());
+		expect(before).toHaveLength(1);
+		component.updateContent(
+			createAssistantMessage([{ type: "thinking", thinking: `${"old thought ".repeat(40)}\n\n**new direction**` }]),
+		);
+		const after = component
+			.render(40)
+			.map(stripAnsi)
+			.filter((line) => line.trim());
+		expect(after).toHaveLength(1);
+		expect(after[0]).toContain("∴ …");
+		expect(after[0]).toContain("new direction");
+		expect(after).not.toEqual(before);
+		expect(visibleWidth(after[0])).toBeLessThanOrEqual(40);
+	});
+
+	test.each([1, 2, 3, 4, 12, 40, 80])("fits compact Unicode thinking within %i columns", (width) => {
+		initTheme("dark");
+		const component = new AssistantMessageComponent(
+			createAssistantMessage([{ type: "thinking", thinking: "思考中 é ".repeat(30) }]),
+			true,
+		);
+		const lines = component
+			.render(width)
+			.map(stripAnsi)
+			.filter((line) => line.trim());
+		expect(lines).toHaveLength(1);
+		expect(visibleWidth(lines[0])).toBeLessThanOrEqual(width);
+		expect(lines[0]).not.toContain("\uFFFD");
+	});
+
+	test("shrinks wrapped thinking and restores all content when toggled off", () => {
+		initTheme("dark");
+		const component = new AssistantMessageComponent(
+			createAssistantMessage([
+				{ type: "thinking", thinking: "first thought\n".repeat(10) },
+				{ type: "text", text: `answer before\n<think>latest thought</think>\nanswer after` },
+			]),
+			true,
+		);
+		const compact = component
+			.render(80)
+			.map(stripAnsi)
+			.filter((line) => line.trim());
+		expect(compact.filter((line) => line.includes("∴"))).toHaveLength(1);
+		expect(compact.join("\n")).toContain("latest thought");
+		expect(compact.join("\n")).not.toContain("first thought");
+		expect(compact.join("\n")).toContain("answer before");
+		expect(compact.join("\n")).toContain("answer after");
+		component.setShrinkThinking(false);
+		const expanded = stripAnsi(component.render(80).join("\n"));
+		expect(expanded).toContain("first thought");
+		expect(expanded).toContain("latest thought");
+		component.setShrinkThinking(true);
+		component.invalidate();
+		expect(
+			component
+				.render(80)
+				.map(stripAnsi)
+				.filter((line) => line.trim()),
+		).toEqual(compact);
 	});
 
 	test.each([
@@ -136,7 +207,6 @@ describe("AssistantMessageComponent", () => {
 			]),
 			false,
 			undefined,
-			"Thinking...",
 			1,
 		);
 		const lines = component.render(80).map((line) => stripAnsi(line));

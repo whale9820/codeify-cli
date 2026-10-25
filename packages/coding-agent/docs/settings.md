@@ -28,7 +28,7 @@ Use `/trust` in interactive mode to save a project trust decision for future ses
 | `defaultProvider` | string | `"codeify"` | Must be `"codeify"` |
 | `defaultModel` | string | `"gpt-6-astra"` | Default model ID |
 | `defaultThinkingLevel` | string | `"xhigh"` | `"off"`, `"minimal"`, `"low"`, `"medium"`, `"high"`, `"xhigh"`, `"max"` |
-| `hideThinkingBlock` | boolean | `false` | Hide thinking blocks in output |
+| `shrinkThinking` | boolean | `false` | Show the latest thinking text on a single updating line |
 | `showCacheMissNotices` | boolean | `false` | Show transcript notices for significant prompt-cache misses |
 | `thinkingBudgets` | object | - | Custom token budgets per thinking level |
 

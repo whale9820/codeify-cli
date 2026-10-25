@@ -2,12 +2,17 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Replace Hide thinking with Shrink thinking: show the latest reasoning on one updating line with a thinking indicator, and toggle full thinking with the existing shortcut.
+
 ### Fixed
 
 - Resume stopped agents after high-confidence tool invocations emitted as text, with bounded recovery and protection against examples and duplicate retries.
 - Use server-declared reasoning efforts in thinking selectors, CLI arguments, cached catalogs, backend overrides, and delegated model calls instead of filtering through fixed effort names.
 - Block pure no-op Bash commands while background tasks or completion notifications are pending, and discourage filler tool calls while waiting for automatic results.
 - Route all `qwen*` models through OpenAI Responses and all `glm*` models through Anthropic Messages so hosted `web_search` is declared on each.
+- Allow MCP tool calls to run for ten minutes by default, extend the timeout when progress arrives, support per-server `timeoutMs` in `mcp.json`, and forward turn cancellation to the server.
 
 ## [0.83.0] - 2026-10-18
 

@@ -7,7 +7,18 @@ import {
 	renderInlineCitations,
 	type ServerToolUse,
 } from "codeify-ai";
-import { Container, Markdown, type MarkdownTheme, Spacer, Text } from "codeify-tui";
+import {
+	type Component,
+	Container,
+	Markdown,
+	type MarkdownTheme,
+	Spacer,
+	sliceByColumn,
+	Text,
+	truncateToWidth,
+	visibleWidth,
+} from "codeify-tui";
+import { stripAnsi } from "../../../utils/ansi.ts";
 import { separateAdjacentBold, splitWrappedThinking } from "../../../utils/thinking-text.ts";
 import { getMarkdownTheme, theme } from "../theme/theme.ts";
 import { ErrorDetailsComponent } from "./error-details.ts";
@@ -16,6 +27,32 @@ import { PrefixedComponent } from "./prefixed.ts";
 const OSC133_ZONE_START = "\x1b]133;A\x07";
 const OSC133_ZONE_END = "\x1b]133;B\x07";
 const OSC133_ZONE_FINAL = "\x1b]133;C\x07";
+
+class SingleLineThinking implements Component {
+	private text: string;
+	private padding: number;
+
+	constructor(text: string, padding: number) {
+		this.text = stripAnsi(text)
+			.replace(/(\*\*|__|`)/g, "")
+			.replace(/\s+/g, " ")
+			.trim();
+		this.padding = padding;
+	}
+
+	invalidate(): void {}
+
+	render(width: number): string[] {
+		const prefix = `${" ".repeat(Math.min(this.padding, Math.max(0, width - 1)))}∴ `;
+		const available = Math.max(0, width - visibleWidth(prefix));
+		const textWidth = visibleWidth(this.text);
+		const tail =
+			textWidth > available
+				? `…${sliceByColumn(this.text, textWidth - Math.max(0, available - 1), Math.max(0, available - 1), true)}`
+				: this.text;
+		return [theme.fg("thinkingText", truncateToWidth(prefix + tail, width, ""))];
+	}
+}
 
 type ContentRenderItem =
 	| { kind: "text"; text: string }
@@ -65,6 +102,7 @@ export class AssistantMessageComponent extends Container {
 	private contentContainer: Container;
 	private markdownTheme: MarkdownTheme;
 	private outputPad: number;
+	private shrinkThinking: boolean;
 	private lastMessage?: AssistantMessage;
 	private hasToolCalls = false;
 	private expanded = false;
@@ -73,15 +111,15 @@ export class AssistantMessageComponent extends Container {
 
 	constructor(
 		message?: AssistantMessage,
-		_hideThinkingBlock = false,
+		shrinkThinking = false,
 		markdownTheme: MarkdownTheme = getMarkdownTheme(),
-		_hiddenThinkingLabel = "Thinking...",
 		outputPad = 1,
 	) {
 		super();
 
 		this.markdownTheme = markdownTheme;
 		this.outputPad = outputPad;
+		this.shrinkThinking = shrinkThinking;
 
 		// Container for text/thinking content
 		this.contentContainer = new Container();
@@ -99,12 +137,10 @@ export class AssistantMessageComponent extends Container {
 		}
 	}
 
-	setHideThinkingBlock(_hide: boolean): void {
-		// No-op: thinking blocks are always shown
-	}
-
-	setHiddenThinkingLabel(_label: string): void {
-		// No-op: thinking blocks are always shown
+	setShrinkThinking(shrink: boolean): void {
+		if (this.shrinkThinking === shrink) return;
+		this.shrinkThinking = shrink;
+		if (this.lastMessage) this.updateContent(this.lastMessage);
 	}
 
 	setOutputPad(padding: number): void {
@@ -142,7 +178,11 @@ export class AssistantMessageComponent extends Container {
 		// Clear content container
 		this.contentContainer.clear();
 
-		const items = buildContentRenderItems(message.content, this.citationSources);
+		let items = buildContentRenderItems(message.content, this.citationSources);
+		if (this.shrinkThinking) {
+			const latestThinking = [...items].reverse().find((item) => item.kind === "thinking" && item.text.trim());
+			items = items.filter((item) => item.kind !== "thinking" || item === latestThinking);
+		}
 
 		const hasVisibleContent = items.some(
 			(item) =>
@@ -182,10 +222,12 @@ export class AssistantMessageComponent extends Container {
 			} else if (item.kind === "thinking") {
 				if (item.text.trim()) {
 					this.contentContainer.addChild(
-						new Markdown(separateAdjacentBold(item.text.trim()), this.outputPad, 0, this.markdownTheme, {
-							color: (text: string) => theme.fg("thinkingText", text),
-							italic: true,
-						}),
+						this.shrinkThinking
+							? new SingleLineThinking(item.text, this.outputPad)
+							: new Markdown(separateAdjacentBold(item.text.trim()), this.outputPad, 0, this.markdownTheme, {
+									color: (text: string) => theme.fg("thinkingText", text),
+									italic: true,
+								}),
 					);
 					if (hasVisibleContentAfter) {
 						this.contentContainer.addChild(new Spacer(1));

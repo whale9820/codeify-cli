@@ -253,7 +253,7 @@ export function createMcpToolDefinition(
 		promptSnippet: "Gateway to MCP servers: connect, list, search, describe, and call their tools.",
 		parameters: mcpSchema,
 		executionMode: "sequential",
-		async execute(_toolCallId, params, _signal) {
+		async execute(_toolCallId, params, signal) {
 			let parsedArgs: Record<string, unknown> | undefined;
 			if (params.args !== undefined) {
 				try {
@@ -303,7 +303,7 @@ export function createMcpToolDefinition(
 							isError: true,
 						});
 					}
-					const callResult = await manager.callTool(params.tool, parsedArgs, params.server);
+					const callResult = await manager.callTool(params.tool, parsedArgs, params.server, signal);
 					const blocks = await mcpContentToBlocks(callResult.content, options?.autoResizeImages?.() ?? true);
 					const rawText = blocks.map((block) => (block.type === "text" ? block.text : "[image]")).join("\n");
 					const capped = capOutputWithNotice(rawText, { tempFilePrefix: MCP_SPILL_PREFIX });

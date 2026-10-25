@@ -66,7 +66,7 @@ export interface SettingsConfig {
 	currentTheme: string;
 	terminalTheme: TerminalTheme;
 	availableThemes: string[];
-	hideThinkingBlock: boolean;
+	shrinkThinking: boolean;
 	showCacheMissNotices: boolean;
 	doubleEscapeAction: "fork" | "tree" | "none";
 	treeFilterMode: "default" | "no-tools" | "user-only" | "labeled-only" | "all";
@@ -95,7 +95,7 @@ export interface SettingsCallbacks {
 	onThinkingLevelChange: (level: ThinkingLevel) => void;
 	onThemeChange: (theme: string) => void;
 	onThemePreview?: (theme: string) => void;
-	onHideThinkingBlockChange: (hidden: boolean) => void;
+	onShrinkThinkingChange: (shrink: boolean) => void;
 	onShowCacheMissNoticesChange: (shown: boolean) => void;
 	onDoubleEscapeActionChange: (action: "fork" | "tree" | "none") => void;
 	onTreeFilterModeChange: (mode: "default" | "no-tools" | "user-only" | "labeled-only" | "all") => void;
@@ -475,10 +475,10 @@ export class SettingsSelectorComponent extends Container {
 				values: HTTP_IDLE_TIMEOUT_CHOICES.map((choice) => choice.label),
 			},
 			{
-				id: "hide-thinking",
-				label: "Hide thinking",
-				description: "Hide thinking blocks in assistant responses",
-				currentValue: config.hideThinkingBlock ? "true" : "false",
+				id: "shrink-thinking",
+				label: "Shrink thinking",
+				description: "Keep thinking on one line, showing the latest text as it arrives",
+				currentValue: config.shrinkThinking ? "true" : "false",
 				values: ["true", "false"],
 			},
 			{
@@ -702,8 +702,8 @@ export class SettingsSelectorComponent extends Container {
 						}
 						break;
 					}
-					case "hide-thinking":
-						callbacks.onHideThinkingBlockChange(newValue === "true");
+					case "shrink-thinking":
+						callbacks.onShrinkThinkingChange(newValue === "true");
 						break;
 					case "cache-miss-notices":
 						callbacks.onShowCacheMissNoticesChange(newValue === "true");

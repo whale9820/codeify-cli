@@ -161,7 +161,9 @@ export class McpManager {
 		toolName: string,
 		args: Record<string, unknown> | undefined,
 		server?: string,
+		signal?: AbortSignal,
 	): Promise<McpCallResult> {
+		signal?.throwIfAborted();
 		if (server && !this.hasServer(server)) {
 			throw new Error(`Unknown MCP server "${server}".`);
 		}
@@ -183,7 +185,12 @@ export class McpManager {
 			);
 		}
 		const connection = await this.connect(targetServer);
-		const result = await connection.client.callTool({ name: toolName, arguments: args ?? {} });
+		const result = await connection.client.callTool({ name: toolName, arguments: args ?? {} }, undefined, {
+			timeout: this.config.mcpServers[targetServer].timeoutMs ?? 600_000,
+			signal,
+			resetTimeoutOnProgress: true,
+			onprogress: () => {},
+		});
 		const content = Array.isArray(result.content) ? (result.content as McpContentBlock[]) : [];
 		return { content, isError: result.isError === true };
 	}
