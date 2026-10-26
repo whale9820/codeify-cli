@@ -16,7 +16,7 @@
 
 ### Fixed
 
-- Detect silent provider streams using the configured HTTP idle timeout, cancel the stalled transport, and re-request the turn through bounded automatic retries.
+- Detect provider streams with zero chunks for 15 seconds, reset the idle timer on every chunk, cancel the stalled transport, and re-request the turn through bounded automatic retries independently of the HTTP timeout.
 - Resume stopped agents after high-confidence tool invocations emitted as text, with bounded recovery and protection against examples and duplicate retries.
 - Use server-declared reasoning efforts in thinking selectors, CLI arguments, cached catalogs, backend overrides, and delegated model calls instead of filtering through fixed effort names.
 - Block pure no-op Bash commands while background tasks or completion notifications are pending, and discourage filler tool calls while waiting for automatic results.
