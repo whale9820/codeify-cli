@@ -9,7 +9,7 @@
 ### Changed
 
 - Mark completed compact thinking with the therefore symbol (`∴`).
-- Use six-frame clockwise rotating arcs (`◜ ◠ ◝ ◞ ◡ ◟`) for loading and streaming thinking indicators.
+- Use six-frame clockwise rotating arcs (`◜ ◠ ◝ ◞ ◡ ◟`) for loading, streaming thinking, and installer progress indicators.
 - Animate the single-line thinking indicator while streaming and reserve one column at its right edge.
 - Match the dark user-message background to the supplied neutral gray reference (`#303030`).
 - Add shaded blank lines above and below sent user messages, use a subtler neutral background, and match sent and editor prompt markers to the user text color.

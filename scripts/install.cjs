@@ -149,7 +149,7 @@ let stepNumber = 0;
 const installStarted = Date.now();
 
 const spinnerScript = [
-	'const frames=["\\u280b","\\u2819","\\u2839","\\u2838","\\u283c","\\u2834","\\u2826","\\u2827","\\u2807","\\u280f"];',
+	'const frames=["\\u25dc","\\u25e0","\\u25dd","\\u25de","\\u25e1","\\u25df"];',
 	"const started=Date.now();let frame=0;",
 	"const draw=()=>{",
 	"try{process.kill(Number(process.env.CODEIFY_SPINNER_PARENT),0)}catch{process.exit(0)}",
