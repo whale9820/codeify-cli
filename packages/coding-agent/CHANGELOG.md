@@ -4,6 +4,7 @@
 
 ### Changed
 
+- Add shaded blank lines above and below sent user messages, use a subtler neutral background, and match sent and editor prompt markers to the user text color.
 - Render sent user messages on a full-width theme-colored background rectangle, including wrapped lines.
 - Replace Hide thinking with Shrink thinking: show the latest reasoning on one updating line with a thinking indicator, and toggle full thinking with the existing shortcut.
 

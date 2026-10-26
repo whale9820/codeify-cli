@@ -1,7 +1,7 @@
 import { visibleWidth } from "codeify-tui";
 import { describe, expect, test } from "vitest";
 import { UserMessageComponent } from "../src/modes/interactive/components/user-message.ts";
-import { initTheme, theme } from "../src/modes/interactive/theme/theme.ts";
+import { getEditorTheme, initTheme, theme } from "../src/modes/interactive/theme/theme.ts";
 import { stripAnsi } from "../src/utils/ansi.ts";
 
 const OSC133_ZONE_START = "\x1b]133;A\x07";
@@ -15,17 +15,20 @@ describe("UserMessageComponent", () => {
 		const component = new UserMessageComponent("hello");
 		const lines = component.render(20);
 
-		expect(lines).toHaveLength(1);
-		expect(lines[0].startsWith(OSC133_ZONE_START + OSC133_ZONE_END + OSC133_ZONE_FINAL)).toBe(true);
-		expect(lines[0]).toContain("hello");
+		expect(lines).toHaveLength(3);
+		expect(lines[0].startsWith(OSC133_ZONE_START)).toBe(true);
+		expect(stripAnsi(lines[0])).toBe(" ".repeat(20));
+		expect(lines[1]).toContain("hello");
+		expect(stripAnsi(lines[2])).toBe(" ".repeat(20));
+		expect(lines[2].startsWith(OSC133_ZONE_END + OSC133_ZONE_FINAL)).toBe(true);
 		expect(lines[0]).toContain("\x1b[48");
 		expect(visibleWidth(lines[0])).toBe(20);
 
 		const multiline = new UserMessageComponent("one\ntwo").render(20);
-		expect(multiline).toHaveLength(2);
+		expect(multiline).toHaveLength(4);
 		expect(multiline[0]).toContain(OSC133_ZONE_START);
 		expect(multiline[0]).not.toContain(OSC133_ZONE_END);
-		expect(multiline[1].startsWith(OSC133_ZONE_END + OSC133_ZONE_FINAL)).toBe(true);
+		expect(multiline[3].startsWith(OSC133_ZONE_END + OSC133_ZONE_FINAL)).toBe(true);
 	});
 
 	test.each(["dark", "light"])("shades every wrapped and blank row in the %s theme", (themeName) => {
@@ -40,12 +43,16 @@ describe("UserMessageComponent", () => {
 			expect(line).toContain(background);
 			expect(visibleWidth(line)).toBe(20);
 		}
-		expect(stripAnsi(lines[0]).trimEnd()).toBe(" ❯ hello world with");
-		expect(lines.some((line) => stripAnsi(line).trim() === "")).toBe(true);
+		expect(stripAnsi(lines[1]).trimEnd()).toBe(" ❯ hello world with");
+		expect(lines[1]).toContain(theme.fg("userMessageText", "❯"));
+		expect(getEditorTheme().promptColor?.("❯")).toBe(theme.fg("userMessageText", "❯"));
+		expect(stripAnsi(lines[0])).toBe(" ".repeat(20));
+		expect(stripAnsi(lines[lines.length - 1])).toBe(" ".repeat(20));
+		expect(lines.slice(1, -1).some((line) => stripAnsi(line).trim() === "")).toBe(true);
 
 		component.setOutputPad(3);
 		const paddedLines = component.render(30);
-		expect(stripAnsi(paddedLines[0]).startsWith("   ❯ ")).toBe(true);
+		expect(stripAnsi(paddedLines[1]).startsWith("   ❯ ")).toBe(true);
 		for (const line of paddedLines) {
 			expect(line).toContain(background);
 			expect(visibleWidth(line)).toBe(30);
