@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Use a clockwise rotating arc for the default loading spinner.
+
 ## [0.83.0] - 2026-10-18
 
 ### Fixed

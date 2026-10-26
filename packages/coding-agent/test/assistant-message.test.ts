@@ -133,8 +133,8 @@ describe("AssistantMessageComponent", () => {
 			const first = stripAnsi(component.render(40).join("\n"));
 			vi.advanceTimersByTime(80);
 			const next = stripAnsi(component.render(40).join("\n"));
-			expect(first).toContain("⠋ waiting for more");
-			expect(next).toContain("⠙ waiting for more");
+			expect(first).toContain("◜ waiting for more");
+			expect(next).toContain("◝ waiting for more");
 			component.setStreaming(false);
 			const completed = component.render(40);
 			vi.advanceTimersByTime(80);

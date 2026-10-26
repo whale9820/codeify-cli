@@ -27,7 +27,7 @@ import { PrefixedComponent } from "./prefixed.ts";
 const OSC133_ZONE_START = "\x1b]133;A\x07";
 const OSC133_ZONE_END = "\x1b]133;B\x07";
 const OSC133_ZONE_FINAL = "\x1b]133;C\x07";
-const THINKING_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+const THINKING_FRAMES = ["◜", "◝", "◞", "◟"];
 
 class SingleLineThinking implements Component {
 	private text: string;
