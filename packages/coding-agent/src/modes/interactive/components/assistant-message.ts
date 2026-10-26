@@ -27,23 +27,27 @@ import { PrefixedComponent } from "./prefixed.ts";
 const OSC133_ZONE_START = "\x1b]133;A\x07";
 const OSC133_ZONE_END = "\x1b]133;B\x07";
 const OSC133_ZONE_FINAL = "\x1b]133;C\x07";
+const THINKING_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 
 class SingleLineThinking implements Component {
 	private text: string;
 	private padding: number;
+	private indicator: () => string;
 
-	constructor(text: string, padding: number) {
+	constructor(text: string, padding: number, indicator: () => string) {
 		this.text = stripAnsi(text)
 			.replace(/(\*\*|__|`)/g, "")
 			.replace(/\s+/g, " ")
 			.trim();
 		this.padding = padding;
+		this.indicator = indicator;
 	}
 
 	invalidate(): void {}
 
 	render(width: number): string[] {
-		const prefix = `${" ".repeat(Math.min(this.padding, Math.max(0, width - 1)))}∴ `;
+		width = Math.max(1, width - 1);
+		const prefix = `${" ".repeat(Math.min(this.padding, Math.max(0, width - 1)))}${this.indicator()} `;
 		const available = Math.max(0, width - visibleWidth(prefix));
 		const textWidth = visibleWidth(this.text);
 		const tail =
@@ -103,6 +107,8 @@ export class AssistantMessageComponent extends Container {
 	private markdownTheme: MarkdownTheme;
 	private outputPad: number;
 	private shrinkThinking: boolean;
+	private streaming = false;
+	private thinkingStartedAt = Date.now();
 	private lastMessage?: AssistantMessage;
 	private hasToolCalls = false;
 	private expanded = false;
@@ -141,6 +147,11 @@ export class AssistantMessageComponent extends Container {
 		if (this.shrinkThinking === shrink) return;
 		this.shrinkThinking = shrink;
 		if (this.lastMessage) this.updateContent(this.lastMessage);
+	}
+
+	setStreaming(streaming: boolean): void {
+		if (streaming && !this.streaming) this.thinkingStartedAt = Date.now();
+		this.streaming = streaming;
 	}
 
 	setOutputPad(padding: number): void {
@@ -223,7 +234,13 @@ export class AssistantMessageComponent extends Container {
 				if (item.text.trim()) {
 					this.contentContainer.addChild(
 						this.shrinkThinking
-							? new SingleLineThinking(item.text, this.outputPad)
+							? new SingleLineThinking(item.text, this.outputPad, () =>
+									this.streaming && !hasVisibleContentAfter
+										? THINKING_FRAMES[
+												Math.floor((Date.now() - this.thinkingStartedAt) / 80) % THINKING_FRAMES.length
+											]!
+										: "·",
+								)
 							: new Markdown(separateAdjacentBold(item.text.trim()), this.outputPad, 0, this.markdownTheme, {
 									color: (text: string) => theme.fg("thinkingText", text),
 									italic: true,

@@ -13,7 +13,6 @@ import {
 	type CredentialInfo,
 	type CredentialStore,
 	createModels,
-	lazyStream,
 	type Model,
 	type Models,
 	type ModelsApiStreamOptions,
@@ -48,6 +47,7 @@ import {
 } from "./provider-composer.ts";
 import { withRemoteCatalog } from "./remote-catalog-provider.ts";
 import { RuntimeCredentials } from "./runtime-credentials.ts";
+import { streamWithIdleTimeout } from "./stream-idle-timeout.ts";
 
 interface ModelRuntimeSnapshot {
 	all: readonly Model<Api>[];
@@ -480,11 +480,10 @@ export class ModelRuntime implements Models {
 		context: Context,
 		options?: ModelsApiStreamOptions<TApi>,
 	): AssistantMessageEventStream {
-		return lazyStream(model, async () => {
-			const prepared = await this.prepareRequest(
-				model,
-				options as (StreamOptions & ModelsStreamTransforms) | undefined,
-			);
+		return streamWithIdleTimeout(model, options, async (signal) => {
+			const prepared = await this.prepareRequest(model, { ...options, signal } as StreamOptions &
+				ModelsStreamTransforms);
+			signal.throwIfAborted();
 			return prepared.provider.stream(
 				prepared.model as Model<TApi>,
 				context,
@@ -502,8 +501,9 @@ export class ModelRuntime implements Models {
 	}
 
 	streamSimple(model: Model<Api>, context: Context, options?: ModelsSimpleStreamOptions): AssistantMessageEventStream {
-		return lazyStream(model, async () => {
-			const prepared = await this.prepareRequest(model, options);
+		return streamWithIdleTimeout(model, options, async (signal) => {
+			const prepared = await this.prepareRequest(model, { ...options, signal });
+			signal.throwIfAborted();
 			return prepared.provider.streamSimple(prepared.model, context, prepared.options as SimpleStreamOptions);
 		});
 	}

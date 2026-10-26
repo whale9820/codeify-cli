@@ -32,7 +32,7 @@ function assistantError(errorMessage: string): AssistantMessage {
 
 describe("InteractiveMode server tool stream failures", () => {
 	test("removes a retryable JSON decode failure before it renders", async () => {
-		const errorComponent = { updateContent: vi.fn() };
+		const errorComponent = { updateContent: vi.fn(), setStreaming: vi.fn() };
 		const toolComponent = {};
 		const fakeThis = {
 			isInitialized: true,

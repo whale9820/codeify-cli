@@ -1,6 +1,6 @@
 import type { AssistantMessage } from "codeify-ai";
 import { visibleWidth } from "codeify-tui";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { AssistantMessageComponent } from "../src/modes/interactive/components/assistant-message.ts";
 import { UserMessageComponent } from "../src/modes/interactive/components/user-message.ts";
 import { initTheme, theme } from "../src/modes/interactive/theme/theme.ts";
@@ -115,10 +115,34 @@ describe("AssistantMessageComponent", () => {
 			.map(stripAnsi)
 			.filter((line) => line.trim());
 		expect(after).toHaveLength(1);
-		expect(after[0]).toContain("∴ …");
+		expect(after[0]).toContain("· …");
 		expect(after[0]).toContain("new direction");
 		expect(after).not.toEqual(before);
-		expect(visibleWidth(after[0])).toBeLessThanOrEqual(40);
+		expect(visibleWidth(after[0])).toBe(39);
+	});
+
+	test("animates compact thinking between chunks and stops when the message ends", () => {
+		initTheme("dark");
+		vi.useFakeTimers();
+		try {
+			const component = new AssistantMessageComponent(
+				createAssistantMessage([{ type: "thinking", thinking: "waiting for more" }]),
+				true,
+			);
+			component.setStreaming(true);
+			const first = stripAnsi(component.render(40).join("\n"));
+			vi.advanceTimersByTime(80);
+			const next = stripAnsi(component.render(40).join("\n"));
+			expect(first).toContain("⠋ waiting for more");
+			expect(next).toContain("⠙ waiting for more");
+			component.setStreaming(false);
+			const completed = component.render(40);
+			vi.advanceTimersByTime(80);
+			expect(component.render(40)).toEqual(completed);
+			expect(stripAnsi(completed.join("\n"))).toContain("· waiting for more");
+		} finally {
+			vi.useRealTimers();
+		}
 	});
 
 	test.each([1, 2, 3, 4, 12, 40, 80])("fits compact Unicode thinking within %i columns", (width) => {
@@ -149,7 +173,7 @@ describe("AssistantMessageComponent", () => {
 			.render(80)
 			.map(stripAnsi)
 			.filter((line) => line.trim());
-		expect(compact.filter((line) => line.includes("∴"))).toHaveLength(1);
+		expect(compact.filter((line) => line.includes("·"))).toHaveLength(1);
 		expect(compact.join("\n")).toContain("latest thought");
 		expect(compact.join("\n")).not.toContain("first thought");
 		expect(compact.join("\n")).toContain("answer before");

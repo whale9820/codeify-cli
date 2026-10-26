@@ -8,6 +8,7 @@
 
 ### Changed
 
+- Animate the single-line thinking indicator while streaming and reserve one column at its right edge.
 - Match the dark user-message background to the supplied neutral gray reference (`#303030`).
 - Add shaded blank lines above and below sent user messages, use a subtler neutral background, and match sent and editor prompt markers to the user text color.
 - Render sent user messages on a full-width theme-colored background rectangle, including wrapped lines.
@@ -15,6 +16,7 @@
 
 ### Fixed
 
+- Detect silent provider streams using the configured HTTP idle timeout, cancel the stalled transport, and re-request the turn through bounded automatic retries.
 - Resume stopped agents after high-confidence tool invocations emitted as text, with bounded recovery and protection against examples and duplicate retries.
 - Use server-declared reasoning efforts in thinking selectors, CLI arguments, cached catalogs, backend overrides, and delegated model calls instead of filtering through fixed effort names.
 - Block pure no-op Bash commands while background tasks or completion notifications are pending, and discourage filler tool calls while waiting for automatic results.

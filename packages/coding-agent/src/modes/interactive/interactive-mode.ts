@@ -2014,6 +2014,7 @@ export class InteractiveMode {
 						this.outputPad,
 					);
 					this.streamingMessage = event.message;
+					this.streamingComponent.setStreaming(true);
 					this.footerTpsTracker.start();
 					this.chatContainer.addChild(this.streamingComponent);
 					this.applyCitationSources(this.streamingComponent, this.streamingMessage);
@@ -2070,6 +2071,7 @@ export class InteractiveMode {
 			case "message_end":
 				if (event.message.role === "user") break;
 				if (this.streamingComponent && event.message.role === "assistant") {
+					this.streamingComponent.setStreaming(false);
 					this.streamingMessage = event.message;
 					if (
 						this.streamingMessage.stopReason === "error" &&
