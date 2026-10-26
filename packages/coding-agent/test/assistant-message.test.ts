@@ -115,7 +115,7 @@ describe("AssistantMessageComponent", () => {
 			.map(stripAnsi)
 			.filter((line) => line.trim());
 		expect(after).toHaveLength(1);
-		expect(after[0]).toContain("· …");
+		expect(after[0]).toContain("∴ …");
 		expect(after[0]).toContain("new direction");
 		expect(after).not.toEqual(before);
 		expect(visibleWidth(after[0])).toBe(39);
@@ -139,7 +139,7 @@ describe("AssistantMessageComponent", () => {
 			const completed = component.render(40);
 			vi.advanceTimersByTime(80);
 			expect(component.render(40)).toEqual(completed);
-			expect(stripAnsi(completed.join("\n"))).toContain("· waiting for more");
+			expect(stripAnsi(completed.join("\n"))).toContain("∴ waiting for more");
 		} finally {
 			vi.useRealTimers();
 		}
@@ -173,7 +173,7 @@ describe("AssistantMessageComponent", () => {
 			.render(80)
 			.map(stripAnsi)
 			.filter((line) => line.trim());
-		expect(compact.filter((line) => line.includes("·"))).toHaveLength(1);
+		expect(compact.filter((line) => line.includes("∴"))).toHaveLength(1);
 		expect(compact.join("\n")).toContain("latest thought");
 		expect(compact.join("\n")).not.toContain("first thought");
 		expect(compact.join("\n")).toContain("answer before");

@@ -239,7 +239,7 @@ export class AssistantMessageComponent extends Container {
 										? THINKING_FRAMES[
 												Math.floor((Date.now() - this.thinkingStartedAt) / 80) % THINKING_FRAMES.length
 											]!
-										: "·",
+										: "∴",
 								)
 							: new Markdown(separateAdjacentBold(item.text.trim()), this.outputPad, 0, this.markdownTheme, {
 									color: (text: string) => theme.fg("thinkingText", text),

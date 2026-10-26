@@ -8,6 +8,7 @@
 
 ### Changed
 
+- Mark completed compact thinking with the therefore symbol (`∴`).
 - Use clockwise rotating arcs for loading and streaming thinking indicators.
 - Animate the single-line thinking indicator while streaming and reserve one column at its right edge.
 - Match the dark user-message background to the supplied neutral gray reference (`#303030`).
