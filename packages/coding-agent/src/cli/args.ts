@@ -313,6 +313,8 @@ ${chalk.bold("Environment Variables:")}
 ${chalk.bold("Built-in Tool Names:")}
   read   - Read file contents
   bash   - Execute bash commands
+  ssh    - Execute commands in a persistent remote shell
+  ssh_manage - List, add, edit, delete or disconnect saved SSH profiles
   edit   - Edit files with find/replace
   write  - Write files (creates/overwrites)
   grep   - Search file contents (read-only, off by default)

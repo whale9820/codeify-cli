@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- Add persistent remote SSH shells with saved profiles managed by the agent through `ssh_manage`. The `ssh` tool reuses one live connection and POSIX shell per profile, preserves working directories and environment changes between calls, and renders `SSH(command) (profile)` with a muted profile label.
+
 ### Changed
 
 - Match the dark user-message background to the supplied neutral gray reference (`#303030`).

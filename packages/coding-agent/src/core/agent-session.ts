@@ -83,10 +83,11 @@ import type { BranchSummaryEntry, SessionEntry, SessionManager } from "./session
 import { CURRENT_SESSION_VERSION, getLatestCompactionEntry, type SessionHeader } from "./session-manager.ts";
 import type { SettingsManager } from "./settings-manager.ts";
 import { createSyntheticSourceInfo, type SourceInfo } from "./source-info.ts";
+import { SshManager } from "./ssh-manager.ts";
 import { type BuildSystemPromptOptions, buildSystemPrompt } from "./system-prompt.ts";
 import { hasTextToolCall } from "./text-tool-call.ts";
 import { createBackgroundTaskToolDefinition } from "./tools/background-task.ts";
-import { type BashOperations, createLocalBashOperations } from "./tools/bash.ts";
+import { type BashBackgroundHost, type BashOperations, createLocalBashOperations } from "./tools/bash.ts";
 import { createBrowserToolDefinition } from "./tools/browser.ts";
 import { BrowserBridge } from "./tools/browser-bridge.ts";
 import { createCodeifyModelToolDefinition } from "./tools/codeify-model.ts";
@@ -94,6 +95,7 @@ import { type ContextUsageSnapshot, createContextUsageToolDefinition } from "./t
 import { createUpdateGoalToolDefinition } from "./tools/goal.ts";
 import { createAllToolDefinitions } from "./tools/index.ts";
 import { createRequestUserInputToolDefinition } from "./tools/request-user-input.ts";
+import { createSshManageToolDefinition, createSshToolDefinition } from "./tools/ssh.ts";
 import { createToolDefinitionFromAgentTool, wrapToolDefinition } from "./tools/tool-definition-wrapper.ts";
 import { defineTool, type ToolDefinition, type ToolExecutionContext, type ToolInfo } from "./tools/types.ts";
 import { addUsageToTotals, createUsageTotals } from "./usage-totals.ts";
@@ -187,6 +189,7 @@ function withoutDeletedHeaders(headers: ProviderHeaders | undefined): Record<str
 }
 
 export interface AgentSessionConfig {
+	agentDir?: string;
 	agent: Agent;
 	sessionManager: SessionManager;
 	settingsManager: SettingsManager;
@@ -344,6 +347,7 @@ export class AgentSession {
 	private _cwd: string;
 	private _initialActiveToolNames?: string[];
 	private _browserBridge = new BrowserBridge();
+	private _sshManager: SshManager;
 	private _allowedToolNames?: Set<string>;
 	private _excludedToolNames?: Set<string>;
 	private _baseToolsOverride?: Record<string, AgentTool>;
@@ -373,6 +377,7 @@ export class AgentSession {
 		this._allowedToolNames = config.allowedToolNames ? new Set(config.allowedToolNames) : undefined;
 		this._excludedToolNames = config.excludedToolNames ? new Set(config.excludedToolNames) : undefined;
 		this._baseToolsOverride = config.baseToolsOverride;
+		this._sshManager = new SshManager(config.agentDir);
 
 		// Always subscribe to agent events for internal handling
 		// (session persistence, auto-compaction, retry logic)
@@ -694,6 +699,7 @@ export class AgentSession {
 		}
 
 		this._browserBridge.dispose();
+		this._sshManager.dispose();
 		this._disconnectFromAgent();
 		this._eventListeners = [];
 		cleanupSessionResources(this.sessionId);
@@ -2002,6 +2008,24 @@ export class AgentSession {
 		const autoResizeImages = this.settingsManager.getImageAutoResize();
 		const shellCommandPrefix = this.settingsManager.getShellCommandPrefix();
 		const shellPath = this.settingsManager.getShellPath();
+		const background: BashBackgroundHost = {
+			watch: () => {
+				let request: () => void = () => {};
+				const requested = new Promise<void>((resolve) => {
+					request = resolve;
+				});
+				this._foregroundCommands.add(request);
+				this._emit({ type: "background_tasks_updated" });
+				return {
+					requested,
+					dispose: () => {
+						this._foregroundCommands.delete(request);
+						this._emit({ type: "background_tasks_updated" });
+					},
+				};
+			},
+			adopt: (options) => this._backgroundTasks.adopt(options),
+		};
 		const baseToolDefinitions: Record<string, ToolDefinition<any, any>> = this._baseToolsOverride
 			? Object.fromEntries(
 					Object.entries(this._baseToolsOverride).map(([name, tool]) => [
@@ -2016,24 +2040,7 @@ export class AgentSession {
 							this._backgroundTasks.runningCount() > 0 || this._pendingBackgroundTaskNotifications.size > 0,
 						commandPrefix: shellCommandPrefix,
 						shellPath,
-						background: {
-							watch: (_command) => {
-								let request: () => void = () => {};
-								const requested = new Promise<void>((resolve) => {
-									request = resolve;
-								});
-								this._foregroundCommands.add(request);
-								this._emit({ type: "background_tasks_updated" });
-								return {
-									requested,
-									dispose: () => {
-										this._foregroundCommands.delete(request);
-										this._emit({ type: "background_tasks_updated" });
-									},
-								};
-							},
-							adopt: (options) => this._backgroundTasks.adopt(options),
-						},
+						background,
 					},
 				});
 		let delegate: ReturnType<typeof createCodeifyModelToolDefinition> | undefined;
@@ -2067,6 +2074,12 @@ export class AgentSession {
 			baseToolDefinitions.codeify_model = defineTool(delegate);
 		}
 		if (!this._baseToolsOverride) {
+			baseToolDefinitions.ssh = createSshToolDefinition(this._cwd, this._sshManager, {
+				hasPendingBackgroundTasks: () =>
+					this._backgroundTasks.runningCount() > 0 || this._pendingBackgroundTaskNotifications.size > 0,
+				background,
+			});
+			baseToolDefinitions.ssh_manage = createSshManageToolDefinition(this._sshManager);
 			baseToolDefinitions.browser = createBrowserToolDefinition(this._cwd, this._browserBridge, {
 				autoResizeImages: () => this.settingsManager.getImageAutoResize(),
 			});
@@ -2129,7 +2142,18 @@ export class AgentSession {
 
 		const defaultActiveToolNames = this._baseToolsOverride
 			? Object.keys(this._baseToolsOverride)
-			: ["read", "bash", "edit", "write", "browser", "context_usage", "update_goal", "background_task"];
+			: [
+					"read",
+					"bash",
+					"edit",
+					"write",
+					"ssh",
+					"ssh_manage",
+					"browser",
+					"context_usage",
+					"update_goal",
+					"background_task",
+				];
 		const baseActiveToolNames = [...(options.activeToolNames ?? defaultActiveToolNames)];
 		if (this.settingsManager.getSmartModelUsage()) baseActiveToolNames.push("codeify_model");
 		this._refreshToolRegistry({ activeToolNames: baseActiveToolNames });

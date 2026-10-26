@@ -237,7 +237,7 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 
 	const normalizeToolName = (name: string): string => {
 		const lower = name.toLowerCase();
-		return allToolNames.has(lower as ToolName) ? lower : name;
+		return allToolNames.has(lower as ToolName) || lower === "ssh" || lower === "ssh_manage" ? lower : name;
 	};
 
 	const defaultActiveToolNames: ToolName[] = ["read", "bash", "edit", "write"];
@@ -265,6 +265,9 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 	}
 	if (!options.noTools && !options.tools && !excludedToolNameSet?.has("background_task")) {
 		initialActiveToolNames.push("background_task");
+	}
+	for (const name of ["ssh", "ssh_manage"]) {
+		if (!options.noTools && !options.tools && !excludedToolNameSet?.has(name)) initialActiveToolNames.push(name);
 	}
 
 	if (options.customTools) {
@@ -364,6 +367,7 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 	}
 
 	const session = new AgentSession({
+		agentDir,
 		agent,
 		sessionManager,
 		settingsManager,

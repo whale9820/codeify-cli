@@ -140,6 +140,7 @@ export {
 	type SkillFrontmatter,
 } from "./core/skills.ts";
 export { createSyntheticSourceInfo } from "./core/source-info.ts";
+export { SshManager, type SshProfile, SshProfileStore } from "./core/ssh-manager.ts";
 export { type EditDiffResult, generateDiffString, generateUnifiedPatch } from "./core/tools/edit-diff.ts";
 // Tools
 export {
@@ -207,6 +208,7 @@ export {
 	type WriteToolOptions,
 	withFileMutationQueue,
 } from "./core/tools/index.ts";
+export { createSshManageToolDefinition, createSshToolDefinition } from "./core/tools/ssh.ts";
 export {
 	hasTrustRequiringProjectResources,
 	type ProjectTrustDecision,
