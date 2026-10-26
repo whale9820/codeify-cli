@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Retry upstream stream failures reporting `RemoteProtocolError`, including incomplete chunked reads, using the reconnect retry budget.
 - Preserve server-declared reasoning effort names and order, including custom values such as `instant`, in model selection and OpenAI-compatible requests.
 - Surface Codeify server-side web searches on Chat Completions (`web_search_options`) as `serverToolUse` blocks and keep final usage from being overwritten by interim search usage chunks.
 

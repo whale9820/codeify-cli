@@ -153,6 +153,7 @@ describe("AgentSession retry", () => {
 		"upstream_error: connection reset",
 		"upstream_error: ANYTHING_HERE",
 		"Error: upstream stream failed: ReadError: ReadError",
+		"Error: upstream stream failed: RemoteProtocolError: peer closed connection without sending complete message body (incomplete chunked read)",
 		"unexpected EOF",
 	])("retries %s five times before stopping", async (errorMessage) => {
 		const created = await createSession({ failCount: 99, maxRetries: 1, errorMessage });

@@ -60,7 +60,6 @@ export function streamWithIdleTimeout(
 		return output;
 	}
 	options?.signal?.addEventListener("abort", onAbort, { once: true });
-	resetTimer();
 	void (async () => {
 		try {
 			const source = await start(controller.signal);
@@ -75,7 +74,7 @@ export function streamWithIdleTimeout(
 				}
 				partial = event.partial;
 				output.push(event);
-				resetTimer();
+				if (event.type !== "start") resetTimer();
 			}
 			if (finished) return;
 			const result = await source.result();

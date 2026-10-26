@@ -17,15 +17,36 @@ describe("stream idle timeout", () => {
 	afterEach(() => vi.useRealTimers());
 
 	test.each([undefined, 300_000, 0])(
-		"recovers after 15 seconds with zero chunks when HTTP timeout is %s",
+		"waits for the first chunk before timing out when HTTP timeout is %s",
 		async (timeoutMs) => {
 			vi.useFakeTimers();
 			let signal: AbortSignal | undefined;
+			const source = createAssistantMessageEventStream();
 			const output = streamWithIdleTimeout(model, { timeoutMs }, async (requestSignal) => {
 				signal = requestSignal;
-				return createAssistantMessageEventStream();
+				return source;
+			});
+			let ended = false;
+			void output.result().then(() => {
+				ended = true;
+			});
+			await vi.advanceTimersByTimeAsync(60_000);
+			expect(ended).toBe(false);
+			expect(signal?.aborted).toBe(false);
+			expect(vi.getTimerCount()).toBe(0);
+			source.push({ type: "start", partial: fauxAssistantMessage("") });
+			await vi.advanceTimersByTimeAsync(60_000);
+			expect(ended).toBe(false);
+			expect(signal?.aborted).toBe(false);
+			expect(vi.getTimerCount()).toBe(0);
+			source.push({
+				type: "text_delta",
+				contentIndex: 0,
+				delta: "partial",
+				partial: fauxAssistantMessage("partial"),
 			});
 			await vi.advanceTimersByTimeAsync(14_999);
+			expect(ended).toBe(false);
 			expect(signal?.aborted).toBe(false);
 			await vi.advanceTimersByTimeAsync(1);
 			const result = await output.result();
@@ -51,7 +72,10 @@ describe("stream idle timeout", () => {
 		});
 		await Promise.resolve();
 		expect(ended).toBe(false);
-		await vi.advanceTimersByTimeAsync(3_000);
+		source.push({ type: "text_delta", contentIndex: 0, delta: "", partial });
+		await vi.advanceTimersByTimeAsync(14_999);
+		expect(ended).toBe(false);
+		await vi.advanceTimersByTimeAsync(1);
 		const result = await output.result();
 		expect(result.content).toEqual(partial.content);
 		partial.content = [{ type: "text", text: "late mutation" }];
@@ -60,7 +84,7 @@ describe("stream idle timeout", () => {
 		expect(result.content).toEqual([{ type: "text", text: "partial" }]);
 		const events: AssistantMessageEvent[] = [];
 		for await (const event of output) events.push(event);
-		expect(events.map((event) => event.type)).toEqual(["text_delta", "error"]);
+		expect(events.map((event) => event.type)).toEqual(["text_delta", "text_delta", "error"]);
 	});
 
 	test("re-requests a stalled response through the bounded retry policy", async () => {
@@ -73,6 +97,13 @@ describe("stream idle timeout", () => {
 					const source = createAssistantMessageEventStream();
 					if (calls === 2)
 						source.push({ type: "done", reason: "stop", message: fauxAssistantMessage("recovered") });
+					else
+						source.push({
+							type: "text_delta",
+							contentIndex: 0,
+							delta: "partial",
+							partial: fauxAssistantMessage("partial"),
+						});
 					return source;
 				}).result(),
 			{ enabled: true, maxRetries: 1, baseDelayMs: 1 },
@@ -117,11 +148,23 @@ describe("stream idle timeout", () => {
 		expect(vi.getTimerCount()).toBe(0);
 	});
 
-	test("times out pending setup", async () => {
+	test("waits for pending setup until cancelled", async () => {
 		vi.useFakeTimers();
-		const output = streamWithIdleTimeout(model, { timeoutMs: 300_000 }, () => new Promise(() => {}));
-		await vi.advanceTimersByTimeAsync(15_000);
-		expect((await output.result()).stopReason).toBe("error");
+		const controller = new AbortController();
+		const output = streamWithIdleTimeout(
+			model,
+			{ timeoutMs: 300_000, signal: controller.signal },
+			() => new Promise(() => {}),
+		);
+		let ended = false;
+		void output.result().then(() => {
+			ended = true;
+		});
+		await vi.advanceTimersByTimeAsync(60_000);
+		expect(ended).toBe(false);
+		expect(vi.getTimerCount()).toBe(0);
+		controller.abort();
+		expect((await output.result()).stopReason).toBe("aborted");
 	});
 
 	test("keeps streaming beyond 15 seconds while chunks keep arriving", async () => {
@@ -161,6 +204,12 @@ describe("stream idle timeout", () => {
 					if (calls > 1) return streamSimple(requestModel, context, options);
 					const source = createAssistantMessageEventStream();
 					source.push({ type: "start", partial: fauxAssistantMessage("frozen partial") });
+					source.push({
+						type: "text_delta",
+						contentIndex: 0,
+						delta: "frozen partial",
+						partial: fauxAssistantMessage("frozen partial"),
+					});
 					return source;
 				},
 			});

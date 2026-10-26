@@ -44,7 +44,7 @@ const HTTP_5XX_STATUS_PATTERN = /\b5\d{2}\b/;
 const REQUEST_TIMED_OUT_PATTERN = /request timed out/i;
 const NO_OUTPUT_WITHIN_30S_PATTERN = /no output within 30s/i;
 const UPSTREAM_ERROR_PATTERN = /upstream_error\s*:/i;
-const UPSTREAM_STREAM_READ_ERROR_PATTERN = /upstream stream failed:\s*ReadError\b/i;
+const UPSTREAM_STREAM_READ_ERROR_PATTERN = /upstream stream failed:\s*(?:ReadError|RemoteProtocolError)\b/i;
 const UNEXPECTED_EOF_PATTERN = /unexpected\s*eof/i;
 
 export function isReconnectableProviderError(errorMessage: string): boolean {
