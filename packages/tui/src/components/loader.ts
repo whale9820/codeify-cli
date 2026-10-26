@@ -8,7 +8,7 @@ export interface LoaderIndicatorOptions {
 	intervalMs?: number;
 }
 
-const DEFAULT_FRAMES = ["◜", "◝", "◞", "◟"];
+const DEFAULT_FRAMES = ["◜", "◠", "◝", "◞", "◡", "◟"];
 const DEFAULT_INTERVAL_MS = 80;
 
 /**
