@@ -31,11 +31,16 @@ export function isSafeguardBlock(errorMessage: string | undefined): boolean {
 	return errorMessage?.startsWith(SAFEGUARD_BLOCK_MESSAGE) ?? false;
 }
 
+const UPSTREAM_TOOL_ARGUMENTS_JSON_ERROR_PATTERN =
+	/upstream stream failed:\s*ValueError:\s*Upstream tool-call arguments are not valid JSON;\s*no tools were emitted\.?\s*$/i;
+
 const MALFORMED_JSON_ERROR_PATTERN =
 	/expected ':' after property name in json|expected ',' or '}' after property value in json|expected ',' or ']' after array element in json|unterminated string in json|unterminated string starting at|expected double-quoted property name in json|expecting property name enclosed in double quotes|expecting ',' delimiter|expecting ':' delimiter|expecting value: line|jsondecodeerror|illegal trailing comma|trailing comma before end|server_tool_stream_failed/i;
 
 export function isMalformedJsonError(errorMessage: string): boolean {
-	return MALFORMED_JSON_ERROR_PATTERN.test(errorMessage);
+	return (
+		MALFORMED_JSON_ERROR_PATTERN.test(errorMessage) || UPSTREAM_TOOL_ARGUMENTS_JSON_ERROR_PATTERN.test(errorMessage)
+	);
 }
 
 export const RECONNECT_MAX_RETRIES = 5;
