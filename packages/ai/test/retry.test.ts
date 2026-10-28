@@ -16,6 +16,8 @@ const nvidiaNIMResourceExhaustedMessage = "ResourceExhausted: Worker local total
 const bunFetchSocketClosedMessage =
 	"The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()";
 const openAIResponsesEarlyEofMessage = "OpenAI Responses stream ended before a terminal response event";
+const invalidToolCallArgumentsMessage =
+	"Error: 上游生成的工具调用参数不是合法 JSON，本轮**未执行任何工具**；网关已按协议返回失败，请重试该轮。上游详情：upstream tool-call echo  \n contains invalid JSON arguments; no tools were emitted";
 
 describe("provider retry classification", () => {
 	it("matches explicit provider retry guidance", () => {
@@ -72,6 +74,7 @@ describe("provider retry classification", () => {
 		"JSONDecodeError: Unterminated string starting at: line 1 column 4 (char 3)",
 		"JSONDecodeError: Expecting value: line 1 column 1 (char 0)",
 		"server_tool_stream_failed: upstream tool stream closed",
+		invalidToolCallArgumentsMessage,
 	])("matches malformed JSON error %s", (errorMessage) => {
 		expect(isRetryableAssistantError(fauxAssistantMessage("", { stopReason: "error", errorMessage }))).toBe(true);
 	});
@@ -141,6 +144,7 @@ describe("retryAssistantCall", () => {
 		"Error: Expected ',' or ']' after array element in JSON at position 4083 (line 1 column 4084)",
 		"server_tool_stream_failed: JSONDecodeError: Illegal trailing comma before end of array: line 1 column 1705 (char 1704)",
 		"server_tool_stream_failed: upstream tool stream closed",
+		invalidToolCallArgumentsMessage,
 	])("caps malformed JSON retries at three and retains the final diagnostic for %s", async (errorMessage) => {
 		const produce = vi.fn(async () => fauxAssistantMessage("", { stopReason: "error", errorMessage }));
 		const onRetryFinished = vi.fn();

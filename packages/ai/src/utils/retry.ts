@@ -32,7 +32,7 @@ export function isSafeguardBlock(errorMessage: string | undefined): boolean {
 }
 
 const MALFORMED_JSON_ERROR_PATTERN =
-	/expected ':' after property name in json|expected ',' or '}' after property value in json|expected ',' or ']' after array element in json|unterminated string in json|unterminated string starting at|expected double-quoted property name in json|expecting property name enclosed in double quotes|expecting ',' delimiter|expecting ':' delimiter|expecting value: line|jsondecodeerror|illegal trailing comma|trailing comma before end|server_tool_stream_failed/i;
+	/expected ':' after property name in json|expected ',' or '}' after property value in json|expected ',' or ']' after array element in json|unterminated string in json|unterminated string starting at|expected double-quoted property name in json|expecting property name enclosed in double quotes|expecting ',' delimiter|expecting ':' delimiter|expecting value: line|jsondecodeerror|illegal trailing comma|trailing comma before end|server_tool_stream_failed|upstream tool-call echo\s+contains invalid json arguments; no tools were emitted/i;
 
 export function isMalformedJsonError(errorMessage: string): boolean {
 	return MALFORMED_JSON_ERROR_PATTERN.test(errorMessage);
