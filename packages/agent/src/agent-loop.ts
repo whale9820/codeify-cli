@@ -11,6 +11,7 @@ import {
 	validateToolArguments,
 } from "codeify-ai";
 import { getDefaultStreamFn } from "./stream-fn.ts";
+import { convertTextToolCall } from "./text-tool-call.ts";
 import type {
 	AgentContext,
 	AgentEvent,
@@ -350,7 +351,10 @@ async function streamAssistantResponse(
 
 			case "done":
 			case "error": {
-				const finalMessage = await response.result();
+				const finalMessage = convertTextToolCall(
+					await response.result(),
+					context.tools?.map((tool) => tool.name) ?? [],
+				);
 				if (addedPartial) {
 					context.messages[context.messages.length - 1] = finalMessage;
 				} else {
@@ -365,7 +369,7 @@ async function streamAssistantResponse(
 		}
 	}
 
-	const finalMessage = await response.result();
+	const finalMessage = convertTextToolCall(await response.result(), context.tools?.map((tool) => tool.name) ?? []);
 	if (addedPartial) {
 		context.messages[context.messages.length - 1] = finalMessage;
 	} else {
