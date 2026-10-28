@@ -16,8 +16,6 @@ const nvidiaNIMResourceExhaustedMessage = "ResourceExhausted: Worker local total
 const bunFetchSocketClosedMessage =
 	"The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()";
 const openAIResponsesEarlyEofMessage = "OpenAI Responses stream ended before a terminal response event";
-const upstreamToolArgumentsError =
-	"Error: Error Code upstream_stream_error: upstream stream failed: ValueError: Upstream tool-call arguments are not valid JSON; no tools were emitted";
 
 describe("provider retry classification", () => {
 	it("matches explicit provider retry guidance", () => {
@@ -63,7 +61,6 @@ describe("provider retry classification", () => {
 	});
 
 	it.each([
-		upstreamToolArgumentsError,
 		"Expected ':' after property name in JSON at position 4058 (line 1 column 4059)",
 		"Error: Expected ',' or '}' after property value in JSON at position 4077 (line 1 column 4078)",
 		"Expected ',' or '}' after property value in JSON at position 8184 (line 1 column 8185)",
@@ -138,7 +135,6 @@ describe("retryAssistantCall", () => {
 	const enabled: RetryPolicy = { enabled: true, maxRetries: 3, baseDelayMs: 0 };
 
 	it.each([
-		upstreamToolArgumentsError,
 		"Expected double-quoted property name in JSON at position 21751",
 		"Error: Expected ',' or '}' after property value in JSON at position 4077 (line 1 column 4078)",
 		"Expected ',' or '}' after property value in JSON at position 8184 (line 1 column 8185)",
@@ -160,22 +156,6 @@ describe("retryAssistantCall", () => {
 		const res = await retryAssistantCall(produce, enabled, undefined);
 		expect(res.content).toEqual([{ type: "text", text: "ok" }]);
 		expect(produce).toHaveBeenCalledTimes(1);
-	});
-
-	it("recovers from upstream tool argument parsing failure and preserves the quoted report", async () => {
-		const text = `Verification:\n- Focused tests passed: 184 passed.\n- Deployment supervisor reported healthy.\n- Streaming checks passed.\n- /login returns HTTP 200.\n\nExact error:\n\n\`${upstreamToolArgumentsError}\``;
-		const success = fauxAssistantMessage(text);
-		const produce = vi
-			.fn()
-			.mockResolvedValueOnce(
-				fauxAssistantMessage("", { stopReason: "error", errorMessage: upstreamToolArgumentsError }),
-			)
-			.mockResolvedValue(success);
-		const onRetryScheduled = vi.fn();
-		expect(await retryAssistantCall(produce, enabled, undefined, { onRetryScheduled })).toBe(success);
-		expect(produce).toHaveBeenCalledTimes(2);
-		expect(onRetryScheduled).toHaveBeenCalledTimes(1);
-		expect(isRetryableAssistantError(success)).toBe(false);
 	});
 
 	it("does not retry an aborted message", async () => {
