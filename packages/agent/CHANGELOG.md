@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- Stop and regenerate responses that begin with a text tool-call marker.
+
 ### Changed
 
 - Accept model-defined reasoning effort names in agent thinking state.

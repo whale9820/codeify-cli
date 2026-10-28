@@ -34,8 +34,7 @@ export function hasTextToolCall(
 	}
 
 	let text = contentText(message.content).trim();
-	const marker =
-		/^(?:\[assistant\s+请求调用\s+tool\]|\[assistant\s+tool[ _.-]?call\]|<tool_call>|tool[ _.-]?calls?\s*:)/i;
+	const marker = /^(?:\[assistant\s+tool[ _.-]?call\]|<tool_call>|tool[ _.-]?calls?\s*:)/i;
 	const explicit = marker.test(text);
 	text = text
 		.replace(marker, "")

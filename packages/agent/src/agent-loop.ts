@@ -5,13 +5,13 @@
 
 import {
 	type AssistantMessage,
+	type AssistantMessageEvent,
 	type Context,
 	EventStream,
 	type ToolResultMessage,
 	validateToolArguments,
 } from "codeify-ai";
 import { getDefaultStreamFn } from "./stream-fn.ts";
-import { convertTextToolCall } from "./text-tool-call.ts";
 import type {
 	AgentContext,
 	AgentEvent,
@@ -306,11 +306,75 @@ async function streamAssistantResponse(
 	const resolvedApiKey =
 		(config.getApiKey ? await config.getApiKey(config.model.provider) : undefined) || config.apiKey;
 
-	const response = await streamFunction(config.model, llmContext, {
-		...config,
-		apiKey: resolvedApiKey,
-		signal,
-	});
+	const response = new EventStream<AssistantMessageEvent, AssistantMessage>(
+		(event) => event.type === "done" || event.type === "error",
+		(event) => {
+			if (event.type === "done") return event.message;
+			if (event.type === "error") return event.error;
+			throw new Error("Unexpected stream event");
+		},
+	);
+	void (async () => {
+		for (let attempt = 0; ; attempt++) {
+			const controller = new AbortController();
+			const requestSignal = signal ? AbortSignal.any([signal, controller.signal]) : controller.signal;
+			const source = await streamFunction(config.model, llmContext, {
+				...config,
+				apiKey: resolvedApiKey,
+				signal: requestSignal,
+			});
+			const buffered: AssistantMessageEvent[] = [];
+			let checking = true;
+			let text = "";
+			let rejected: AssistantMessage | undefined;
+			for await (const event of source) {
+				if (checking) {
+					buffered.push(structuredClone(event));
+					if (event.type === "text_delta") text += event.delta;
+					if (event.type === "done") {
+						text = event.message.content
+							.filter((part) => part.type === "text")
+							.map((part) => part.text)
+							.join("");
+					}
+					const trimmed = text.trimStart();
+					const marker = "[assistant 请求调用 tool";
+					if (trimmed.startsWith(marker) && !signal?.aborted) {
+						rejected = event.type === "done" ? event.message : "partial" in event ? event.partial : undefined;
+						controller.abort();
+						break;
+					}
+					if (
+						(trimmed && !marker.startsWith(trimmed)) ||
+						event.type === "done" ||
+						event.type === "error" ||
+						event.type === "toolcall_start" ||
+						event.type === "server_tool_use_start"
+					) {
+						checking = false;
+						for (const pending of buffered) response.push(pending);
+					}
+				} else {
+					response.push(event);
+				}
+			}
+			if (rejected) {
+				if (attempt < 2 && !signal?.aborted) continue;
+				const error: AssistantMessage = {
+					...rejected,
+					content: [],
+					stopReason: signal?.aborted ? "aborted" : "error",
+					errorMessage: signal?.aborted
+						? "Request was aborted"
+						: "Model repeatedly emitted a text tool-call marker.",
+				};
+				response.push({ type: "error", reason: error.stopReason as "error" | "aborted", error });
+				return;
+			}
+			response.end(await source.result());
+			return;
+		}
+	})();
 
 	let partialMessage: AssistantMessage | null = null;
 	let addedPartial = false;
@@ -351,10 +415,7 @@ async function streamAssistantResponse(
 
 			case "done":
 			case "error": {
-				const finalMessage = convertTextToolCall(
-					await response.result(),
-					context.tools?.map((tool) => tool.name) ?? [],
-				);
+				const finalMessage = await response.result();
 				if (addedPartial) {
 					context.messages[context.messages.length - 1] = finalMessage;
 				} else {
@@ -369,7 +430,7 @@ async function streamAssistantResponse(
 		}
 	}
 
-	const finalMessage = convertTextToolCall(await response.result(), context.tools?.map((tool) => tool.name) ?? []);
+	const finalMessage = await response.result();
 	if (addedPartial) {
 		context.messages[context.messages.length - 1] = finalMessage;
 	} else {

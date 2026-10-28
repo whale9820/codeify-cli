@@ -12,7 +12,6 @@ const malformedCall =
 describe("text tool-call detection", () => {
 	it.each([
 		rawCall,
-		malformedCall,
 		'```json\n{"name":"bash","parameters":{"command":"printf ok"}}\n```',
 		'<tool_call>{"name":"bash","arguments":"{\\"command\\":\\"printf ok\\"}"}</tool_call>',
 		'{"tool_calls":[{"type":"function","function":{"name":"bash","arguments":{"command":"printf ok"}}}]}',
@@ -77,7 +76,7 @@ describe("text tool-call recovery", () => {
 
 	it("continues with a persisted model-visible correction and executes only a real reissued call", async () => {
 		harness.setResponses([
-			fauxAssistantMessage(malformedCall),
+			fauxAssistantMessage(rawCall),
 			fauxAssistantMessage([fauxToolCall("bash", {})], { stopReason: "toolUse" }),
 			fauxAssistantMessage("done"),
 		]);
