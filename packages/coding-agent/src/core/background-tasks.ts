@@ -218,9 +218,14 @@ export function formatTaskDuration(task: BackgroundTask): string {
 	return `${((end - task.startedAt) / 1000).toFixed(1)}s`;
 }
 
+export function formatTaskDescription(description: string): string {
+	const singleLine = description.replace(/\s+/gu, " ").trim();
+	return singleLine.length > 80 ? `${singleLine.slice(0, 79)}…` : singleLine;
+}
+
 export function formatTaskLine(task: BackgroundTask): string {
 	const exit = task.exitCode !== undefined && task.exitCode !== null ? ` exit ${task.exitCode}` : "";
-	return `${task.id} [${task.kind}] ${task.status}${exit} ${formatTaskDuration(task)} - ${task.description}`;
+	return `${task.id} [${task.kind}] ${task.status}${exit} ${formatTaskDuration(task)} - ${formatTaskDescription(task.description)}`;
 }
 
 export function buildCompletionMessage(task: BackgroundTask, output: { text: string; droppedChars: number }): string {

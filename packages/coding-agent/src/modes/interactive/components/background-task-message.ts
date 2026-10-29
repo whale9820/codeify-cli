@@ -1,6 +1,6 @@
 import type { TextContent } from "codeify-ai";
 import { Container, Spacer, Text } from "codeify-tui";
-import type { BackgroundTask } from "../../../core/background-tasks.ts";
+import { type BackgroundTask, formatTaskDescription } from "../../../core/background-tasks.ts";
 import type { CustomMessage } from "../../../core/messages.ts";
 import { formatToolCall } from "../../../core/tools/render-utils.ts";
 import { theme } from "../theme/theme.ts";
@@ -57,7 +57,8 @@ export class BackgroundTaskMessageComponent extends Container {
 		const title = formatToolCall(theme, "Background", task?.id ?? "finished");
 		const meta = theme.fg("dim", `${status}${exit} ${seconds}`.trim());
 		this.addChild(new Text(`${dot} ${title} ${meta}`, 0, 0));
-		if (task?.description) this.addChild(new Text(`  ${theme.fg("muted", task.description)}`, 0, 0));
+		if (task?.description)
+			this.addChild(new Text(`  ${theme.fg("muted", formatTaskDescription(task.description))}`, 0, 0));
 
 		const body = text
 			.split("\n")

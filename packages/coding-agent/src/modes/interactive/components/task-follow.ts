@@ -1,4 +1,4 @@
-import { Container, getKeybindings, Spacer, Text, type TUI } from "codeify-tui";
+import { Container, getKeybindings, Spacer, Text, type TUI, truncateToWidth } from "codeify-tui";
 import { type BackgroundTask, formatTaskLine } from "../../../core/background-tasks.ts";
 import { stripAnsi } from "../../../utils/ansi.ts";
 import { sanitizeBinaryOutput } from "../../../utils/shell.ts";
@@ -55,13 +55,14 @@ export class TaskFollowComponent extends Container {
 			return;
 		}
 		const running = task.status === "running";
-		this.title.setText(theme.fg("accent", theme.bold(formatTaskLine(task))));
+		const width = Math.max(1, this.options.tui.terminal.columns - 2);
+		this.title.setText(theme.fg("accent", theme.bold(truncateToWidth(formatTaskLine(task), width))));
 		const clean = sanitizeBinaryOutput(stripAnsi(output.text)).replace(/\r\n/g, "\n").replace(/\r/g, "\n");
 		const lines = clean.trimEnd().split("\n");
-		const shown = lines.slice(-FOLLOW_LINES);
+		const shown = lines.slice(-Math.max(1, Math.min(FOLLOW_LINES, this.options.tui.terminal.rows - 10)));
 		const hidden = lines.length - shown.length;
 		const text = clean.trim()
-			? shown.map((line) => theme.fg("toolOutput", line)).join("\n")
+			? shown.map((line) => theme.fg("toolOutput", truncateToWidth(line, width))).join("\n")
 			: theme.fg("muted", "(no output yet)");
 		this.body.setText(hidden > 0 ? `${theme.fg("muted", `... ${hidden} earlier lines`)}\n${text}` : text);
 		this.hint.setText(

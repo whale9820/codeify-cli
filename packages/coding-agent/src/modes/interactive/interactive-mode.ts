@@ -3050,22 +3050,19 @@ export class InteractiveMode {
 	}
 
 	private showTaskFollow(taskId: string): void {
-		this.showSelector((done) => {
-			const view = new TaskFollowComponent({
-				tui: this.ui,
-				taskId,
-				getTask: (id) => this.session.getBackgroundTasks().find((task) => task.id === id),
-				getOutput: (id) => this.session.getBackgroundTaskOutput(id),
-				onStop: (id) => {
-					this.session.stopBackgroundTask(id);
-				},
-				onClose: () => {
-					done();
-					this.ui.requestRender();
-				},
-			});
-			return { component: view, focus: view };
+		const view = new TaskFollowComponent({
+			tui: this.ui,
+			taskId,
+			getTask: (id) => this.session.getBackgroundTasks().find((task) => task.id === id),
+			getOutput: (id) => this.session.getBackgroundTaskOutput(id),
+			onStop: (id) => {
+				this.session.stopBackgroundTask(id);
+			},
+			onClose: () => {
+				overlay.hide();
+			},
 		});
+		const overlay = this.ui.showOverlay(view, { width: "100%", maxHeight: "100%" });
 	}
 
 	private describeGoal(goal: Goal): string {

@@ -20,6 +20,7 @@
 
 ### Fixed
 
+- Keep background task titles concise, wrap task menu navigation, and prevent live output refreshes from duplicating in terminal scrollback.
 - Start the 15-second stream idle timer only after the first content chunk, excluding provider startup and time to first token; reset it on subsequent chunks and retry stalled streams independently of the HTTP timeout.
 - Retry upstream `RemoteProtocolError` disconnects, including incomplete chunked reads, using the reconnect retry budget.
 - Resume stopped agents after high-confidence tool invocations emitted as text, with bounded recovery and protection against examples and duplicate retries.
