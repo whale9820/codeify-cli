@@ -7,8 +7,6 @@ import {
 	type StreamOptions,
 } from "codeify-ai";
 
-const STREAM_IDLE_TIMEOUT_MS = 15_000;
-
 export function streamWithIdleTimeout(
 	model: Model<Api>,
 	options: StreamOptions | undefined,
@@ -16,7 +14,6 @@ export function streamWithIdleTimeout(
 ): AssistantMessageEventStream {
 	const output = createAssistantMessageEventStream();
 	const controller = new AbortController();
-	let timer: ReturnType<typeof setTimeout> | undefined;
 	let finished = false;
 	let partial: AssistantMessage = {
 		role: "assistant",
@@ -38,7 +35,6 @@ export function streamWithIdleTimeout(
 
 	const cleanup = () => {
 		finished = true;
-		clearTimeout(timer);
 		options?.signal?.removeEventListener("abort", onAbort);
 	};
 	const fail = (reason: "error" | "aborted", errorMessage: string) => {
@@ -50,10 +46,6 @@ export function streamWithIdleTimeout(
 		controller.abort();
 	};
 	const onAbort = () => fail("aborted", "Request was aborted");
-	const resetTimer = () => {
-		clearTimeout(timer);
-		timer = setTimeout(() => fail("error", "Request timed out: no streaming chunks for 15s"), STREAM_IDLE_TIMEOUT_MS);
-	};
 
 	if (options?.signal?.aborted) {
 		onAbort();
@@ -74,7 +66,6 @@ export function streamWithIdleTimeout(
 				}
 				partial = event.partial;
 				output.push(event);
-				if (event.type !== "start") resetTimer();
 			}
 			if (finished) return;
 			const result = await source.result();
