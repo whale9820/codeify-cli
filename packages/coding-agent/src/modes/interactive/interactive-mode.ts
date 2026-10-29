@@ -3517,6 +3517,7 @@ export class InteractiveMode {
 					autocompleteMaxVisible: this.settingsManager.getAutocompleteMaxVisible(),
 					quietStartup: this.settingsManager.getQuietStartup(),
 					smartModelUsage: this.settingsManager.getSmartModelUsage(),
+					forcedBackgroundShells: this.settingsManager.getForcedBackgroundShells(),
 					clearOnShrink: this.settingsManager.getClearOnShrink(),
 					showTerminalProgress: this.settingsManager.getShowTerminalProgress(),
 				},
@@ -3582,6 +3583,9 @@ export class InteractiveMode {
 					},
 					onQuietStartupChange: (enabled) => {
 						this.settingsManager.setQuietStartup(enabled);
+					},
+					onForcedBackgroundShellsChange: (enabled) => {
+						this.settingsManager.setForcedBackgroundShells(enabled);
 					},
 					onSmartModelUsageChange: (enabled) => {
 						this.session.setSmartModelUsageEnabled(enabled);

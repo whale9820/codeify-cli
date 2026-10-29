@@ -2036,6 +2036,7 @@ export class AgentSession {
 			: createAllToolDefinitions(this._cwd, {
 					read: { autoResizeImages },
 					bash: {
+						forcedBackgroundShells: () => this.settingsManager.getForcedBackgroundShells(),
 						hasPendingBackgroundTasks: () =>
 							this._backgroundTasks.runningCount() > 0 || this._pendingBackgroundTaskNotifications.size > 0,
 						commandPrefix: shellCommandPrefix,

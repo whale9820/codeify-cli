@@ -44,6 +44,38 @@ function hasSleepCommand(command: string): boolean {
 	return false;
 }
 
+function hasLongTimeoutCommand(command: string): boolean {
+	let commandStart = true;
+	let timeoutArguments = false;
+	for (const match of command.matchAll(/#[^\n]*|[;&|()\n]|(?:[^\s;&|()'"\\#]+|'[^']*'|"(?:\\.|[^"\\])*"|\\.)+/gu)) {
+		const token = match[0];
+		if (token.startsWith("#")) continue;
+		if (/^[;&|()\n]$/u.test(token)) {
+			commandStart = true;
+			timeoutArguments = false;
+			continue;
+		}
+		if (timeoutArguments) {
+			if (/^--(?:foreground|preserve-status|verbose)$/u.test(token) || /^-[v]+$/u.test(token)) continue;
+			const duration = /^(\d+(?:\.\d+)?)([smhd]?)$/u.exec(token);
+			if (duration) {
+				const multiplier = { "": 1, s: 1, m: 60, h: 3600, d: 86400 }[duration[2] as "" | "s" | "m" | "h" | "d"];
+				if (Number(duration[1]) * multiplier >= 30) return true;
+			}
+			timeoutArguments = false;
+			continue;
+		}
+		if (!commandStart) continue;
+		if (/^(?:.*\/)?timeout$/u.test(token)) {
+			timeoutArguments = true;
+			commandStart = false;
+		} else if (!/^(?:[\w]+=.*|command|exec|env|if|then|elif|while|until|do|!|\{)$/u.test(token)) {
+			commandStart = false;
+		}
+	}
+	return false;
+}
+
 function resolveTimeoutMs(timeout: number | undefined): number | undefined {
 	if (timeout === undefined) return undefined;
 	if (!Number.isFinite(timeout) || timeout <= 0) {
@@ -189,6 +221,7 @@ export interface BashBackgroundHost {
 
 export interface BashToolOptions {
 	hasPendingBackgroundTasks?: () => boolean;
+	forcedBackgroundShells?: () => boolean;
 	/** Enables moving running commands to the background (Ctrl+B in interactive mode) */
 	background?: BashBackgroundHost;
 	/** Custom operations for command execution. Default: local shell */
@@ -502,6 +535,8 @@ export function createBashToolDefinition(
 			const appendStatus = (text: string, status: string) => `${text ? `${text}\n\n` : ""}${status}`;
 
 			const watch = backgroundHost?.watch(command);
+			let autoBackgroundTimer: NodeJS.Timeout | undefined;
+			const autoBackground = backgroundHost && options?.forcedBackgroundShells?.();
 			const execController = new AbortController();
 			const forwardAbort = () => execController.abort();
 			if (signal) {
@@ -520,7 +555,21 @@ export function createBashToolDefinition(
 					});
 					const outcome = await Promise.race([
 						execPromise.then((result) => ({ backgrounded: false as const, exitCode: result.exitCode })),
-						...(watch ? [watch.requested.then(() => ({ backgrounded: true as const }))] : []),
+						...(watch
+							? [watch.requested.then(() => ({ backgrounded: true as const, automatic: false as const }))]
+							: []),
+						...(autoBackground && !signal?.aborted
+							? [
+									new Promise<{ backgrounded: true; automatic: true }>((resolve) => {
+										if (hasLongTimeoutCommand(command)) resolve({ backgrounded: true, automatic: true });
+										else
+											autoBackgroundTimer = setTimeout(
+												() => resolve({ backgrounded: true, automatic: true }),
+												10_000,
+											);
+									}),
+								]
+							: []),
 					]);
 					if (outcome.backgrounded && backgroundHost) {
 						detached = true;
@@ -546,7 +595,7 @@ export function createBashToolDefinition(
 							content: [
 								{
 									type: "text",
-									text: `The user moved this command to the background as task ${adopted.task.id}. It is still running; its result will arrive automatically. Continue only with independent work; if you need this result or have no useful work left, end your response and wait for the automatic notification. Do not poll, sleep, rerun the command, or run filler commands such as true to pass time. Use background_task with action "output" and id ${adopted.task.id} to read more output, or "stop" to cancel it.${tail ? `\n\nOutput so far:\n${tail}` : ""}`,
+									text: `${outcome.automatic ? "Automatically moved" : "The user moved"} this command to the background as task ${adopted.task.id}. It is still running; its result will arrive automatically. Continue only with independent work; if you need this result or have no useful work left, end your response and wait for the automatic notification. Do not poll, sleep, rerun the command, or run filler commands such as true to pass time. Use background_task with action "output" and id ${adopted.task.id} to read more output, or "stop" to cancel it.${tail ? `\n\nOutput so far:\n${tail}` : ""}`,
 								},
 							],
 							details: undefined,
@@ -574,6 +623,7 @@ export function createBashToolDefinition(
 				return { content: [{ type: "text", text: outputText }], details };
 			} finally {
 				clearUpdateTimer();
+				if (autoBackgroundTimer) clearTimeout(autoBackgroundTimer);
 				watch?.dispose();
 				if (!detached) signal?.removeEventListener("abort", forwardAbort);
 			}

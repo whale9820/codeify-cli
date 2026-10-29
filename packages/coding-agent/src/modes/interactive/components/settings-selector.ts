@@ -76,6 +76,7 @@ export interface SettingsConfig {
 	autocompleteMaxVisible: number;
 	quietStartup: boolean;
 	smartModelUsage: boolean;
+	forcedBackgroundShells: boolean;
 	defaultProjectTrust: DefaultProjectTrust;
 	clearOnShrink: boolean;
 	showTerminalProgress: boolean;
@@ -105,6 +106,7 @@ export interface SettingsCallbacks {
 	onAutocompleteMaxVisibleChange: (maxVisible: number) => void;
 	onQuietStartupChange: (enabled: boolean) => void;
 	onSmartModelUsageChange: (enabled: boolean) => void;
+	onForcedBackgroundShellsChange: (enabled: boolean) => void;
 	onDefaultProjectTrustChange: (defaultProjectTrust: DefaultProjectTrust) => void;
 	onClearOnShrinkChange: (enabled: boolean) => void;
 	onShowTerminalProgressChange: (enabled: boolean) => void;
@@ -432,6 +434,13 @@ export class SettingsSelectorComponent extends Container {
 
 		const items: SettingItem[] = [
 			{
+				id: "forced-background-shells",
+				label: "Forced background shells",
+				description: "Background long timeout commands immediately and other commands after 10 seconds",
+				currentValue: config.forcedBackgroundShells ? "true" : "false",
+				values: ["true", "false"],
+			},
+			{
 				id: "smart-model-usage",
 				label: "Smart model usage",
 				description: "Delegate complete agentic subtasks to cheaper or specialized Codeify CLI models",
@@ -665,6 +674,9 @@ export class SettingsSelectorComponent extends Container {
 			getSettingsListTheme(),
 			(id, newValue) => {
 				switch (id) {
+					case "forced-background-shells":
+						callbacks.onForcedBackgroundShellsChange(newValue === "true");
+						break;
 					case "smart-model-usage":
 						callbacks.onSmartModelUsageChange(newValue === "true");
 						break;
