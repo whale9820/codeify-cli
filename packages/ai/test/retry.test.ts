@@ -102,6 +102,7 @@ describe("provider retry classification", () => {
 		"Error: upstream stream failed: ReadError: ReadError",
 		"upstream stream failed: ReadError: ReadError",
 		"Error: upstream stream failed: RemoteProtocolError: peer closed connection without sending complete message body (incomplete chunked read)",
+		"Error: Upstream response stream was interrupted",
 		"unexpected EOF",
 		"Error: unexpected eof",
 		"UnexpectedEOF",
@@ -245,6 +246,7 @@ describe("retryAssistantCall", () => {
 			"upstream_error: connection reset",
 			"Error: upstream stream failed: ReadError: ReadError",
 			"Error: upstream stream failed: RemoteProtocolError: peer closed connection without sending complete message body (incomplete chunked read)",
+			"Error: Upstream response stream was interrupted",
 			"unexpected EOF",
 		]) {
 			const produce = vi.fn(async () => fauxAssistantMessage("", { stopReason: "error", errorMessage }));

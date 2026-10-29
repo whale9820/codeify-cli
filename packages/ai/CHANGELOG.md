@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Retry interrupted upstream response streams using the reconnect retry budget.
 - Retry provider errors reporting `Request could not be completed`.
 - Retry gateway errors reporting invalid JSON in upstream tool-call arguments.
 - Retry upstream stream failures reporting `RemoteProtocolError`, including incomplete chunked reads, using the reconnect retry budget.
