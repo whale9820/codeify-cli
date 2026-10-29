@@ -210,6 +210,18 @@ describe("retryAssistantCall", () => {
 		expect(onRetryFinished).toHaveBeenCalledWith(true, 2);
 	});
 
+	it("retries a request that could not be completed", async () => {
+		const produce = vi
+			.fn()
+			.mockResolvedValueOnce(
+				fauxAssistantMessage("", { stopReason: "error", errorMessage: "Error: Request could not be completed" }),
+			)
+			.mockResolvedValueOnce(fauxAssistantMessage("recovered"));
+		const result = await retryAssistantCall(produce, enabled, undefined);
+		expect(result.content).toEqual([{ type: "text", text: "recovered" }]);
+		expect(produce).toHaveBeenCalledTimes(2);
+	});
+
 	it("reports an aborted retried call as unsuccessful", async () => {
 		let n = 0;
 		const produce = vi.fn(async () => {

@@ -300,6 +300,7 @@ export class AgentSession {
 	private _isAgentRunActive = false;
 	private _abortRequested = false;
 	private _wakeTaskWaiter: (() => void) | undefined;
+	private _deliveringBackgroundWaitInput = false;
 	private _idleWaitPromise: Promise<void> | undefined;
 	private _resolveIdleWait: (() => void) | undefined;
 
@@ -522,6 +523,7 @@ export class AgentSession {
 		// When a user message starts, check if it's from either queue and remove it BEFORE emitting
 		// This ensures the UI sees the updated queue state
 		if (event.type === "message_start" && event.message.role === "user") {
+			this._deliveringBackgroundWaitInput = false;
 			this._overflowRecoveryAttempted = false;
 			this._textToolRecoveryAttempts = 0;
 			this._textToolRecoveryCandidates.clear();
@@ -729,6 +731,10 @@ export class AgentSession {
 	/** Whether the session is currently processing an agent run or post-run continuation. */
 	get isStreaming(): boolean {
 		return this._isAgentRunActive;
+	}
+
+	get isDeliveringBackgroundWaitInput(): boolean {
+		return this._deliveringBackgroundWaitInput;
 	}
 
 	/** Whether the session has no active agent run, retry, auto-compaction, or queued continuation. */
@@ -963,6 +969,7 @@ export class AgentSession {
 				await this.agent.continue();
 			}
 		} finally {
+			this._deliveringBackgroundWaitInput = false;
 			this._flushPendingBashMessages();
 			await this._emitAgentSettled();
 		}
@@ -1200,6 +1207,7 @@ export class AgentSession {
 	 * Internal: Queue a steering message (already expanded).
 	 */
 	private async _queueSteer(text: string, images?: ImageContent[]): Promise<void> {
+		if (this._wakeTaskWaiter) this._deliveringBackgroundWaitInput = true;
 		this._steeringMessages.push(text);
 		this._emitQueueUpdate();
 		const content: (TextContent | ImageContent)[] = [{ type: "text", text }];
@@ -1211,12 +1219,14 @@ export class AgentSession {
 			content,
 			timestamp: Date.now(),
 		});
+		this._wakeTaskWaiter?.();
 	}
 
 	/**
 	 * Internal: Queue a follow-up message (already expanded).
 	 */
 	private async _queueFollowUp(text: string, images?: ImageContent[]): Promise<void> {
+		if (this._wakeTaskWaiter) this._deliveringBackgroundWaitInput = true;
 		this._followUpMessages.push(text);
 		this._emitQueueUpdate();
 		const content: (TextContent | ImageContent)[] = [{ type: "text", text }];
@@ -1228,6 +1238,7 @@ export class AgentSession {
 			content,
 			timestamp: Date.now(),
 		});
+		this._wakeTaskWaiter?.();
 	}
 
 	/**
@@ -1323,6 +1334,7 @@ export class AgentSession {
 	 * @returns Object with steering and followUp arrays
 	 */
 	clearQueue(): { steering: string[]; followUp: string[] } {
+		this._deliveringBackgroundWaitInput = false;
 		const steering = [...this._steeringMessages];
 		const followUp = [...this._followUpMessages];
 		this._steeringMessages = [];

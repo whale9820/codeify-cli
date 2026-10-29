@@ -98,6 +98,47 @@ describe("background_task integration", () => {
 		expect(harness.eventsOfType("tool_execution_start")).toHaveLength(1);
 	});
 
+	it.each(["steer", "followUp"] as const)("delivers %s input while waiting for a background task", async (mode) => {
+		const harness = await createHarness({ initialActiveToolNames: ["background_task"] });
+		harnesses.push(harness);
+		harness.setResponses([
+			fauxAssistantMessage(
+				[
+					fauxToolCall("background_task", {
+						action: "start",
+						command: "while [ ! -f release ]; do sleep 0.01; done",
+					}),
+				],
+				{ stopReason: "toolUse" },
+			),
+			fauxAssistantMessage("Waiting."),
+			fauxAssistantMessage("Received."),
+			fauxAssistantMessage("Finished."),
+		]);
+		const pending = harness.session.prompt("start the task");
+		await vi.waitFor(() => expect(harness.eventsOfType("agent_end")).toHaveLength(1));
+		const deliveryStates: boolean[] = [];
+		const unsubscribe = harness.session.subscribe((event) => {
+			if (event.type === "queue_update" && event[mode === "steer" ? "steering" : "followUp"].includes("new input")) {
+				deliveryStates.push(harness.session.isDeliveringBackgroundWaitInput);
+			}
+		});
+		await harness.session.prompt("new input", { streamingBehavior: mode });
+		await vi.waitFor(() =>
+			expect(harness.session.messages.some((message) => getMessageText(message) === "Received.")).toBe(true),
+		);
+		expect(deliveryStates).toEqual([true]);
+		unsubscribe();
+		expect(
+			harness.session.messages.filter(
+				(message) => message.role === "user" && getMessageText(message) === "new input",
+			),
+		).toHaveLength(1);
+		expect(harness.session.isDeliveringBackgroundWaitInput).toBe(false);
+		writeFileSync(join(harness.tempDir, "release"), "");
+		await pending;
+	});
+
 	it.each([
 		{ command: "echo early-result", status: "completed" },
 		{ command: "echo early-result; exit 1", status: "failed" },

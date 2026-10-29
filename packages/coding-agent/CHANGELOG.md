@@ -20,6 +20,7 @@
 
 ### Fixed
 
+- Deliver queued user messages immediately while waiting for background tasks.
 - Keep background task titles concise, wrap task menu navigation, and prevent live output refreshes from duplicating in terminal scrollback.
 - Allow streams to continue through pauses longer than 15 seconds without aborting or retrying.
 - Retry upstream `RemoteProtocolError` disconnects, including incomplete chunked reads, using the reconnect retry budget.
