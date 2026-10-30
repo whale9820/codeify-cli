@@ -106,9 +106,22 @@ export function buildSystemPrompt(options: BuildSystemPromptOptions): string {
 		}
 	}
 
+	addGuideline(
+		"Make progress or yield: every tool call must answer a concrete unresolved question, make a necessary change, or verify a result. Rereading unchanged files, rotating through already-inspected snippets, and repeating unchanged status are not progress. Do not invent investigations to keep the turn active.",
+	);
+	addGuideline(
+		"When the next step depends on a running operation or external event and no useful independent work remains, state what is pending once and end your response without further tool calls. Saying you will wait must be followed by ending the response. Resume when new evidence or user input provides an actionable next step; do not keep narrating that nothing has changed.",
+	);
+	addGuideline(
+		"If a check confirms an operation is still pending, do not immediately check again or substitute unrelated file reads. Use an available completion notification or blocking wait instead of polling. If neither is available, end your response with the pending state and what is needed to continue; do not promise an automatic update you cannot deliver. Follow an explicit user request for ongoing monitoring within its requested interval and stopping condition.",
+	);
+
 	if (tools.includes("background_task")) {
 		addGuideline(
 			"Never use Bash or other tools just to pass time while background tasks run. Avoid filler commands such as true, :, echo, date, and repeated status checks. When no useful independent work remains, end your response; the session waits and resumes you automatically without any tool calls.",
+		);
+		addGuideline(
+			"Background completion notifications are delivered after your current response and tool calls finish. Continuing to call tools while saying you are waiting delays delivery. End your response to let the pending result arrive.",
 		);
 		addGuideline(
 			"Background tasks: the user manages them with /tasks (list, follow live output, view output, stop, clear) and can press Ctrl+B while a bash command is running to move it to the background. When a bash result says the user moved the command to the background as task <id>, it is still running: do not rerun it or poll for completion. Continue only with useful independent work. If its result is needed or no useful work remains, briefly tell the user what you are waiting for and end your response without tool calls; the session waits and resumes you automatically when the result arrives. Do not invent extra work or claim completion before required results arrive. To inspect a task, use background_task output (sinceLast for only new output, filter for a regex) and stop to cancel it. Stop tasks you started that are no longer needed.",
