@@ -223,6 +223,22 @@ describe("retryAssistantCall", () => {
 		expect(produce).toHaveBeenCalledTimes(2);
 	});
 
+	it.each([
+		"upstream_account_unavailable",
+		"No upstream account is currently available. Please retry later.",
+		'Error: {"type":"error","code":"upstream_account_unavailable","message":"No upstream account is currently available. Please retry later.","param":null,"error":{"message":"No upstream account is currently available. Please retry later.","type":"upstream_error","code":"upstream_account_unavailable"}}',
+	])("retries unavailable upstream accounts within the configured budget: %s", async (errorMessage) => {
+		const produce = vi.fn(async () => fauxAssistantMessage("", { stopReason: "error", errorMessage }));
+		const onRetryScheduled = vi.fn();
+		const onRetryFinished = vi.fn();
+		const result = await retryAssistantCall(produce, enabled, undefined, { onRetryScheduled, onRetryFinished });
+		expect(result.stopReason).toBe("error");
+		expect(result.errorMessage).toBe(errorMessage);
+		expect(produce).toHaveBeenCalledTimes(4);
+		expect(onRetryScheduled).toHaveBeenCalledTimes(3);
+		expect(onRetryFinished).toHaveBeenCalledWith(false, 3, errorMessage);
+	});
+
 	it("reports an aborted retried call as unsuccessful", async () => {
 		let n = 0;
 		const produce = vi.fn(async () => {

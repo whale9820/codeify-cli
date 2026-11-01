@@ -87,6 +87,8 @@ const RETRYABLE_PROVIDER_ERROR_PATTERN = buildProviderErrorPattern([
 	"server.?error",
 	"internal.?error",
 	"request could not be completed",
+	"upstream_account_unavailable",
+	"no upstream account is currently available",
 
 	// Wrapper/provider text for transient upstream failures, including OpenRouter
 	// "Provider returned error" responses (#2264).
