@@ -20,6 +20,7 @@
 
 ### Fixed
 
+- Show reasoning while waiting for assistant text, recover interrupted Dahl streams with the reconnect retry budget, and surface thrown stream failures instead of leaving the working indicator active.
 - Deliver queued user messages immediately while waiting for background tasks.
 - Keep background task titles concise, wrap task menu navigation, and prevent live output refreshes from duplicating in terminal scrollback.
 - Allow streams to continue through pauses longer than 15 seconds without aborting or retrying.

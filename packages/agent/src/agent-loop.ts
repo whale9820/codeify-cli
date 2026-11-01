@@ -314,6 +314,23 @@ async function streamAssistantResponse(
 			throw new Error("Unexpected stream event");
 		},
 	);
+	let latestPartial: AssistantMessage = {
+		role: "assistant",
+		content: [],
+		api: config.model.api,
+		provider: config.model.provider,
+		model: config.model.id,
+		usage: {
+			input: 0,
+			output: 0,
+			cacheRead: 0,
+			cacheWrite: 0,
+			totalTokens: 0,
+			cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+		},
+		stopReason: "stop",
+		timestamp: Date.now(),
+	};
 	void (async () => {
 		for (let attempt = 0; ; attempt++) {
 			const controller = new AbortController();
@@ -328,7 +345,18 @@ async function streamAssistantResponse(
 			let text = "";
 			let rejected: AssistantMessage | undefined;
 			for await (const event of source) {
+				if ("partial" in event) latestPartial = event.partial;
 				if (checking) {
+					if (
+						buffered.length === 0 &&
+						(event.type === "start" ||
+							event.type === "thinking_start" ||
+							event.type === "thinking_delta" ||
+							event.type === "thinking_end")
+					) {
+						response.push(structuredClone(event));
+						continue;
+					}
 					buffered.push(structuredClone(event));
 					if (event.type === "text_delta") text += event.delta;
 					if (event.type === "done") {
@@ -374,7 +402,17 @@ async function streamAssistantResponse(
 			response.end(await source.result());
 			return;
 		}
-	})();
+	})().catch((cause) => {
+		const reason = signal?.aborted ? "aborted" : "error";
+		const error: AssistantMessage = {
+			...structuredClone(latestPartial),
+			stopReason: reason,
+			errorMessage:
+				reason === "aborted" ? "Request was aborted" : cause instanceof Error ? cause.message : String(cause),
+		};
+		response.push({ type: "error", reason, error });
+		response.end(error);
+	});
 
 	let partialMessage: AssistantMessage | null = null;
 	let addedPartial = false;
@@ -383,6 +421,10 @@ async function streamAssistantResponse(
 		switch (event.type) {
 			case "start":
 				partialMessage = event.partial;
+				if (addedPartial) {
+					context.messages[context.messages.length - 1] = partialMessage;
+					break;
+				}
 				context.messages.push(partialMessage);
 				addedPartial = true;
 				await emit({ type: "message_start", message: { ...partialMessage } });

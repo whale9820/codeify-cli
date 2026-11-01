@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Forward reasoning immediately while filtering text tool-call markers, and terminate responses when stream setup or iteration throws.
 - Stop and regenerate responses that begin with a text tool-call marker.
 
 ### Changed

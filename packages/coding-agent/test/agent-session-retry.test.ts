@@ -152,6 +152,8 @@ describe("AgentSession retry", () => {
 		"no output within 30s",
 		"upstream_error: connection reset",
 		"upstream_error: ANYTHING_HERE",
+		'Error: {"type": "error", "error": {"type": "server_tool_error", "code": "upstream_error", "message": "Dahl stream interrupted"}}',
+		"RemoteProtocolError: peer closed connection without sending complete message body (incomplete chunked read)",
 		"Error: upstream stream failed: ReadError: ReadError",
 		"Error: upstream stream failed: RemoteProtocolError: peer closed connection without sending complete message body (incomplete chunked read)",
 		"unexpected EOF",

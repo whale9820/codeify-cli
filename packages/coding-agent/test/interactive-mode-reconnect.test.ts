@@ -12,7 +12,7 @@ type MessageEndHost = {
 	isInitialized: boolean;
 	footer: { invalidate: () => void };
 	footerTpsTracker: FooterTpsTracker;
-	streamingComponent: { updateContent: () => void } | undefined;
+	streamingComponent: { updateContent: () => void; setStreaming: (streaming: boolean) => void } | undefined;
 	streamingMessage: unknown;
 	pendingTools: Map<string, unknown>;
 	chatContainer: { removeChild: (component: unknown) => void };
@@ -23,7 +23,7 @@ type MessageEndHost = {
 };
 
 function messageEndHost(willRetry: boolean) {
-	const errorComponent = { updateContent: vi.fn() };
+	const errorComponent = { updateContent: vi.fn(), setStreaming: vi.fn() };
 	const host = {
 		isInitialized: true,
 		footer: { invalidate: vi.fn() },
@@ -139,6 +139,17 @@ describe("InteractiveMode reconnect status", () => {
 			errorMessage: "upstream_error: connection reset",
 		});
 		expect(upstreamHost.showStatusIndicator.mock.calls[0]?.[0]).toBeInstanceOf(ReconnectStatusIndicator);
+
+		const dahlHost = host();
+		await handleEvent.call(dahlHost, {
+			type: "auto_retry_start",
+			attempt: 1,
+			maxAttempts: 5,
+			delayMs: 2000,
+			errorMessage:
+				'Error: {"type": "error", "error": {"type": "server_tool_error", "code": "upstream_error", "message": "Dahl stream interrupted"}}',
+		});
+		expect(dahlHost.showStatusIndicator.mock.calls[0]?.[0]).toBeInstanceOf(ReconnectStatusIndicator);
 
 		const eofHost = host();
 		await handleEvent.call(eofHost, {

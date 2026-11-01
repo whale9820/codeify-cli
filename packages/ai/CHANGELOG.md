@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- Retry `Dahl stream interrupted` and bare `RemoteProtocolError` failures using the reconnect retry budget.
 - Retry interrupted upstream response streams using the reconnect retry budget.
 - Retry provider errors reporting `Request could not be completed`.
 - Retry gateway errors reporting invalid JSON in upstream tool-call arguments.

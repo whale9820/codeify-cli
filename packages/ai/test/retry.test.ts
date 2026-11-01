@@ -18,6 +18,8 @@ const bunFetchSocketClosedMessage =
 const openAIResponsesEarlyEofMessage = "OpenAI Responses stream ended before a terminal response event";
 const invalidToolCallArgumentsMessage =
 	"Error: 上游生成的工具调用参数不是合法 JSON，本轮**未执行任何工具**；网关已按协议返回失败，请重试该轮。上游详情：upstream tool-call echo  \n contains invalid JSON arguments; no tools were emitted";
+const dahlStreamInterruptedMessage =
+	'Error: {"type": "error", "error": {"type": "server_tool_error", "code": "upstream_error", "message": "Dahl stream interrupted"}}';
 
 describe("provider retry classification", () => {
 	it("matches explicit provider retry guidance", () => {
@@ -103,6 +105,9 @@ describe("provider retry classification", () => {
 		"upstream stream failed: ReadError: ReadError",
 		"Error: upstream stream failed: RemoteProtocolError: peer closed connection without sending complete message body (incomplete chunked read)",
 		"Error: Upstream response stream was interrupted",
+		dahlStreamInterruptedMessage,
+		"Dahl stream interrupted",
+		"RemoteProtocolError: peer closed connection without sending complete message body (incomplete chunked read)",
 		"unexpected EOF",
 		"Error: unexpected eof",
 		"UnexpectedEOF",
@@ -263,6 +268,7 @@ describe("retryAssistantCall", () => {
 			"Error: upstream stream failed: ReadError: ReadError",
 			"Error: upstream stream failed: RemoteProtocolError: peer closed connection without sending complete message body (incomplete chunked read)",
 			"Error: Upstream response stream was interrupted",
+			dahlStreamInterruptedMessage,
 			"unexpected EOF",
 		]) {
 			const produce = vi.fn(async () => fauxAssistantMessage("", { stopReason: "error", errorMessage }));
