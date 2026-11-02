@@ -258,6 +258,21 @@ async function runLoop(
 			}
 
 			pendingMessages = (await config.getSteeringMessages?.()) || [];
+			if (message.stopReason === "length" && toolCalls.length === 0 && !signal?.aborted) {
+				if (pendingMessages.length === 0) {
+					pendingMessages = (await config.getFollowUpMessages?.()) || [];
+				}
+				if (pendingMessages.length === 0 && !signal?.aborted) {
+					pendingMessages = [
+						{
+							role: "user",
+							content:
+								"Your previous response reached the output token limit. Continue exactly where it stopped, preserving all previous output. Do not restart or repeat content already provided. Complete the original request within the user's existing permissions.",
+							timestamp: Date.now(),
+						},
+					];
+				}
+			}
 		}
 
 		// Agent would stop here. Check for follow-up messages.

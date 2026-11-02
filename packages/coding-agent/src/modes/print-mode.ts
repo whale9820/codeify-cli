@@ -33,6 +33,7 @@ export async function runPrintMode(runtimeHost: AgentSessionRuntime, options: Pr
 	const { mode, messages = [], initialMessage, initialImages } = options;
 	let exitCode = 0;
 	let session = runtimeHost.session;
+	let outputMessages: AssistantMessage[] = [];
 	let unsubscribe: (() => void) | undefined;
 	let disposed = false;
 	const signalCleanupHandlers: Array<() => void> = [];
@@ -70,10 +71,17 @@ export async function runPrintMode(runtimeHost: AgentSessionRuntime, options: Pr
 
 	const rebindSession = async (): Promise<void> => {
 		session = runtimeHost.session;
+		outputMessages = [];
 		unsubscribe?.();
 		unsubscribe = session.subscribe((event) => {
 			if (mode === "json") {
 				writeRawStdout(`${JSON.stringify(event)}\n`);
+			} else if (event.type === "message_end" && event.message.role === "assistant") {
+				const previous = outputMessages.at(-1);
+				if (previous?.stopReason !== "length" || previous.content.some((part) => part.type === "toolCall")) {
+					outputMessages = [];
+				}
+				outputMessages.push(event.message);
 			}
 		});
 	};
@@ -102,16 +110,19 @@ export async function runPrintMode(runtimeHost: AgentSessionRuntime, options: Pr
 
 			if (lastMessage?.role === "assistant") {
 				const assistantMsg = lastMessage as AssistantMessage;
+				const sources = buildCitationSources(state.messages);
+				const output = (outputMessages.length > 0 ? outputMessages : [assistantMsg])
+					.map((message) =>
+						message.content
+							.filter((content) => content.type === "text")
+							.map((content) => renderInlineCitations(content.text, sources, content.citations))
+							.join("\n"),
+					)
+					.join("");
+				if (output) writeRawStdout(`${output}\n`);
 				if (assistantMsg.stopReason === "error" || assistantMsg.stopReason === "aborted") {
 					console.error(assistantMsg.errorMessage || `Request ${assistantMsg.stopReason}`);
 					exitCode = 1;
-				} else {
-					const sources = buildCitationSources(state.messages);
-					for (const content of assistantMsg.content) {
-						if (content.type === "text") {
-							writeRawStdout(`${renderInlineCitations(content.text, sources, content.citations)}\n`);
-						}
-					}
 				}
 			}
 		}

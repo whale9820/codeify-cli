@@ -20,6 +20,7 @@
 
 ### Fixed
 
+- Continue automatically after output token limits, preserve earlier response chunks in print output and session history, and show a continuation notice in interactive mode.
 - Show reasoning while waiting for assistant text, recover interrupted Dahl streams with the reconnect retry budget, and surface thrown stream failures instead of leaving the working indicator active.
 - Deliver queued user messages immediately while waiting for background tasks.
 - Keep background task titles concise, wrap task menu navigation, and prevent live output refreshes from duplicating in terminal scrollback.

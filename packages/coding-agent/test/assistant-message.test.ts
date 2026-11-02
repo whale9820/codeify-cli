@@ -65,7 +65,7 @@ describe("AssistantMessageComponent", () => {
 		expect(rendered.includes(OSC133_ZONE_FINAL)).toBe(false);
 	});
 
-	test("renders length stops as visible errors", () => {
+	test("renders length stops as continuation notices without losing partial content", () => {
 		initTheme("dark");
 
 		const component = new AssistantMessageComponent(
@@ -75,8 +75,9 @@ describe("AssistantMessageComponent", () => {
 		const rendered = component.render(80).join("\n");
 
 		expect(rendered).toContain("private reasoning");
-		expect(rendered).toContain("maximum output token limit");
-		expect(rendered).toContain("response may be incomplete");
+		expect(rendered).toContain("Output token limit reached");
+		expect(rendered).toContain("Continuing automatically from previous output");
+		expect(rendered).not.toContain("Error:");
 	});
 
 	test("renders adjacent thinking blocks in order", () => {
