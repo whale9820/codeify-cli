@@ -183,7 +183,7 @@ function getAnthropicCompat(
 		supportsLongCacheRetention: model.compat?.supportsLongCacheRetention ?? true,
 		sendSessionAffinityHeaders: model.compat?.sendSessionAffinityHeaders ?? false,
 		supportsCacheControlOnTools: model.compat?.supportsCacheControlOnTools ?? true,
-		supportsTemperature: model.compat?.supportsTemperature ?? true,
+		supportsTemperature: model.provider !== "anthropic" && (model.compat?.supportsTemperature ?? true),
 		allowEmptySignature: model.compat?.allowEmptySignature ?? false,
 		supportsToolReferences: model.compat?.supportsToolReferences ?? defaultSupportsToolReferences(model),
 	};
@@ -911,6 +911,8 @@ function createClient(
 	dynamicHeaders?: Record<string, string>,
 	sessionId?: string,
 ): { client: Anthropic; isOAuthToken: boolean } {
+	const apiVersionHeaders: ProviderHeaders =
+		model.provider === "anthropic" ? { "anthropic-version": "2026-10-21" } : {};
 	// Adaptive thinking models have interleaved thinking built in, so skip the beta header.
 	const needsInterleavedBeta = interleavedThinking && model.compat?.forceAdaptiveThinking !== true;
 	const betaFeatures: string[] = [];
@@ -951,6 +953,7 @@ function createClient(
 			baseURL: model.baseUrl,
 			dangerouslyAllowBrowser: true,
 			defaultHeaders: mergeHeaders(
+				apiVersionHeaders,
 				{
 					accept: "application/json",
 					"anthropic-dangerous-direct-browser-access": "true",
@@ -970,6 +973,7 @@ function createClient(
 	const sessionAffinityHeaders: ProviderHeaders =
 		sessionId && getAnthropicCompat(model).sendSessionAffinityHeaders ? { "x-session-affinity": sessionId } : {};
 	const defaultHeaders = mergeHeaders(
+		apiVersionHeaders,
 		{
 			accept: "application/json",
 			"anthropic-dangerous-direct-browser-access": "true",
@@ -1053,7 +1057,6 @@ function buildParams(
 		];
 	}
 
-	// Temperature is incompatible with extended thinking and unsupported on Claude Opus 4.7+.
 	if (options?.temperature !== undefined && !options?.thinkingEnabled && compat.supportsTemperature) {
 		params.temperature = options.temperature;
 	}

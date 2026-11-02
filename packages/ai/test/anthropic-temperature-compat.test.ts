@@ -83,14 +83,20 @@ describe("Anthropic temperature compatibility", () => {
 		expect(payload.temperature).toBeUndefined();
 	});
 
-	it("keeps temperature for Claude Opus 4.6", async () => {
+	it("omits temperature for Claude Opus 4.6 on the current API version", async () => {
 		const payload = await capturePayload(getModel("anthropic", "claude-opus-4-6"), { temperature: 0 });
 
-		expect(payload.temperature).toBe(0);
+		expect(payload.temperature).toBeUndefined();
 	});
 
-	it("keeps temperature for Claude Sonnet 4.6", async () => {
+	it("omits temperature for Claude Sonnet 4.6 on the current API version", async () => {
 		const payload = await capturePayload(getModel("anthropic", "claude-sonnet-4-6"), { temperature: 0 });
+
+		expect(payload.temperature).toBeUndefined();
+	});
+
+	it("keeps temperature for custom providers that support it", async () => {
+		const payload = await capturePayload(makeCustomModel(), { temperature: 0 });
 
 		expect(payload.temperature).toBe(0);
 	});
