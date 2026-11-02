@@ -4,6 +4,9 @@
 
 ### Fixed
 
+- Send adaptive thinking with `output_config.effort` for all reasoning-enabled Anthropic Messages requests, including custom models without compatibility flags; omit legacy token budgets and the interleaved-thinking beta header.
+
+- Limit `JSONDecodeError: Extra data` failures to one retry instead of repeating the same malformed-response retry budget.
 - Retry `Dahl stream interrupted` and bare `RemoteProtocolError` failures using the reconnect retry budget.
 - Retry interrupted upstream response streams using the reconnect retry budget.
 - Retry provider errors reporting `Request could not be completed`.

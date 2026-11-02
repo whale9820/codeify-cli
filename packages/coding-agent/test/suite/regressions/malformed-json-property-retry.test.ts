@@ -34,6 +34,28 @@ describe("malformed JSON parse retry", () => {
 			harness.cleanup();
 		}
 	});
+	it("retries JSONDecodeError Extra data only once", async () => {
+		const errorMessage = "JSONDecodeError: Extra data: line 1 column 83 (char 82)";
+		const harness = await createHarness({
+			settings: { retry: { enabled: true, maxRetries: 5, baseDelayMs: 1 } },
+		});
+		try {
+			harness.setResponses(
+				Array.from({ length: 2 }, () => fauxAssistantMessage("", { stopReason: "error", errorMessage })),
+			);
+
+			await harness.session.prompt("test");
+
+			expect(harness.faux.state.callCount).toBe(2);
+			expect(harness.eventsOfType("auto_retry_start")).toMatchObject([{ attempt: 1, maxAttempts: 1, errorMessage }]);
+			expect(harness.eventsOfType("auto_retry_end")).toMatchObject([
+				{ success: false, attempt: 1, finalError: errorMessage },
+			]);
+		} finally {
+			harness.cleanup();
+		}
+	});
+
 	it.each(malformedJsonErrors)("caps retries at three for %s", async (malformedJsonError) => {
 		const harness = await createHarness({
 			settings: { retry: { enabled: true, maxRetries: 5, baseDelayMs: 1 } },

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getModel, streamSimple } from "../src/compat.ts";
+import { getModel, stream, streamSimple } from "../src/compat.ts";
 import type { Context, Model, SimpleStreamOptions } from "../src/types.ts";
 
 interface AnthropicThinkingPayload {
@@ -67,12 +67,41 @@ async function capturePayload(
 	return capturedPayload;
 }
 
-describe("Anthropic forceAdaptiveThinking compat override", () => {
-	it("sends legacy thinking payload for custom model ids by default", async () => {
-		const payload = await capturePayload(makeCustomModel(), { reasoning: "medium" });
+describe("Anthropic adaptive thinking", () => {
+	it.each([undefined, false, true])("uses adaptive thinking when the compat flag is %s", async (flag) => {
+		const payload = await capturePayload(makeCustomModel({ forceAdaptiveThinking: flag }), { reasoning: "medium" });
 
-		expect(payload.thinking?.type).toBe("enabled");
-		expect(payload.output_config).toBeUndefined();
+		expect(payload.thinking).toEqual({ type: "adaptive", display: "summarized" });
+		expect(payload.thinking?.budget_tokens).toBeUndefined();
+		expect(payload.output_config).toEqual({ effort: "medium" });
+	});
+
+	it.each(["low", "medium", "high", "xhigh", "max"])("preserves %s effort without a model map", async (reasoning) => {
+		const payload = await capturePayload(makeCustomModel(), { reasoning });
+		expect(payload.output_config).toEqual({ effort: reasoning });
+	});
+
+	it("maps the on toggle to a valid effort instead of sending adaptive as an effort", async () => {
+		const payload = await capturePayload(
+			{ ...makeCustomModel(), thinkingLevelMap: { on: "adaptive" } },
+			{ reasoning: "on" },
+		);
+		expect(payload.thinking?.type).toBe("adaptive");
+		expect(payload.output_config).toEqual({ effort: "high" });
+	});
+
+	it("allows a direct effort request without thinkingEnabled", async () => {
+		let captured: AnthropicThinkingPayload | undefined;
+		await stream(makeCustomModel(), makeContext(), {
+			apiKey: "fake-key",
+			effort: "max",
+			onPayload: (payload) => {
+				captured = payload as AnthropicThinkingPayload;
+				throw new PayloadCaptured();
+			},
+		}).result();
+		expect(captured?.thinking).toEqual({ type: "adaptive", display: "summarized" });
+		expect(captured?.output_config).toEqual({ effort: "max" });
 	});
 
 	it("sends adaptive thinking payload when compat.forceAdaptiveThinking is true", async () => {

@@ -143,6 +143,11 @@ describe("retryAssistantCall", () => {
 	const disabled: RetryPolicy = { enabled: false, maxRetries: 3, baseDelayMs: 0 };
 	const enabled: RetryPolicy = { enabled: true, maxRetries: 3, baseDelayMs: 0 };
 
+	it("limits JSONDecodeError Extra data retries to one", () => {
+		expect(resolveAssistantRetryLimit("JSONDecodeError: Extra data: line 1 column 83 (char 82)", 3)).toBe(1);
+		expect(resolveAssistantRetryLimit("JSONDecodeError: Extra data: line 1 column 83 (char 82)", 0)).toBe(0);
+	});
+
 	it.each([
 		"Expected double-quoted property name in JSON at position 21751",
 		"Error: Expected ',' or '}' after property value in JSON at position 4077 (line 1 column 4078)",

@@ -33,6 +33,7 @@ export function isSafeguardBlock(errorMessage: string | undefined): boolean {
 
 const MALFORMED_JSON_ERROR_PATTERN =
 	/expected ':' after property name in json|expected ',' or '}' after property value in json|expected ',' or ']' after array element in json|unterminated string in json|unterminated string starting at|expected double-quoted property name in json|expecting property name enclosed in double quotes|expecting ',' delimiter|expecting ':' delimiter|expecting value: line|jsondecodeerror|illegal trailing comma|trailing comma before end|server_tool_stream_failed|upstream tool-call echo\s+contains invalid json arguments; no tools were emitted/i;
+const JSON_EXTRA_DATA_ERROR_PATTERN = /\bjsondecodeerror:\s*extra data\b/i;
 
 export function isMalformedJsonError(errorMessage: string): boolean {
 	return MALFORMED_JSON_ERROR_PATTERN.test(errorMessage);
@@ -65,6 +66,9 @@ export function isReconnectableProviderError(errorMessage: string): boolean {
 
 export function resolveAssistantRetryLimit(errorMessage: string | undefined, configuredMaxRetries: number): number {
 	const message = errorMessage ?? "";
+	if (JSON_EXTRA_DATA_ERROR_PATTERN.test(message)) {
+		return Math.min(configuredMaxRetries, 1);
+	}
 	if (isMalformedJsonError(message)) {
 		return Math.min(configuredMaxRetries, MALFORMED_JSON_MAX_RETRIES);
 	}

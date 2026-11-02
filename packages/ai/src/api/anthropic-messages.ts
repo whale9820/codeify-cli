@@ -40,7 +40,7 @@ import { SAFEGUARD_BLOCK_MESSAGE } from "../utils/retry.ts";
 import { sanitizeSurrogates } from "../utils/sanitize-unicode.ts";
 
 import { buildCopilotDynamicHeaders, hasCopilotVisionInput } from "./github-copilot-headers.ts";
-import { adjustMaxTokensForThinking, buildBaseOptions, clampMaxTokensToContext } from "./simple-options.ts";
+import { buildBaseOptions } from "./simple-options.ts";
 import { transformMessages } from "./transform-messages.ts";
 
 /**
@@ -173,7 +173,6 @@ export type AnthropicEffort = "low" | "medium" | "high" | "xhigh" | "max";
 export type AnthropicThinkingDisplay = "summarized" | "omitted";
 
 const FINE_GRAINED_TOOL_STREAMING_BETA = "fine-grained-tool-streaming-2025-05-14";
-const INTERLEAVED_THINKING_BETA = "interleaved-thinking-2025-05-14";
 
 function getAnthropicCompat(
 	model: Model<"anthropic-messages">,
@@ -206,16 +205,14 @@ function defaultSupportsToolReferences(model: Model<"anthropic-messages">): bool
 export interface AnthropicOptions extends StreamOptions {
 	/**
 	 * Enable extended thinking.
-	 * For adaptive thinking models: the model decides when/how much to think.
-	 * For older models: uses budget-based thinking with thinkingBudgetTokens.
+	 * Uses adaptive thinking on every Anthropic Messages request.
+	 * The model decides how much to think, guided by `effort`.
 	 * Default: undefined (thinking is omitted unless `streamSimple()` maps
 	 * a simple reasoning level to this option, or callers set it explicitly).
 	 */
 	thinkingEnabled?: boolean;
 	/**
-	 * Token budget for extended thinking (older models only).
-	 * Ignored for adaptive thinking models.
-	 * Default: 1024 when `thinkingEnabled` is true and no budget is provided.
+	 * Ignored: Anthropic Messages requests now use adaptive thinking and effort.
 	 */
 	thinkingBudgetTokens?: number;
 	/**
@@ -226,7 +223,6 @@ export interface AnthropicOptions extends StreamOptions {
 	 * - "high": Always thinks, deep reasoning
 	 * - "medium": Moderate thinking, may skip for simple queries
 	 * - "low": Minimal thinking, skips for simple tasks
-	 * Ignored for older models.
 	 * Default: omitted unless `streamSimple()` maps a simple reasoning
 	 * level to this option.
 	 */
@@ -245,10 +241,7 @@ export interface AnthropicOptions extends StreamOptions {
 	 */
 	thinkingDisplay?: AnthropicThinkingDisplay;
 	/**
-	 * Whether to request the interleaved thinking beta header for non-adaptive
-	 * thinking models. Adaptive thinking models have interleaved thinking built in,
-	 * so the header is skipped for them regardless of this setting.
-	 * Default: true.
+	 * Ignored: adaptive thinking includes interleaved thinking without a beta header.
 	 */
 	interleavedThinking?: boolean;
 	/**
@@ -540,7 +533,6 @@ export const stream: StreamFunction<"anthropic-messages", AnthropicOptions> = (
 				const created = createClient(
 					model,
 					apiKey,
-					options?.interleavedThinking ?? true,
 					shouldUseFineGrainedToolStreamingBeta(model, context),
 					options?.headers,
 					copilotDynamicHeaders,
@@ -841,7 +833,7 @@ function mapThinkingLevelToEffort(
 	level: SimpleStreamOptions["reasoning"],
 ): AnthropicEffort {
 	const mapped = level ? model.thinkingLevelMap?.[level] : undefined;
-	if (typeof mapped === "string") return mapped as AnthropicEffort;
+	if (typeof mapped === "string" && mapped !== "adaptive") return mapped as AnthropicEffort;
 
 	switch (level) {
 		case "minimal":
@@ -851,6 +843,10 @@ function mapThinkingLevelToEffort(
 			return "medium";
 		case "high":
 			return "high";
+		case "xhigh":
+			return "xhigh";
+		case "max":
+			return "max";
 		default:
 			return "high";
 	}
@@ -864,37 +860,13 @@ export const streamSimple: StreamFunction<"anthropic-messages", SimpleStreamOpti
 	assertRequestAuth(model.provider, options?.apiKey, options?.headers);
 
 	const base = buildBaseOptions(model, context, options, options?.apiKey);
-	if (!options?.reasoning) {
+	if (!options?.reasoning || options.reasoning === "off") {
 		return stream(model, context, { ...base, thinkingEnabled: false } satisfies AnthropicOptions);
 	}
 
-	// For models with adaptive thinking: use an effort level.
-	// For older models: use budget-based thinking.
-	if (model.compat?.forceAdaptiveThinking === true) {
-		const effort = mapThinkingLevelToEffort(model, options.reasoning);
-		return stream(model, context, {
-			...base,
-			thinkingEnabled: true,
-			effort,
-		} satisfies AnthropicOptions);
-	}
-
-	// Undefined means the caller did not request an output cap; let the helper use the model cap.
-	// Do not coerce to 0 here, or the thinking budget would become the entire max_tokens value.
-	const adjusted = adjustMaxTokensForThinking(
-		base.maxTokens,
-		model.maxTokens,
-		options.reasoning,
-		options.thinkingBudgets,
-	);
-
-	const maxTokens = clampMaxTokensToContext(model, context, adjusted.maxTokens);
-
 	return stream(model, context, {
 		...base,
-		maxTokens,
-		thinkingEnabled: true,
-		thinkingBudgetTokens: Math.min(adjusted.thinkingBudget, Math.max(0, maxTokens - 1024)),
+		effort: mapThinkingLevelToEffort(model, options.reasoning),
 	} satisfies AnthropicOptions);
 };
 
@@ -905,7 +877,6 @@ function isOAuthToken(apiKey: string): boolean {
 function createClient(
 	model: Model<"anthropic-messages">,
 	apiKey: string | undefined,
-	interleavedThinking: boolean,
 	useFineGrainedToolStreamingBeta: boolean,
 	optionsHeaders?: ProviderHeaders,
 	dynamicHeaders?: Record<string, string>,
@@ -913,14 +884,9 @@ function createClient(
 ): { client: Anthropic; isOAuthToken: boolean } {
 	const apiVersionHeaders: ProviderHeaders =
 		model.provider === "anthropic" ? { "anthropic-version": "2026-10-21" } : {};
-	// Adaptive thinking models have interleaved thinking built in, so skip the beta header.
-	const needsInterleavedBeta = interleavedThinking && model.compat?.forceAdaptiveThinking !== true;
 	const betaFeatures: string[] = [];
 	if (useFineGrainedToolStreamingBeta) {
 		betaFeatures.push(FINE_GRAINED_TOOL_STREAMING_BETA);
-	}
-	if (needsInterleavedBeta) {
-		betaFeatures.push(INTERLEAVED_THINKING_BETA);
 	}
 
 	// Copilot: Bearer auth, selective betas.
@@ -1057,7 +1023,8 @@ function buildParams(
 		];
 	}
 
-	if (options?.temperature !== undefined && !options?.thinkingEnabled && compat.supportsTemperature) {
+	const thinkingEnabled = options?.thinkingEnabled ?? options?.effort !== undefined;
+	if (options?.temperature !== undefined && !thinkingEnabled && compat.supportsTemperature) {
 		params.temperature = options.temperature;
 	}
 
@@ -1080,32 +1047,17 @@ function buildParams(
 		params.tools.push({ type: "web_search_20250305", name: "web_search" });
 	}
 
-	// Configure thinking mode: adaptive, budget-based, or explicitly disabled.
+	// All Anthropic Messages reasoning uses adaptive thinking and effort.
 	if (model.reasoning) {
-		if (options?.thinkingEnabled) {
+		if (thinkingEnabled) {
 			// Default to "summarized" so Opus 4.7 and Mythos Preview behave like
 			// older Claude 4 models (whose API default is also "summarized").
-			const display: AnthropicThinkingDisplay = options.thinkingDisplay ?? "summarized";
-			if (model.compat?.forceAdaptiveThinking === true) {
-				// Adaptive thinking: Claude decides when and how much to think.
-				params.thinking = { type: "adaptive", display };
-				if (options.effort) {
-					// The Anthropic SDK types can lag newly supported effort values such as "xhigh".
-					params.output_config =
-						options.effort === "xhigh"
-							? ({ effort: options.effort } as unknown as NonNullable<
-									MessageCreateParamsStreaming["output_config"]
-								>)
-							: { effort: options.effort };
-				}
-			} else {
-				// Budget-based thinking for older models
-				params.thinking = {
-					type: "enabled",
-					budget_tokens: options.thinkingBudgetTokens || 1024,
-					display,
-				};
-			}
+			const display: AnthropicThinkingDisplay = options?.thinkingDisplay ?? "summarized";
+			params.thinking = { type: "adaptive", display };
+			// The SDK's effort union can lag server-supported values.
+			params.output_config = { effort: options?.effort ?? "high" } as NonNullable<
+				MessageCreateParamsStreaming["output_config"]
+			>;
 		} else if (options?.thinkingEnabled === false && model.thinkingLevelMap?.off !== null) {
 			params.thinking = { type: "disabled" };
 		}
