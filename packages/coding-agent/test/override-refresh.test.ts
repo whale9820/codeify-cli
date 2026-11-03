@@ -8,7 +8,12 @@ import { InMemoryCredentialStore } from "codeify-ai";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { toModelDefinition } from "../src/core/codeify-provider.ts";
 import { ModelRuntime } from "../src/core/model-runtime.ts";
-import { type OverrideBackend, OverrideStore, overrideProviderConfig } from "../src/core/overrides.ts";
+import {
+	inheritCodeifyMetadata,
+	type OverrideBackend,
+	OverrideStore,
+	overrideProviderConfig,
+} from "../src/core/overrides.ts";
 
 describe("override backend model refresh", () => {
 	let dir: string;
@@ -51,6 +56,30 @@ describe("override backend model refresh", () => {
 		const context = (allowNetwork = true) => ({ allowNetwork }) as unknown as RefreshModelsContext;
 		return { path, store, refresh, context };
 	}
+
+	it("inherits Codeify metadata from namespaced and dated API model IDs", () => {
+		const models = [
+			toModelDefinition({ id: "zai-org/GLM-5.3-Flash" }),
+			toModelDefinition({ id: "deepseek-ai/DeepSeek-V4-Flash-0731" }),
+		];
+		const codeifyModels = [
+			{ ...toModelDefinition({ id: "glm-5.3-flash" }), reasoning: true, contextWindow: 200_000 },
+			{ ...toModelDefinition({ id: "deepseek-v4-flash-0731" }), reasoning: true, contextWindow: 300_000 },
+		];
+
+		const inherited = inheritCodeifyMetadata(models, codeifyModels);
+
+		expect(inherited.map((model) => model.id)).toEqual(models.map((model) => model.id));
+		expect(inherited[0]).toMatchObject({ reasoning: true, contextWindow: 200_000 });
+		expect(inherited[1]).toMatchObject({ reasoning: true, contextWindow: 300_000 });
+	});
+
+	it("uses the undated Codeify model when a dated API model has no exact catalog entry", () => {
+		const apiModel = toModelDefinition({ id: "deepseek-ai/DeepSeek-V4-Flash-0731" });
+		const codeifyModel = { ...toModelDefinition({ id: "deepseek-v4-flash" }), reasoning: true };
+
+		expect(inheritCodeifyMetadata([apiModel], [codeifyModel])[0]).toMatchObject({ reasoning: true });
+	});
 
 	it("picks up models the backend lists now and persists them", async () => {
 		const { path, store, refresh, context } = setup();

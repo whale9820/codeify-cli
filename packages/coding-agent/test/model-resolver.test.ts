@@ -256,6 +256,68 @@ describe("resolveModelScopeWithDiagnostics", () => {
 });
 
 describe("resolveCliModel", () => {
+	test("matches namespaced override model IDs to canonical slugs", () => {
+		const model: Model<"anthropic-messages"> = {
+			...mockModels[0],
+			id: "glm-5.3-flash",
+			provider: "test",
+		};
+		const registry = {
+			getModels: () => [model],
+		} as unknown as Parameters<typeof resolveCliModel>[0]["modelRuntime"];
+
+		const result = resolveCliModel({
+			cliModel: "test/zai-org/GLM-5.3-Flash",
+			modelRuntime: registry,
+		});
+
+		expect(result.error).toBeUndefined();
+		expect(result.model?.provider).toBe("test");
+		expect(result.model?.id).toBe("glm-5.3-flash");
+	});
+
+	test("prefers a namespaced model's matching dated slug", () => {
+		const versionedModel: Model<"anthropic-messages"> = {
+			...mockModels[0],
+			id: "deepseek-v4-flash-0731",
+			provider: "test",
+		};
+		const aliasModel: Model<"anthropic-messages"> = {
+			...versionedModel,
+			id: "deepseek-v4-flash",
+		};
+		const registry = {
+			getModels: () => [aliasModel, versionedModel],
+		} as unknown as Parameters<typeof resolveCliModel>[0]["modelRuntime"];
+
+		const result = resolveCliModel({
+			cliModel: "test/deepseek-ai/DeepSeek-V4-Flash-0731",
+			modelRuntime: registry,
+		});
+
+		expect(result.error).toBeUndefined();
+		expect(result.model?.id).toBe("deepseek-v4-flash-0731");
+	});
+
+	test("falls back to the undated canonical slug when a dated slug is unavailable", () => {
+		const model: Model<"anthropic-messages"> = {
+			...mockModels[0],
+			id: "deepseek-v4-flash",
+			provider: "test",
+		};
+		const registry = {
+			getModels: () => [model],
+		} as unknown as Parameters<typeof resolveCliModel>[0]["modelRuntime"];
+
+		const result = resolveCliModel({
+			cliModel: "test/deepseek-ai/DeepSeek-V4-Flash-0731",
+			modelRuntime: registry,
+		});
+
+		expect(result.error).toBeUndefined();
+		expect(result.model?.id).toBe("deepseek-v4-flash");
+	});
+
 	test("resolves --model provider/id without --provider", () => {
 		const registry = {
 			getModels: () => allModels,

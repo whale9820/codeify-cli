@@ -45,6 +45,32 @@ export function findExactModelReferenceMatch(
 	return matches.length === 1 ? matches[0] : undefined;
 }
 
+function findNamespacedModelIdMatch(modelPattern: string, availableModels: Model<Api>[]): Model<Api> | undefined {
+	const slashIndex = modelPattern.lastIndexOf("/");
+	if (slashIndex === -1) return undefined;
+
+	const modelName = modelPattern.substring(slashIndex + 1).toLowerCase();
+	const candidates = availableModels.filter(
+		(model) => !model.id.includes("/") && model.id.toLowerCase() === modelName,
+	);
+	if (candidates.length > 0) return tryChooseModelVersion(candidates);
+
+	const unversionedName = modelName.replace(/-\d{4,8}$/u, "");
+	if (unversionedName === modelName) return undefined;
+
+	const fallbackCandidates = availableModels.filter(
+		(model) => !model.id.includes("/") && model.id.toLowerCase() === unversionedName,
+	);
+	return fallbackCandidates.length > 0 ? tryChooseModelVersion(fallbackCandidates) : undefined;
+}
+
+function tryChooseModelVersion(matches: Model<Api>[]): Model<Api> {
+	const aliases = matches.filter((model) => isAlias(model.id));
+	const candidates = aliases.length > 0 ? aliases : matches;
+	candidates.sort((a, b) => b.id.localeCompare(a.id));
+	return candidates[0];
+}
+
 /**
  * Try to match a pattern to a model from the available models list.
  * Returns the matched model or undefined if no match found.
@@ -54,6 +80,9 @@ function tryMatchModel(modelPattern: string, availableModels: Model<Api>[]): Mod
 	if (exactMatch) {
 		return exactMatch;
 	}
+
+	const namespacedMatch = findNamespacedModelIdMatch(modelPattern, availableModels);
+	if (namespacedMatch) return namespacedMatch;
 
 	// No exact match - fall back to partial matching
 	const matches = availableModels.filter((m) => m.id.toLowerCase().includes(modelPattern.toLowerCase()));

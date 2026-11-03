@@ -81,7 +81,15 @@ export function inheritCodeifyMetadata(
 	codeifyModels: readonly CodeifyModelDefinition[],
 ): CodeifyModelDefinition[] {
 	return models.map((definition) => {
-		const inherited = codeifyModels.find((model) => model.id === definition.id);
+		const namespacedId = definition.id.split("/").at(-1)?.toLowerCase();
+		const unversionedId = namespacedId?.replace(/-\d{4,8}$/u, "");
+		const exactMatches = codeifyModels.filter((model) => model.id.toLowerCase() === namespacedId);
+		const fallbackMatches =
+			exactMatches.length === 0 && unversionedId !== namespacedId
+				? codeifyModels.filter((model) => model.id.toLowerCase() === unversionedId)
+				: [];
+		const matches = exactMatches.length > 0 ? exactMatches : fallbackMatches;
+		const inherited = matches.length === 1 ? matches[0] : undefined;
 		if (!inherited) return definition;
 		return {
 			...definition,
