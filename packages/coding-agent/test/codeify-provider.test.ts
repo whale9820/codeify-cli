@@ -280,6 +280,40 @@ describe("Codeify provider", () => {
 		expect(models?.[0]).toMatchObject({ contextWindow: 1_050_000, maxTokens: 128_000 });
 	});
 
+	it("reports failed catalog refreshes instead of silently presenting cached models as refreshed", async () => {
+		vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("unavailable", { status: 503 }));
+		const provider = codeifyProvider();
+
+		await expect(
+			provider.refreshModels?.({
+				credential: { type: "api_key", key: "test-key" },
+				store: {
+					read: async () => ({
+						models: [
+							{
+								id: "gpt-5.6-sol",
+								name: "GPT-5.6 Sol",
+								provider: "codeify",
+								baseUrl: CODEIFY_BASE_URL,
+								api: "openai-responses",
+								reasoning: true,
+								input: ["text", "image"],
+								cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+								contextWindow: 1_050_000,
+								maxTokens: 128_000,
+							},
+						],
+						checkedAt: Date.now(),
+					}),
+					write: async () => {},
+					delete: async () => {},
+				},
+				allowNetwork: true,
+				force: true,
+			}),
+		).rejects.toThrow(/Codeify model discovery failed \(503\)/);
+	});
+
 	it("fetches Codeify models once on every provider startup even with a fresh cache", async () => {
 		const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
 			const url = String(input);

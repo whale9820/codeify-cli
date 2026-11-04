@@ -420,14 +420,12 @@ async function fetchModels(
 			signal,
 		});
 		if (!codeifyResponse.ok) {
-			if (cached?.length) return cached;
 			throw new Error(
 				`Codeify model discovery failed (${codeifyResponse.status}). Please check your connection or reopen Codeify.`,
 			);
 		}
 		payload = (await codeifyResponse.json()) as { data?: CodeifyModel[] };
 	} catch (error) {
-		if (cached?.length) return cached;
 		throw new Error(
 			`Could not reach Codeify API (${error instanceof Error ? error.message : String(error)}). Please check your connection or reopen Codeify.`,
 		);
