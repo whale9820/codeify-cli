@@ -104,4 +104,36 @@ describe("issue #3217 scoped model ordering", () => {
 
 		expect(orderedIds).toEqual([modelTwo.id, modelOne.id, modelThree.id]);
 	});
+
+	it("removes scoped models that are no longer in the refreshed catalog", async () => {
+		const harness = await createHarness({
+			models: [
+				{ id: "model-a", name: "A", reasoning: true },
+				{ id: "model-b", name: "B", reasoning: true },
+			],
+		});
+		harnesses.push(harness);
+
+		const modelA = harness.getModel("model-a")!;
+		const modelB = harness.getModel("model-b")!;
+		vi.spyOn(harness.session.modelRuntime, "getAvailableSnapshot")
+			.mockReturnValueOnce([modelA, modelB])
+			.mockReturnValue([modelA]);
+		vi.spyOn(harness.session.modelRuntime, "getModel").mockReturnValueOnce(modelB).mockReturnValue(undefined);
+		const selector = new ModelSelectorComponent(
+			createFakeTui(),
+			modelA,
+			harness.settingsManager,
+			harness.session.modelRuntime,
+			[{ model: modelB }],
+			() => {},
+			() => {},
+		);
+
+		await vi.waitFor(() => {
+			const rendered = stripAnsi(selector.render(120).join("\n"));
+			expect(rendered).not.toContain("model-b");
+			expect(rendered).toContain("model-a");
+		});
+	});
 });

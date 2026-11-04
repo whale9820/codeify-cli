@@ -393,15 +393,21 @@ function cachedCodeifyModel(model: StoredCodeifyModel): CodeifyModel {
 
 async function fetchModels(
 	apiKey: string,
+	credentialFingerprint: string | undefined,
 	store: { read: () => Promise<ModelsStoreEntry | undefined>; write: (entry: ModelsStoreEntry) => Promise<void> },
 	signal?: AbortSignal,
 	force?: boolean,
 	allowNetwork = true,
 ): Promise<NonNullable<RuntimeProviderConfig["models"]>> {
 	const stored = await store.read();
-	const cached = stored?.models
-		.filter((model): model is StoredCodeifyModel => model.provider === CODEIFY_PROVIDER_ID)
-		.map((model) => toModelDefinition(cachedCodeifyModel(model)));
+	const cacheMatchesCredential =
+		(credentialFingerprint === undefined && !allowNetwork) ||
+		(stored?.credentialFingerprint === credentialFingerprint && credentialFingerprint !== undefined);
+	const cached = cacheMatchesCredential
+		? stored?.models
+				.filter((model): model is StoredCodeifyModel => model.provider === CODEIFY_PROVIDER_ID)
+				.map((model) => toModelDefinition(cachedCodeifyModel(model)))
+		: undefined;
 	if (!allowNetwork || signal?.aborted)
 		return cached?.length ? cached : [toModelDefinition({ id: CODEIFY_DEFAULT_MODEL })];
 	if (
@@ -455,6 +461,7 @@ async function fetchModels(
 	}
 	await store.write({
 		models: storedModels,
+		credentialFingerprint,
 		checkedAt: Date.now(),
 		lastModified: stored?.lastModified ?? 0,
 	});
@@ -693,10 +700,17 @@ export function codeifyProvider(): RuntimeProviderConfig {
 		},
 		models: routeModels([toModelDefinition({ id: CODEIFY_DEFAULT_MODEL })], CODEIFY_BASE_URL),
 		refreshModels: async (context) => {
-			const apiKey = context.credential?.type === "oauth" ? context.credential.access : context.credential?.key;
+			const credential = context.credential;
+			const apiKey = credential?.type === "oauth" ? credential.access : credential?.key;
+			const credentialFingerprint = credential
+				? createHash("sha256")
+						.update(credential.type === "oauth" ? credential.refresh : (credential.key ?? ""))
+						.digest("hex")
+				: undefined;
 			const allowNetwork = Boolean(apiKey) && context.allowNetwork;
 			const models = await fetchModels(
 				apiKey ?? "",
+				credentialFingerprint,
 				context.store,
 				context.signal,
 				context.force || !networkRefreshed,

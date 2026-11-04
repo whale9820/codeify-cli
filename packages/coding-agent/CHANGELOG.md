@@ -20,6 +20,8 @@
 
 ### Fixed
 
+- Ignore model catalogs cached for a different Codeify credential and remove unavailable models from the selector after refresh.
+
 - Report Codeify model catalog refresh failures instead of labeling cached catalogs as refreshed.
 - Force a model catalog refresh when opening the model selector so newly available models bypass the catalog freshness window.
 - Cap the actual retry request to the provider-declared output-token maximum and retain that cap for the session.

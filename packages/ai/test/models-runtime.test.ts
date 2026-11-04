@@ -283,6 +283,32 @@ describe("Models runtime", () => {
 		expect(offline.getModel("dynamic", "fetched")).toBeDefined();
 	});
 
+	it("preserves provider catalog metadata written during refresh", async () => {
+		const credentials = new InMemoryCredentialStore();
+		const modelsStore = new InMemoryModelsStore();
+		await credentials.modify("dynamic", async () => ({ type: "api_key", key: "key" }));
+		const models = createModels({ credentials, modelsStore });
+		models.setProvider(
+			createProvider({
+				id: "dynamic",
+				auth: { apiKey: envKeyAuth(undefined) },
+				models: [],
+				fetchModels: async ({ store }) => {
+					await store.write({ models: [testModel("dynamic", "fetched")], credentialFingerprint: "key-hash" });
+					return [testModel("dynamic", "fetched")];
+				},
+				api: {
+					stream: () => new AssistantMessageEventStream(),
+					streamSimple: () => new AssistantMessageEventStream(),
+				},
+			}),
+		);
+
+		await models.refresh();
+
+		expect(await modelsStore.read("dynamic")).toMatchObject({ credentialFingerprint: "key-hash" });
+	});
+
 	it("passes effective API-key credentials and refresh options while skipping unconfigured providers", async () => {
 		let effectiveCredential: unknown;
 		let forceRefresh: boolean | undefined;

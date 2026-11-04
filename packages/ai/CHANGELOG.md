@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Preserve provider metadata, including credential-specific model catalog state, when persisting refreshed models.
+
 - Send adaptive thinking with `output_config.effort` for all reasoning-enabled Anthropic Messages requests, including custom models without compatibility flags; omit legacy token budgets and the interleaved-thinking beta header.
 
 - Limit `JSONDecodeError: Extra data` failures to one retry instead of repeating the same malformed-response retry budget.

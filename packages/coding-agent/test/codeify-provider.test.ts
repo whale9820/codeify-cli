@@ -280,6 +280,49 @@ describe("Codeify provider", () => {
 		expect(models?.[0]).toMatchObject({ contextWindow: 1_050_000, maxTokens: 128_000 });
 	});
 
+	it("does not reuse a catalog populated by a different API key", async () => {
+		const fetchSpy = vi
+			.spyOn(globalThis, "fetch")
+			.mockResolvedValue(new Response(JSON.stringify({ data: [{ id: "model-a" }] }), { status: 200 }));
+		const oldKeyFingerprint = createHash("sha256").update("old-key").digest("hex");
+		let stored: ModelsStoreEntry = {
+			models: [
+				{
+					id: "model-b",
+					name: "model-b",
+					provider: "codeify",
+					baseUrl: CODEIFY_BASE_URL,
+					api: "openai-responses",
+					reasoning: false,
+					input: ["text"],
+					cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+					contextWindow: 128_000,
+					maxTokens: 16_384,
+				},
+			],
+			credentialFingerprint: oldKeyFingerprint,
+			checkedAt: Date.now(),
+		};
+
+		const models = await codeifyProvider().refreshModels?.({
+			credential: { type: "api_key", key: "new-key" },
+			store: {
+				read: async () => stored,
+				write: async (entry) => {
+					stored = entry;
+				},
+				delete: async () => {},
+			},
+			allowNetwork: true,
+			force: true,
+		});
+
+		expect(fetchSpy).toHaveBeenCalledTimes(1);
+		expect(models?.map((model) => model.id)).toEqual(["model-a"]);
+		expect(stored.models.map((model) => model.id)).toEqual(["model-a"]);
+		expect(stored.credentialFingerprint).toBe(createHash("sha256").update("new-key").digest("hex"));
+	});
+
 	it("reports failed catalog refreshes instead of silently presenting cached models as refreshed", async () => {
 		vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("unavailable", { status: 503 }));
 		const provider = codeifyProvider();
