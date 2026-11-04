@@ -113,6 +113,12 @@ export interface ParsedSkillBlock {
 	userMessage: string | undefined;
 }
 
+function parseOutputTokenLimit(errorMessage: string | undefined): number | undefined {
+	const match = errorMessage?.match(/Output token limit must be between\s+1\s+and\s+(\d+)/iu);
+	const limit = match ? Number(match[1]) : undefined;
+	return typeof limit === "number" && Number.isSafeInteger(limit) && limit > 0 ? limit : undefined;
+}
+
 /**
  * Parse a skill block from message text.
  * Returns null if the text doesn't contain a skill block.
@@ -335,6 +341,7 @@ export class AgentSession {
 	// Retry state
 	private _retryAbortController: AbortController | undefined = undefined;
 	private _retryAttempt = 0;
+	private _sessionOutputTokenCap: number | undefined;
 	private _textToolRecoveryAttempts = 0;
 	private _textToolRecoveryCandidates = new Set<string>();
 
@@ -720,7 +727,30 @@ export class AgentSession {
 	get model(): Model<any> | undefined {
 		const current = this.agent.state.model;
 		if (!current) return undefined;
-		return this._modelRuntime.getModel(current.provider, current.id) ?? current;
+		return this._applySessionOutputTokenCap(this._modelRuntime.getModel(current.provider, current.id) ?? current);
+	}
+
+	private _applySessionOutputTokenCap<T extends Model<any>>(model: T): T {
+		if (this._sessionOutputTokenCap === undefined) return model;
+		return {
+			...model,
+			maxTokens: Math.min(
+				model.maxTokens > 0 ? model.maxTokens : this._sessionOutputTokenCap,
+				this._sessionOutputTokenCap,
+			),
+		};
+	}
+
+	private _applyOutputTokenLimit(message: AssistantMessage): boolean {
+		if (message.stopReason !== "error") return false;
+		const limit = parseOutputTokenLimit(message.errorMessage);
+		if (limit === undefined || (this._sessionOutputTokenCap !== undefined && limit >= this._sessionOutputTokenCap)) {
+			return false;
+		}
+
+		this._sessionOutputTokenCap = limit;
+		this.agent.state.model = this._applySessionOutputTokenCap(this.agent.state.model);
+		return true;
 	}
 
 	/** Current thinking level */
@@ -994,6 +1024,10 @@ export class AgentSession {
 		this._lastAssistantMessage = undefined;
 		if (!msg) {
 			return false;
+		}
+
+		if (this._applyOutputTokenLimit(msg) && (await this._prepareRetry(msg, this._retryAttempt + 1, true))) {
+			return true;
 		}
 
 		if (this._isRetryableError(msg) && (await this._prepareRetry(msg))) {
@@ -1397,7 +1431,7 @@ export class AgentSession {
 		}
 
 		const thinkingLevel = this._getThinkingLevelForModelSwitch();
-		this.agent.state.model = model;
+		this.agent.state.model = this._applySessionOutputTokenCap(model);
 		this.sessionManager.appendModelChange(model.provider, model.id);
 		this.settingsManager.setDefaultModelAndProvider(model.provider, model.id);
 
@@ -1438,7 +1472,7 @@ export class AgentSession {
 		const thinkingLevel = this._getThinkingLevelForModelSwitch(next.thinkingLevel);
 
 		// Apply model
-		this.agent.state.model = next.model;
+		this.agent.state.model = this._applySessionOutputTokenCap(next.model);
 		this.sessionManager.appendModelChange(next.model.provider, next.model.id);
 		this.settingsManager.setDefaultModelAndProvider(next.model.provider, next.model.id);
 
@@ -1464,7 +1498,7 @@ export class AgentSession {
 		const nextModel = availableModels[nextIndex];
 
 		const thinkingLevel = this._getThinkingLevelForModelSwitch();
-		this.agent.state.model = nextModel;
+		this.agent.state.model = this._applySessionOutputTokenCap(nextModel);
 		this.sessionManager.appendModelChange(nextModel.provider, nextModel.id);
 		this.settingsManager.setDefaultModelAndProvider(nextModel.provider, nextModel.id);
 
@@ -2233,13 +2267,17 @@ export class AgentSession {
 	 * Prepare a retryable error for continuation with exponential backoff.
 	 * @returns true if the caller should continue the agent, false otherwise
 	 */
-	private async _prepareRetry(message: AssistantMessage): Promise<boolean> {
+	private async _prepareRetry(
+		message: AssistantMessage,
+		maxRetriesOverride?: number,
+		force = false,
+	): Promise<boolean> {
 		const settings = this.settingsManager.getRetrySettings();
-		if (!settings.enabled) {
+		if (!settings.enabled && !force) {
 			return false;
 		}
 
-		const maxRetries = resolveAssistantRetryLimit(message.errorMessage, settings.maxRetries);
+		const maxRetries = maxRetriesOverride ?? resolveAssistantRetryLimit(message.errorMessage, settings.maxRetries);
 		this._retryAttempt++;
 
 		if (this._retryAttempt > maxRetries) {
@@ -2248,7 +2286,7 @@ export class AgentSession {
 			return false;
 		}
 
-		const delayMs = settings.baseDelayMs * 2 ** (this._retryAttempt - 1);
+		const delayMs = force ? 0 : settings.baseDelayMs * 2 ** (this._retryAttempt - 1);
 
 		this._emit({
 			type: "auto_retry_start",

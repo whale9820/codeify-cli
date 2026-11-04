@@ -20,6 +20,7 @@
 
 ### Fixed
 
+- Retry output token limit errors with the server-declared maximum and keep that output cap for the session.
 - Match namespaced override API model IDs to canonical slugs, preferring a matching dated model and falling back to its undated slug.
 - Inherit Codeify reasoning and model-limit metadata for override API IDs with organization prefixes or alternate casing.
 - Continue automatically after output token limits, preserve earlier response chunks in print output and session history, and show a continuation notice in interactive mode.

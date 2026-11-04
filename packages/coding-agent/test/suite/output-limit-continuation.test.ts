@@ -91,6 +91,36 @@ describe("output token limit continuation", () => {
 		expect(getUserTexts(harness)).toEqual(["Write a long answer"]);
 	});
 
+	it("retries output token limit errors and keeps the discovered cap for the session", async () => {
+		harness.cleanup();
+		harness = await createHarness({
+			models: [{ id: "faux-1", maxTokens: 262_144 }],
+			settings: { compaction: { enabled: false }, retry: { enabled: false } },
+		});
+		harness.setResponses([
+			fauxAssistantMessage("", {
+				stopReason: "error",
+				errorMessage:
+					'Error: 400: {"type":"invalid_request_error","message":"Output token limit must be between 1 and 131072","code":"unsupported_request","param":null}',
+			}),
+			fauxAssistantMessage("Recovered"),
+			fauxAssistantMessage("Next turn"),
+		]);
+
+		await harness.session.prompt("First request");
+
+		expect(harness.faux.state.callCount).toBe(2);
+		expect(harness.session.state.model.maxTokens).toBe(131_072);
+		expect(harness.eventsOfType("auto_retry_start").map((event) => event.errorMessage)).toEqual([
+			'Error: 400: {"type":"invalid_request_error","message":"Output token limit must be between 1 and 131072","code":"unsupported_request","param":null}',
+		]);
+
+		await harness.session.prompt("Second request");
+
+		expect(harness.faux.state.callCount).toBe(3);
+		expect(harness.session.state.model.maxTokens).toBe(131_072);
+	});
+
 	it.each(["steer", "followUp"] as const)("prioritizes queued %s input over the automatic prompt", async (method) => {
 		harness.setResponses([
 			fauxAssistantMessage("Partial answer", { stopReason: "length" }),
