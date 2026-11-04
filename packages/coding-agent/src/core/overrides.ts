@@ -127,8 +127,6 @@ export function overrideProviderConfig(
 					if (!context.allowNetwork) return routeModels(current.models, current.baseUrl);
 					const probe = await probeOverrideBackend(current.baseUrl, current.apiKey, context.signal);
 					if (!probe.ok) throw new Error(`Could not refresh ${backend.name}: ${probe.error}`);
-					// An empty list is more likely a quirk of the backend than a real wipe; keep what we have.
-					if (probe.models.length === 0) return routeModels(current.models, current.baseUrl);
 					const merged = mergeProbedModels(current.models, probe.models);
 					const models = codeifyModels ? inheritCodeifyMetadata(merged, codeifyModels()) : merged;
 					store.upsert({ ...current, models });

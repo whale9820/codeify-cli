@@ -104,10 +104,11 @@ describe("override backend model refresh", () => {
 		expect(store.get("mine")?.models.map((model) => model.id)).toEqual(["alpha"]);
 	});
 
-	it("keeps existing models when the backend lists none", async () => {
-		const { refresh, context } = setup();
+	it("clears the model list when the backend lists none", async () => {
+		const { store, refresh, context } = setup();
 		listed = [];
-		expect((await refresh(context())).map((model) => model.id)).toEqual(["alpha"]);
+		expect(await refresh(context())).toEqual([]);
+		expect(store.get("mine")?.models).toEqual([]);
 	});
 
 	it("does not touch the network when offline", async () => {
