@@ -20,6 +20,8 @@
 
 ### Fixed
 
+- Force a model catalog refresh when opening the model selector so newly available models bypass the catalog freshness window.
+- Cap the actual retry request to the provider-declared output-token maximum and retain that cap for the session.
 - Retry output token limit errors with the server-declared maximum and keep that output cap for the session.
 - Match namespaced override API model IDs to canonical slugs, preferring a matching dated model and falling back to its undated slug.
 - Inherit Codeify reasoning and model-limit metadata for override API IDs with organization prefixes or alternate casing.

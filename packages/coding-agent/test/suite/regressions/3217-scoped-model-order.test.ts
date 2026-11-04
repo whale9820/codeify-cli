@@ -75,6 +75,7 @@ describe("issue #3217 scoped model ordering", () => {
 		const modelOne = harness.getModel("faux-1")!;
 		const modelTwo = harness.getModel("faux-2")!;
 		const modelThree = harness.getModel("faux-3")!;
+		const refresh = vi.spyOn(harness.session.modelRuntime, "refresh");
 		const selector = new ModelSelectorComponent(
 			createFakeTui(),
 			modelOne,
@@ -91,6 +92,7 @@ describe("issue #3217 scoped model ordering", () => {
 			expect(rendered).not.toContain("Model Name:");
 			expect(rendered).toContain("Model catalogs refreshed.");
 		});
+		expect(refresh).toHaveBeenCalledWith(expect.objectContaining({ force: true }));
 
 		const renderedLines = stripAnsi(selector.render(120).join("\n"))
 			.split("\n")

@@ -97,13 +97,20 @@ describe("output token limit continuation", () => {
 			models: [{ id: "faux-1", maxTokens: 262_144 }],
 			settings: { compaction: { enabled: false }, retry: { enabled: false } },
 		});
+		const retriedRequests: Array<{ modelMaxTokens: number; effectiveMaxTokens: number }> = [];
 		harness.setResponses([
 			fauxAssistantMessage("", {
 				stopReason: "error",
 				errorMessage:
 					'Error: 400: {"type":"invalid_request_error","message":"Output token limit must be between 1 and 131072","code":"unsupported_request","param":null}',
 			}),
-			fauxAssistantMessage("Recovered"),
+			(_context, options, _state, model) => {
+				retriedRequests.push({
+					modelMaxTokens: model.maxTokens,
+					effectiveMaxTokens: options?.maxTokens ?? model.maxTokens,
+				});
+				return fauxAssistantMessage("Recovered");
+			},
 			fauxAssistantMessage("Next turn"),
 		]);
 
@@ -111,6 +118,7 @@ describe("output token limit continuation", () => {
 
 		expect(harness.faux.state.callCount).toBe(2);
 		expect(harness.session.state.model.maxTokens).toBe(131_072);
+		expect(retriedRequests).toEqual([{ modelMaxTokens: 131_072, effectiveMaxTokens: 131_072 }]);
 		expect(harness.eventsOfType("auto_retry_start").map((event) => event.errorMessage)).toEqual([
 			'Error: 400: {"type":"invalid_request_error","message":"Output token limit must be between 1 and 131072","code":"unsupported_request","param":null}',
 		]);
