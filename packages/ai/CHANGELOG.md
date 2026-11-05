@@ -14,7 +14,7 @@
 - Retry provider errors reporting `Request could not be completed`.
 - Retry gateway errors reporting invalid JSON in upstream tool-call arguments.
 - Retry upstream stream failures reporting `RemoteProtocolError`, including incomplete chunked reads, using the reconnect retry budget.
-- Retry upstream stream failures reporting `Unable to forward upstream stream` using the reconnect retry budget.
+- Retry upstream stream failures reporting `Unable to forward upstream stream` or `upstream_http2_stream_error` using the reconnect retry budget.
 - Preserve server-declared reasoning effort names and order, including custom values such as `instant`, in model selection and OpenAI-compatible requests.
 - Surface Codeify server-side web searches on Chat Completions (`web_search_options`) as `serverToolUse` blocks and keep final usage from being overwritten by interim search usage chunks.
 
