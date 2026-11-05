@@ -46,6 +46,7 @@ const REQUEST_TIMED_OUT_PATTERN = /request timed out/i;
 const NO_OUTPUT_WITHIN_30S_PATTERN = /no output within 30s/i;
 const UPSTREAM_ERROR_PATTERN = /upstream_error\s*:/i;
 const UPSTREAM_STREAM_READ_ERROR_PATTERN = /upstream stream failed:\s*(?:ReadError|RemoteProtocolError)\b/i;
+const UPSTREAM_STREAM_FORWARD_ERROR_PATTERN = /unable to forward upstream stream/i;
 const UPSTREAM_RESPONSE_INTERRUPTED_PATTERN = /upstream response stream was interrupted/i;
 const INTERRUPTED_STREAM_PATTERN = /\bstream (?:was )?interrupted\b|\bRemoteProtocolError\b/i;
 const UNEXPECTED_EOF_PATTERN = /unexpected\s*eof/i;
@@ -58,6 +59,7 @@ export function isReconnectableProviderError(errorMessage: string): boolean {
 		NO_OUTPUT_WITHIN_30S_PATTERN.test(errorMessage) ||
 		UPSTREAM_ERROR_PATTERN.test(errorMessage) ||
 		UPSTREAM_STREAM_READ_ERROR_PATTERN.test(errorMessage) ||
+		UPSTREAM_STREAM_FORWARD_ERROR_PATTERN.test(errorMessage) ||
 		UPSTREAM_RESPONSE_INTERRUPTED_PATTERN.test(errorMessage) ||
 		INTERRUPTED_STREAM_PATTERN.test(errorMessage) ||
 		UNEXPECTED_EOF_PATTERN.test(errorMessage)
