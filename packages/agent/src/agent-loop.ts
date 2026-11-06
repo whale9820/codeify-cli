@@ -369,10 +369,10 @@ async function streamAssistantResponse(
 							event.type === "thinking_delta" ||
 							event.type === "thinking_end")
 					) {
-						response.push(structuredClone(event));
+						response.push(event);
 						continue;
 					}
-					buffered.push(structuredClone(event));
+					buffered.push(event);
 					if (event.type === "text_delta") text += event.delta;
 					if (event.type === "done") {
 						text = event.message.content
@@ -442,7 +442,7 @@ async function streamAssistantResponse(
 				}
 				context.messages.push(partialMessage);
 				addedPartial = true;
-				await emit({ type: "message_start", message: { ...partialMessage } });
+				await emit({ type: "message_start", message: structuredClone(partialMessage) });
 				break;
 
 			case "text_start":
@@ -465,7 +465,7 @@ async function streamAssistantResponse(
 					await emit({
 						type: "message_update",
 						assistantMessageEvent: event,
-						message: { ...partialMessage },
+						message: structuredClone(partialMessage),
 					});
 				}
 				break;
@@ -479,9 +479,9 @@ async function streamAssistantResponse(
 					context.messages.push(finalMessage);
 				}
 				if (!addedPartial) {
-					await emit({ type: "message_start", message: { ...finalMessage } });
+					await emit({ type: "message_start", message: structuredClone(finalMessage) });
 				}
-				await emit({ type: "message_end", message: finalMessage });
+				await emit({ type: "message_end", message: structuredClone(finalMessage) });
 				return finalMessage;
 			}
 		}
@@ -492,9 +492,9 @@ async function streamAssistantResponse(
 		context.messages[context.messages.length - 1] = finalMessage;
 	} else {
 		context.messages.push(finalMessage);
-		await emit({ type: "message_start", message: { ...finalMessage } });
+		await emit({ type: "message_start", message: structuredClone(finalMessage) });
 	}
-	await emit({ type: "message_end", message: finalMessage });
+	await emit({ type: "message_end", message: structuredClone(finalMessage) });
 	return finalMessage;
 }
 

@@ -260,11 +260,21 @@ function validateEditInput(input: EditToolInput): { path: string; edits: Edit[] 
 }
 
 type RenderableEditArgs = {
+	[key: string]: unknown;
 	path?: string;
 	file_path?: string;
-	edits?: Edit[];
+	filePath?: string;
+	TargetFile?: string;
+	target_file?: string;
+	edits?: unknown;
 	oldText?: string;
 	newText?: string;
+	old_string?: string;
+	new_string?: string;
+	target_content?: string;
+	replacement_content?: string;
+	TargetContent?: string;
+	ReplacementContent?: string;
 };
 
 type RenderableEdit = {
@@ -283,6 +293,17 @@ type EditCallRenderComponent = Box & {
 	previewPending?: boolean;
 	settledError?: boolean;
 };
+
+function getEditPath(args: RenderableEditArgs | undefined): string | null {
+	return str(args?.file_path ?? args?.path ?? args?.filePath ?? args?.TargetFile ?? args?.target_file);
+}
+
+function getEditText(edit: Record<string, unknown>, names: string[]): string | undefined {
+	for (const name of names) {
+		if (typeof edit[name] === "string") return edit[name] as string;
+	}
+	return undefined;
+}
 
 function createEditCallRenderComponent(): EditCallRenderComponent {
 	return Object.assign(new Box(0, 0), {
@@ -312,21 +333,14 @@ function getRenderablePreviewInput(args: RenderableEditArgs | undefined): { path
 		return null;
 	}
 
-	const path = typeof args.path === "string" ? args.path : typeof args.file_path === "string" ? args.file_path : null;
+	const path = getEditPath(args);
 	if (!path) {
 		return null;
 	}
 
-	if (
-		Array.isArray(args.edits) &&
-		args.edits.length > 0 &&
-		args.edits.every((edit) => typeof edit?.oldText === "string" && typeof edit?.newText === "string")
-	) {
-		return { path, edits: args.edits };
-	}
-
-	if (typeof args.oldText === "string" && typeof args.newText === "string") {
-		return { path, edits: [{ oldText: args.oldText, newText: args.newText }] };
+	const edits = getRenderableEdits(args);
+	if (edits.length > 0 && edits.every((edit) => edit.oldText !== undefined && edit.newText !== undefined)) {
+		return { path, edits: edits as Edit[] };
 	}
 
 	return null;
@@ -336,15 +350,17 @@ function getRenderableEdits(args: RenderableEditArgs | undefined): RenderableEdi
 	if (!args) return [];
 	if (Array.isArray(args.edits)) {
 		return args.edits
-			.filter((edit) => edit && typeof edit === "object")
+			.filter((edit): edit is Record<string, unknown> => Boolean(edit) && typeof edit === "object")
 			.map((edit) => ({
-				oldText: typeof edit.oldText === "string" ? edit.oldText : undefined,
-				newText: typeof edit.newText === "string" ? edit.newText : undefined,
+				oldText: getEditText(edit, ["oldText", "TargetContent", "target_content", "old_string"]),
+				newText: getEditText(edit, ["newText", "ReplacementContent", "replacement_content", "new_string"]),
 			}))
 			.filter((edit) => edit.oldText !== undefined || edit.newText !== undefined);
 	}
-	if (typeof args.oldText === "string" || typeof args.newText === "string") {
-		return [{ oldText: args.oldText, newText: args.newText }];
+	const oldText = getEditText(args, ["oldText", "TargetContent", "target_content", "old_string"]);
+	const newText = getEditText(args, ["newText", "ReplacementContent", "replacement_content", "new_string"]);
+	if (oldText !== undefined || newText !== undefined) {
+		return [{ oldText, newText }];
 	}
 	return [];
 }
@@ -372,7 +388,7 @@ function formatLiveEditPreview(args: RenderableEditArgs | undefined, theme: Them
 }
 
 function formatEditCall(args: RenderableEditArgs | undefined, theme: Theme, cwd: string): string {
-	const pathDisplay = renderToolPath(str(args?.file_path ?? args?.path), theme, cwd);
+	const pathDisplay = renderToolPath(getEditPath(args), theme, cwd);
 	return `${theme.fg("toolTitle", theme.bold("Update"))}(${pathDisplay})`;
 }
 
@@ -400,7 +416,7 @@ function formatEditResult(
 	theme: Theme,
 	isError: boolean,
 ): Component | undefined {
-	const rawPath = str(args?.file_path ?? args?.path);
+	const rawPath = getEditPath(args);
 	const previewDiff = preview && !("error" in preview) ? preview.diff : undefined;
 	const previewError = preview && "error" in preview ? preview.error : undefined;
 	if (isError) {

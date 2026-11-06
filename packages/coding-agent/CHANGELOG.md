@@ -20,6 +20,8 @@
 
 ### Fixed
 
+- Render `Update` calls and their partial replacement content immediately across canonical and provider-specific edit argument names.
+
 - Ignore model catalogs cached for a different Codeify credential and remove unavailable models from the selector after refresh.
 
 - Report Codeify model catalog refresh failures instead of labeling cached catalogs as refreshed.

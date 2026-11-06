@@ -1,10 +1,10 @@
 {
 	"name": "codeify-coding-agent-install",
-	"version": "0.83.40",
+	"version": "0.83.41",
 	"private": true,
 	"description": "Lockfile root used by the Pi installer and updater.",
 	"dependencies": {
-		"codeify-coding-agent": "0.83.40"
+		"codeify-coding-agent": "0.83.41"
 	},
 	"overrides": {
 		"rimraf": "6.1.2",

@@ -108,6 +108,12 @@ describe("edit tool TUI rendering", () => {
 		});
 		expect(component.render(80).join("\n")).toContain("+ next line");
 
+		component.updateArgs({
+			file_path: filePath,
+			edits: [{ old_string: "before", new_string: "streamed replacement" }],
+		});
+		expect(component.render(80).join("\n")).toContain("+ streamed replacement");
+
 		component.setArgsComplete();
 		component.markExecutionStarted();
 		expect(component.render(80).join("\n")).toContain("Writing changes...");

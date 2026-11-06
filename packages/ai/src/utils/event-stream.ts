@@ -67,6 +67,10 @@ export class EventStream<T, R = T> implements AsyncIterable<T> {
 }
 
 export class AssistantMessageEventStream extends EventStream<AssistantMessageEvent, AssistantMessage> {
+	override push(event: AssistantMessageEvent): void {
+		super.push(structuredClone(event));
+	}
+
 	constructor() {
 		super(
 			(event) => event.type === "done" || event.type === "error",

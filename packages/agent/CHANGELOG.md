@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Preserve each streamed tool-call argument snapshot so consumers can render partial calls before execution starts.
+
 - Automatically continue responses cut off by the output token limit while retaining partial output and honoring cancellation and queued input.
 - Forward reasoning immediately while filtering text tool-call markers, and terminate responses when stream setup or iteration throws.
 - Stop and regenerate responses that begin with a text tool-call marker.

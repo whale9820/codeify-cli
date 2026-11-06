@@ -368,6 +368,85 @@ describe("agentLoop with AgentMessage", () => {
 		expect(toolResult?.role === "toolResult" ? toolResult.usage : undefined).toEqual(patchedToolUsage);
 	});
 
+	it("preserves partial tool-call arguments in each update event", async () => {
+		const toolSchema = Type.Object({ value: Type.String() });
+		const tool: AgentTool<typeof toolSchema> = {
+			name: "echo",
+			label: "Echo",
+			description: "Echo tool",
+			parameters: toolSchema,
+			execute: async (_toolCallId, params) => ({
+				content: [{ type: "text", text: params.value }],
+				details: undefined,
+			}),
+		};
+		const context: AgentContext = { systemPrompt: "", messages: [], tools: [tool] };
+		const config: AgentLoopConfig = { model: createModel(), convertToLlm: identityConverter };
+		let callIndex = 0;
+		const streamFn = () => {
+			const stream = new MockAssistantStream();
+			queueMicrotask(() => {
+				if (callIndex > 0) {
+					stream.push({
+						type: "done",
+						reason: "stop",
+						message: createAssistantMessage([{ type: "text", text: "done" }]),
+					});
+					callIndex++;
+					return;
+				}
+
+				const partial = createAssistantMessage(
+					[{ type: "toolCall", id: "tool-1", name: "echo", arguments: {} }],
+					"toolUse",
+				);
+				const toolCall = partial.content[0];
+				stream.push({ type: "start", partial: structuredClone(partial) });
+				stream.push({ type: "toolcall_start", contentIndex: 0, partial: structuredClone(partial) });
+				if (toolCall.type !== "toolCall") throw new Error("Expected tool call");
+				toolCall.arguments = { value: "first" };
+				stream.push({
+					type: "toolcall_delta",
+					contentIndex: 0,
+					delta: '"first"',
+					partial: structuredClone(partial),
+				});
+				toolCall.arguments = { value: "second" };
+				stream.push({
+					type: "toolcall_delta",
+					contentIndex: 0,
+					delta: '"second"',
+					partial: structuredClone(partial),
+				});
+				stream.push({
+					type: "toolcall_end",
+					contentIndex: 0,
+					toolCall: structuredClone(toolCall),
+					partial: structuredClone(partial),
+				});
+				stream.push({ type: "done", reason: "toolUse", message: createAssistantMessage([toolCall], "toolUse") });
+				callIndex++;
+			});
+			return stream;
+		};
+
+		const events: AgentEvent[] = [];
+		const stream = agentLoop([createUserMessage("echo")], context, config, undefined, streamFn);
+		for await (const event of stream) events.push(event);
+
+		const updates = events.filter(
+			(event): event is Extract<AgentEvent, { type: "message_update" }> => event.type === "message_update",
+		);
+		const argumentsByUpdate = updates
+			.filter((event) => event.assistantMessageEvent.type === "toolcall_delta")
+			.map((event) => {
+				const toolCall = event.message.role === "assistant" ? event.message.content[0] : undefined;
+				return toolCall?.type === "toolCall" ? toolCall.arguments : undefined;
+			});
+
+		expect(argumentsByUpdate).toEqual([{ value: "first" }, { value: "second" }]);
+	});
+
 	it("should resolve tool aliases and case-insensitive tool names", async () => {
 		const toolSchema = Type.Object({ value: Type.String() });
 		const executed: string[] = [];

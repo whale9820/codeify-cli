@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- Snapshot assistant stream events when they enter the event stream so partial tool-call arguments cannot be mutated by later chunks.
+
 - Preserve provider metadata, including credential-specific model catalog state, when persisting refreshed models.
 
 - Send adaptive thinking with `output_config.effort` for all reasoning-enabled Anthropic Messages requests, including custom models without compatibility flags; omit legacy token budgets and the interleaved-thinking beta header.
