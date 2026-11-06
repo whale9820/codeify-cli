@@ -99,12 +99,10 @@ describe("provider retry classification", () => {
 		"no output within 30s",
 		"Error: no output within 30s",
 		"upstream_error: connection reset",
-		"upstream_error: ANYTHING_HERE",
 		"Error: upstream_error: timeout",
 		"Error: upstream stream failed: ReadError: ReadError",
 		"upstream stream failed: ReadError: ReadError",
 		"Error: upstream stream failed: RemoteProtocolError: peer closed connection without sending complete message body (incomplete chunked read)",
-		"unknown: Unable to forward upstream stream",
 		"Error: upstream_http2_stream_error: Upstream HTTP/2 stream failed",
 		"Error: Upstream HTTP/2 stream failed",
 		"Error: Upstream response stream was interrupted",
@@ -126,7 +124,11 @@ describe("provider retry classification", () => {
 		expect(isReconnectableProviderError("API Error (403): 403 status code (no body)")).toBe(false);
 		expect(isReconnectableProviderError("context window 1500 tokens exceeded")).toBe(false);
 		expect(isReconnectableProviderError("Codex SSE response headers timed out after 1000ms")).toBe(false);
+		expect(isReconnectableProviderError("upstream_error: ANYTHING_HERE")).toBe(false);
+		expect(isReconnectableProviderError("unknown: Unable to forward upstream stream")).toBe(false);
 		expect(resolveAssistantRetryLimit("API Error (403): 403 status code (no body)", 3)).toBe(3);
+		expect(resolveAssistantRetryLimit("upstream_error: ANYTHING_HERE", 3)).toBe(3);
+		expect(resolveAssistantRetryLimit("unknown: Unable to forward upstream stream", 3)).toBe(3);
 	});
 
 	it("classifies assistant error messages", () => {
@@ -275,7 +277,6 @@ describe("retryAssistantCall", () => {
 			"upstream_error: connection reset",
 			"Error: upstream stream failed: ReadError: ReadError",
 			"Error: upstream stream failed: RemoteProtocolError: peer closed connection without sending complete message body (incomplete chunked read)",
-			"unknown: Unable to forward upstream stream",
 			"Error: upstream_http2_stream_error: Upstream HTTP/2 stream failed",
 			"Error: Upstream response stream was interrupted",
 			dahlStreamInterruptedMessage,

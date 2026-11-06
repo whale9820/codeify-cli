@@ -44,9 +44,10 @@ export const RECONNECT_MAX_RETRIES = 5;
 const HTTP_5XX_STATUS_PATTERN = /\b5\d{2}\b/;
 const REQUEST_TIMED_OUT_PATTERN = /request timed out/i;
 const NO_OUTPUT_WITHIN_30S_PATTERN = /no output within 30s/i;
-const UPSTREAM_ERROR_PATTERN = /upstream_error\s*:/i;
+// The gateway envelopes every upstream failure as `upstream_error: ...`; match only the
+// listed transient transport errors so other upstream failures are not retried.
+const UPSTREAM_ERROR_PATTERN = /upstream_error\s*:\s*(?:connection reset|timeout)\b/i;
 const UPSTREAM_STREAM_READ_ERROR_PATTERN = /upstream stream failed:\s*(?:ReadError|RemoteProtocolError)\b/i;
-const UPSTREAM_STREAM_FORWARD_ERROR_PATTERN = /unable to forward upstream stream/i;
 const UPSTREAM_HTTP2_STREAM_ERROR_PATTERN = /upstream_http2_stream_error|upstream http\/2 stream failed/i;
 const UPSTREAM_RESPONSE_INTERRUPTED_PATTERN = /upstream response stream was interrupted/i;
 const INTERRUPTED_STREAM_PATTERN = /\bstream (?:was )?interrupted\b|\bRemoteProtocolError\b/i;
@@ -60,7 +61,6 @@ export function isReconnectableProviderError(errorMessage: string): boolean {
 		NO_OUTPUT_WITHIN_30S_PATTERN.test(errorMessage) ||
 		UPSTREAM_ERROR_PATTERN.test(errorMessage) ||
 		UPSTREAM_STREAM_READ_ERROR_PATTERN.test(errorMessage) ||
-		UPSTREAM_STREAM_FORWARD_ERROR_PATTERN.test(errorMessage) ||
 		UPSTREAM_HTTP2_STREAM_ERROR_PATTERN.test(errorMessage) ||
 		UPSTREAM_RESPONSE_INTERRUPTED_PATTERN.test(errorMessage) ||
 		INTERRUPTED_STREAM_PATTERN.test(errorMessage) ||
@@ -223,8 +223,10 @@ function sleep(ms: number, signal?: AbortSignal): Promise<void> {
  *   the retried call starts, and `onRetryFinished` once at the end (whether the loop
  *   ends in success, exhausted retries, or an aborted backoff).
  * - HTTP 5xx responses, `Request timed out.`, errors containing `no output within 30s`,
- *   transport cuts of the form `upstream_error: ...`, and unexpected EOF errors use at least
- *   {@link RECONNECT_MAX_RETRIES} attempts when the policy is enabled with a non-zero budget.
+ *   the listed upstream transport failures (`connection reset`, timeouts, stream
+ *   `ReadError`/`RemoteProtocolError`, `upstream_http2_stream_error`), and unexpected
+ *   EOF errors use at least {@link RECONNECT_MAX_RETRIES} attempts when the policy is
+ *   enabled with a non-zero budget.
  *
  * When `policy` is undefined or disabled, the first response is returned unchanged
  * (equivalent to calling `produce()` directly).
