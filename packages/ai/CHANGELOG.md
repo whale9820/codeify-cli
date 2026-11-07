@@ -20,6 +20,7 @@
 - Only retry listed transient upstream errors (`connection reset`, timeouts, `ReadError`, `RemoteProtocolError`, `upstream_http2_stream_error`) instead of every `upstream_error` or upstream stream forwarding failure.
 - Preserve server-declared reasoning effort names and order, including custom values such as `instant`, in model selection and OpenAI-compatible requests.
 - Surface Codeify server-side web searches on Chat Completions (`web_search_options`) as `serverToolUse` blocks and keep final usage from being overwritten by interim search usage chunks.
+- Recover from Anthropic Messages providers that reject images inside `tool_result` blocks with a 400 `invalid_request_error`: the request is resent with tool-result images moved into user content, and that layout is reused for the rest of the session.
 
 ## [0.83.0] - 2026-10-18
 

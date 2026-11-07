@@ -168,6 +168,33 @@ function convertContentBlocks(content: (TextContent | ImageContent)[]):
 	return blocks;
 }
 
+/**
+ * Some Anthropic-compatible providers reject image blocks nested inside
+ * tool_result content with a bare 400 invalid_request_error. When that happens
+ * we resend with tool-result images moved into sibling user content and keep
+ * using that layout for the rest of the session.
+ */
+const toolResultImagesInUserKeys = new Set<string>();
+
+function toolResultImagesInUserKey(model: Model<"anthropic-messages">, sessionId: string | undefined): string {
+	return [sessionId ?? "", model.provider, model.baseUrl, model.id].join("\0");
+}
+
+function hasToolResultImages(model: Model<"anthropic-messages">, messages: Message[]): boolean {
+	return (
+		model.input.includes("image") &&
+		messages.some((msg) => msg.role === "toolResult" && msg.content.some((block) => block.type === "image"))
+	);
+}
+
+function isInvalidRequestError(error: unknown): boolean {
+	if (!error || typeof error !== "object") return false;
+	const { status, error: body, message } = error as { status?: unknown; error?: unknown; message?: unknown };
+	if (status !== 400) return false;
+	const text = `${typeof message === "string" ? message : ""} ${body ? JSON.stringify(body) : ""}`;
+	return text.includes("invalid_request_error");
+}
+
 export type AnthropicEffort = "low" | "medium" | "high" | "xhigh" | "max";
 
 export type AnthropicThinkingDisplay = "summarized" | "omitted";
@@ -541,17 +568,36 @@ export const stream: StreamFunction<"anthropic-messages", AnthropicOptions> = (
 				client = created.client;
 				isOAuth = created.isOAuthToken;
 			}
-			let params = buildParams(model, context, isOAuth, options);
-			const nextParams = await options?.onPayload?.(params, model);
-			if (nextParams !== undefined) {
-				params = nextParams as MessageCreateParamsStreaming;
-			}
 			const requestOptions = {
 				...(options?.signal ? { signal: options.signal } : {}),
 				...(options?.timeoutMs !== undefined ? { timeout: options.timeoutMs } : {}),
 				maxRetries: options?.maxRetries ?? 0,
 			};
-			const response = await client.messages.create({ ...params, stream: true }, requestOptions).asResponse();
+			const sendRequest = async (toolResultImagesInUser: boolean): Promise<Response> => {
+				let params = buildParams(model, context, isOAuth, options, toolResultImagesInUser);
+				const nextParams = await options?.onPayload?.(params, model);
+				if (nextParams !== undefined) {
+					params = nextParams as MessageCreateParamsStreaming;
+				}
+				return client.messages.create({ ...params, stream: true }, requestOptions).asResponse();
+			};
+			const imageWorkaroundKey = toolResultImagesInUserKey(model, options?.sessionId);
+			const imageWorkaroundActive = toolResultImagesInUserKeys.has(imageWorkaroundKey);
+			let response: Response;
+			try {
+				response = await sendRequest(imageWorkaroundActive);
+			} catch (error) {
+				if (
+					imageWorkaroundActive ||
+					options?.signal?.aborted ||
+					!isInvalidRequestError(error) ||
+					!hasToolResultImages(model, context.messages)
+				) {
+					throw error;
+				}
+				response = await sendRequest(true);
+				toolResultImagesInUserKeys.add(imageWorkaroundKey);
+			}
 			await options?.onResponse?.({ status: response.status, headers: headersToRecord(response.headers) }, model);
 			stream.push({ type: "start", partial: output });
 
@@ -965,6 +1011,7 @@ function buildParams(
 	context: Context,
 	isOAuthToken: boolean,
 	options?: AnthropicOptions,
+	toolResultImagesInUser = false,
 ): MessageCreateParamsStreaming {
 	const { cacheControl } = getCacheControl(model, options?.cacheRetention, options?.env);
 	const compat = getAnthropicCompat(model);
@@ -991,6 +1038,7 @@ function buildParams(
 			compat.allowEmptySignature,
 			deferredToolNames,
 			normalizeToolName,
+			toolResultImagesInUser,
 		),
 		max_tokens: options?.maxTokens ?? model.maxTokens,
 		stream: true,
@@ -1092,6 +1140,7 @@ function convertToolResult(
 	deferredToolNames: ReadonlySet<string>,
 	loadedToolNames: Set<string>,
 	normalizeToolName: (name: string) => string,
+	imagesInUser: boolean,
 ): { toolResult: ContentBlockParam; siblingContent: ContentBlockParam[] } {
 	const references: Array<{ type: "tool_reference"; tool_name: string }> = [];
 	for (const name of msg.addedToolNames ?? []) {
@@ -1103,7 +1152,31 @@ function convertToolResult(
 			tool_name: isOAuthToken ? toClaudeCodeName(name) : name,
 		});
 	}
-	const convertedContent = convertContentBlocks(msg.content);
+	const images = imagesInUser ? msg.content.filter((block): block is ImageContent => block.type === "image") : [];
+	const textContent = msg.content.filter((block): block is TextContent => block.type === "text");
+	const resultContent: (TextContent | ImageContent)[] =
+		images.length === 0
+			? msg.content
+			: textContent.length > 0
+				? textContent
+				: [{ type: "text", text: "(see attached image)" }];
+	const convertedContent = convertContentBlocks(resultContent);
+	const imageSiblings: ContentBlockParam[] =
+		images.length === 0
+			? []
+			: [
+					{ type: "text", text: "Attached image(s) from tool result:" },
+					...images.map(
+						(image): ContentBlockParam => ({
+							type: "image",
+							source: {
+								type: "base64",
+								media_type: image.mimeType as "image/jpeg" | "image/png" | "image/gif" | "image/webp",
+								data: image.data,
+							},
+						}),
+					),
+				];
 	// Anthropic rejects tool references mixed with ordinary tool-result content.
 	return {
 		toolResult: {
@@ -1112,12 +1185,14 @@ function convertToolResult(
 			content: references.length > 0 ? references : convertedContent,
 			is_error: msg.isError,
 		},
-		siblingContent:
-			references.length === 0
+		siblingContent: [
+			...(references.length === 0
 				? []
 				: typeof convertedContent === "string"
-					? [{ type: "text", text: convertedContent }]
-					: convertedContent,
+					? [{ type: "text" as const, text: convertedContent }]
+					: convertedContent),
+			...imageSiblings,
+		],
 	};
 }
 
@@ -1128,6 +1203,7 @@ export function convertMessages(
 	allowEmptySignature = false,
 	deferredToolNames: ReadonlySet<string> = new Set(),
 	normalizeToolName: (name: string) => string = (name) => name,
+	toolResultImagesInUser = false,
 ): MessageParam[] {
 	const params: MessageParam[] = [];
 	const loadedToolNames = new Set<string>();
@@ -1272,6 +1348,7 @@ export function convertMessages(
 					deferredToolNames,
 					loadedToolNames,
 					normalizeToolName,
+					toolResultImagesInUser,
 				);
 				toolResults.push(converted.toolResult);
 				siblingContent.push(...converted.siblingContent);
