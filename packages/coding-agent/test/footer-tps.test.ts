@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { estimateStreamTokens, FooterTpsTracker, formatTps } from "../src/modes/interactive/components/footer-tps.ts";
+import {
+	estimateStreamTokens,
+	FooterTpsTracker,
+	formatTps,
+	isFooterTpsSnapshot,
+} from "../src/modes/interactive/components/footer-tps.ts";
 
 describe("estimateStreamTokens", () => {
 	it("counts about one token per four ASCII characters", () => {
@@ -26,13 +31,19 @@ describe("formatTps", () => {
 });
 
 describe("FooterTpsTracker", () => {
-	it("hides the live rate until 300ms after the first token", () => {
+	it("shows 0 for a new tracker", () => {
+		const tracker = new FooterTpsTracker();
+		expect(tracker.getLabel()).toBe("0.0 tps");
+		expect(tracker.getSnapshot()).toEqual({ rate: 0, estimated: false });
+	});
+
+	it("keeps the previous value until 300ms after the first token", () => {
 		const tracker = new FooterTpsTracker();
 		tracker.start(0);
 		expect(tracker.addChunk("abcd", 0)).toBe(false);
-		expect(tracker.getLabel()).toBeUndefined();
+		expect(tracker.getLabel()).toBe("0.0 tps");
 		expect(tracker.addChunk("efgh", 300)).toBe(false);
-		expect(tracker.getLabel()).toBeUndefined();
+		expect(tracker.getLabel()).toBe("0.0 tps");
 		expect(tracker.addChunk("ijkl", 301)).toBe(true);
 		expect(tracker.getLabel()).toBe(formatTps(3 / 0.301, true));
 	});
@@ -60,15 +71,16 @@ describe("FooterTpsTracker", () => {
 		expect(tracker.getLabel()).toBe("113.5 tps");
 	});
 
-	it("omits the exact rate when generation lasted 50ms or less", () => {
+	it("keeps the last displayed value when generation lasted 50ms or less", () => {
 		const tracker = new FooterTpsTracker();
+		tracker.restore({ rate: 42, estimated: false });
 		tracker.start(0);
 		tracker.addChunk("abcd", 0);
 		expect(tracker.finish(10, 50)).toBe(false);
-		expect(tracker.getLabel()).toBeUndefined();
+		expect(tracker.getLabel()).toBe("42.0 tps");
 	});
 
-	it("keeps the last completed rate until the next stream starts", () => {
+	it("keeps the last completed rate while the next stream starts", () => {
 		const tracker = new FooterTpsTracker();
 		tracker.start(0);
 		tracker.addChunk("abcd", 301);
@@ -76,14 +88,14 @@ describe("FooterTpsTracker", () => {
 		expect(tracker.getLabel()).toBe("100.0 tps");
 
 		tracker.start(2000);
-		expect(tracker.getLabel()).toBeUndefined();
+		expect(tracker.getLabel()).toBe("100.0 tps");
 		tracker.addChunk("abcd", 2000);
-		expect(tracker.getLabel()).toBeUndefined();
+		expect(tracker.getLabel()).toBe("100.0 tps");
 		tracker.addChunk("efgh", 2301);
 		expect(tracker.getLabel()).toBe(formatTps(2 / 0.301, true));
 	});
 
-	it("cancels a live estimate without changing the previous completed rate", () => {
+	it("keeps the last displayed value on cancel", () => {
 		const tracker = new FooterTpsTracker();
 		tracker.start(0);
 		tracker.addChunk("abcd", 301);
@@ -91,8 +103,32 @@ describe("FooterTpsTracker", () => {
 		expect(tracker.getLabel()).toBe("50.0 tps");
 
 		tracker.start(2000);
-		tracker.addChunk("abcd", 2301);
+		tracker.addChunk("abcd", 2000);
 		tracker.cancel();
 		expect(tracker.getLabel()).toBe("50.0 tps");
+
+		tracker.start(3000);
+		tracker.addChunk("abcd", 3000);
+		tracker.addChunk("efgh", 3301);
+		tracker.cancel();
+		expect(tracker.getLabel()).toBe(formatTps(2 / 0.301, true));
+	});
+
+	it("restores and resets persisted values", () => {
+		const tracker = new FooterTpsTracker();
+		tracker.restore({ rate: 77.25, estimated: true });
+		expect(tracker.getLabel()).toBe("~77.3 tps");
+		expect(tracker.getSnapshot()).toEqual({ rate: 77.25, estimated: true });
+		tracker.reset();
+		expect(tracker.getLabel()).toBe("0.0 tps");
+	});
+});
+
+describe("isFooterTpsSnapshot", () => {
+	it("validates persisted data", () => {
+		expect(isFooterTpsSnapshot({ rate: 1, estimated: false })).toBe(true);
+		expect(isFooterTpsSnapshot({ rate: -1, estimated: false })).toBe(false);
+		expect(isFooterTpsSnapshot({ rate: "1", estimated: false })).toBe(false);
+		expect(isFooterTpsSnapshot(undefined)).toBe(false);
 	});
 });

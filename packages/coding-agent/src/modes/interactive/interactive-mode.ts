@@ -117,7 +117,12 @@ import { EarendilAnnouncementComponent } from "./components/earendil-announcemen
 import { EditorDialogComponent } from "./components/editor-dialog.ts";
 import { ErrorDetailsComponent } from "./components/error-details.ts";
 import { FooterComponent, formatTokens } from "./components/footer.ts";
-import { FooterTpsTracker } from "./components/footer-tps.ts";
+import {
+	FOOTER_TPS_CUSTOM_TYPE,
+	type FooterTpsSnapshot,
+	FooterTpsTracker,
+	isFooterTpsSnapshot,
+} from "./components/footer-tps.ts";
 import { InputDialogComponent } from "./components/input-dialog.ts";
 import { formatKeyText, keyDisplayText, keyHint, keyText, rawKeyHint } from "./components/keybinding-hints.ts";
 import { LoginDialogComponent } from "./components/login-dialog.ts";
@@ -2186,6 +2191,7 @@ export class InteractiveMode {
 					this.streamingMessage = undefined;
 				}
 				this.footerTpsTracker.cancel();
+				this.persistFooterTps();
 				this.pendingTools.clear();
 
 				this.ui.requestRender();
@@ -2623,7 +2629,31 @@ export class InteractiveMode {
 		this.chatContainer.addChild(new Text(text, 1, 0));
 	}
 
+	/** Latest footer tps value saved on the active branch. */
+	private getPersistedFooterTps(): FooterTpsSnapshot | undefined {
+		const branch = this.sessionManager.getBranch();
+		for (let i = branch.length - 1; i >= 0; i--) {
+			const entry = branch[i];
+			if (
+				entry.type === "custom" &&
+				entry.customType === FOOTER_TPS_CUSTOM_TYPE &&
+				isFooterTpsSnapshot(entry.data)
+			) {
+				return entry.data;
+			}
+		}
+		return undefined;
+	}
+
+	private persistFooterTps(): void {
+		const snapshot = this.footerTpsTracker.getSnapshot();
+		const persisted = this.getPersistedFooterTps() ?? { rate: 0, estimated: false };
+		if (persisted.rate === snapshot.rate && persisted.estimated === snapshot.estimated) return;
+		this.sessionManager.appendCustomEntry(FOOTER_TPS_CUSTOM_TYPE, snapshot);
+	}
+
 	renderInitialMessages(): void {
+		this.footerTpsTracker.restore(this.getPersistedFooterTps());
 		const entries = this.sessionManager.buildContextEntries();
 		this.renderSessionEntries(entries, {
 			updateFooter: true,

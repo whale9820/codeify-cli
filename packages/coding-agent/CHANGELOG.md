@@ -41,6 +41,7 @@
 - Use server-declared reasoning efforts in thinking selectors, CLI arguments, cached catalogs, backend overrides, and delegated model calls instead of filtering through fixed effort names.
 - Block pure no-op Bash commands while background tasks or completion notifications are pending, and discourage filler tool calls while waiting for automatic results.
 - Route all `qwen*` models through OpenAI Responses and all `glm*` models through Anthropic Messages so hosted `web_search` is declared on each.
+- Keep the footer tokens-per-second counter always visible: start new sessions at `0.0 tps`, keep the last displayed value between streams, retries, and idle periods instead of blanking, and save it in session data so resumed sessions restore it.
 - Allow MCP tool calls to run for ten minutes by default, extend the timeout when progress arrives, support per-server `timeoutMs` in `mcp.json`, and forward turn cancellation to the server.
 
 ## [0.83.0] - 2026-10-18

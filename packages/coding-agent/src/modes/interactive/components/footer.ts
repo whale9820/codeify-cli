@@ -88,10 +88,7 @@ export class FooterComponent implements Component {
 			pwd = `${pwd} • ${providerLabel}`;
 		}
 
-		const tpsLabel = this.tpsTracker.getLabel();
-		if (tpsLabel) {
-			pwd = `${pwd} • ${tpsLabel}`;
-		}
+		pwd = `${pwd} • ${this.tpsTracker.getLabel()}`;
 
 		const runningTasks = this.session.getBackgroundTasks().filter((task) => task.status === "running").length;
 		const taskSuffix = runningTasks > 0 ? `${runningTasks} ${runningTasks === 1 ? "task" : "tasks"}` : "";

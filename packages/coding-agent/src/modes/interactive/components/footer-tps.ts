@@ -23,13 +23,29 @@ export function formatTps(rate: number, estimated: boolean): string {
 	return estimated ? `~${value} tps` : `${value} tps`;
 }
 
+/** Persisted footer rate, stored in session data as a custom entry. */
+export interface FooterTpsSnapshot {
+	rate: number;
+	estimated: boolean;
+}
+
+export const FOOTER_TPS_CUSTOM_TYPE = "footer_tps";
+
+export function isFooterTpsSnapshot(value: unknown): value is FooterTpsSnapshot {
+	if (typeof value !== "object" || value === null) return false;
+	const rate: unknown = Reflect.get(value, "rate");
+	const estimated: unknown = Reflect.get(value, "estimated");
+	return typeof rate === "number" && Number.isFinite(rate) && rate >= 0 && typeof estimated === "boolean";
+}
+
 /**
  * Tracks output tokens-per-second for the interactive footer.
  *
- * While streaming, chunks update an estimate at most every 500ms, and nothing
- * is shown until 300ms after the first token. On stop, the label switches to
- * the exact `output_tokens / generationTime` rate when generation lasted
- * longer than 50ms.
+ * A value is always displayed: `0.0 tps` for a new session, otherwise the last
+ * displayed rate. While streaming, chunks update an estimate at most every
+ * 500ms, starting 300ms after the first token; until then the previous value
+ * stays visible. On stop, the value switches to the exact
+ * `output_tokens / generationTime` rate when generation lasted longer than 50ms.
  */
 export class FooterTpsTracker {
 	private streaming = false;
@@ -37,11 +53,22 @@ export class FooterTpsTracker {
 	private firstAt: number | undefined;
 	private lastDraw = Number.NEGATIVE_INFINITY;
 	private estimatedTokens = 0;
-	private liveLabel: string | undefined;
-	private completedLabel: string | undefined;
+	private rate = 0;
+	private estimated = false;
 
-	getLabel(): string | undefined {
-		return this.streaming ? this.liveLabel : this.completedLabel;
+	getLabel(): string {
+		return formatTps(this.rate, this.estimated);
+	}
+
+	getSnapshot(): FooterTpsSnapshot {
+		return { rate: this.rate, estimated: this.estimated };
+	}
+
+	/** Replace the displayed value, e.g. when loading a session. Ends any live stream. */
+	restore(snapshot: FooterTpsSnapshot | undefined): void {
+		this.cancel();
+		this.rate = snapshot?.rate ?? 0;
+		this.estimated = snapshot?.estimated ?? false;
 	}
 
 	start(now: number = Date.now()): void {
@@ -50,7 +77,6 @@ export class FooterTpsTracker {
 		this.firstAt = undefined;
 		this.lastDraw = Number.NEGATIVE_INFINITY;
 		this.estimatedTokens = 0;
-		this.liveLabel = undefined;
 	}
 
 	addChunk(delta: string, now: number = Date.now()): boolean {
@@ -72,13 +98,13 @@ export class FooterTpsTracker {
 
 		this.lastDraw = now;
 		const elapsedSec = (now - firstAt) / 1000;
-		this.liveLabel = formatTps(elapsedSec > 0 ? this.estimatedTokens / elapsedSec : 0, true);
+		this.rate = elapsedSec > 0 ? this.estimatedTokens / elapsedSec : 0;
+		this.estimated = true;
 		return true;
 	}
 
 	finish(outputTokens: number, now: number = Date.now()): boolean {
 		this.streaming = false;
-		this.liveLabel = undefined;
 		const startedAt = this.startedAt ?? this.firstAt;
 		this.firstAt = undefined;
 		this.startedAt = undefined;
@@ -90,13 +116,14 @@ export class FooterTpsTracker {
 		}
 
 		const elapsedSec = (now - startedAt) / 1000;
-		this.completedLabel = formatTps(outputTokens / elapsedSec, false);
+		this.rate = outputTokens / elapsedSec;
+		this.estimated = false;
 		return true;
 	}
 
+	/** Stop tracking the current stream, keeping the last displayed value. */
 	cancel(): void {
 		this.streaming = false;
-		this.liveLabel = undefined;
 		this.firstAt = undefined;
 		this.startedAt = undefined;
 		this.estimatedTokens = 0;
@@ -104,7 +131,6 @@ export class FooterTpsTracker {
 	}
 
 	reset(): void {
-		this.cancel();
-		this.completedLabel = undefined;
+		this.restore(undefined);
 	}
 }
