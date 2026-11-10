@@ -154,6 +154,7 @@ import { TreeSelectorComponent } from "./components/tree-selector.ts";
 import { TrustSelectorComponent } from "./components/trust-selector.ts";
 import { UserMessageComponent } from "./components/user-message.ts";
 import { UserMessageSelectorComponent } from "./components/user-message-selector.ts";
+import type { WorkingActivity } from "./components/working-messages.ts";
 import { getModelSearchText } from "./model-search.ts";
 import {
 	getAvailableThemes,
@@ -353,7 +354,6 @@ export class InteractiveMode {
 	private pendingUserInputs: string[] = [];
 	private activeStatusIndicator: StatusIndicator | undefined = undefined;
 	private readonly idleStatus = new IdleStatus();
-	private readonly defaultWorkingMessage = "Working...";
 
 	private lastSigintTime = 0;
 	private lastEscapeTime = 0;
@@ -1399,6 +1399,12 @@ export class InteractiveMode {
 		this.statusContainer.addChild(indicator);
 	}
 
+	private setWorkingActivity(activity: WorkingActivity): void {
+		if (this.activeStatusIndicator instanceof WorkingStatusIndicator) {
+			this.activeStatusIndicator.setActivity(activity);
+		}
+	}
+
 	private clearStatusIndicator(kind?: StatusIndicator["kind"]): void {
 		if (kind && this.activeStatusIndicator?.kind !== kind) {
 			return;
@@ -1481,7 +1487,7 @@ export class InteractiveMode {
 		} finally {
 			this.statusContainer.clear();
 			if (this.session === session && session.isStreaming && !signal?.aborted) {
-				this.showStatusIndicator(new WorkingStatusIndicator(this.ui, this.defaultWorkingMessage));
+				this.showStatusIndicator(new WorkingStatusIndicator(this.ui));
 			}
 			this.ui.requestRender();
 		}
@@ -1976,7 +1982,7 @@ export class InteractiveMode {
 					this.defaultEditor.onEscape = this.retryEscapeHandler;
 					this.retryEscapeHandler = undefined;
 				}
-				this.showStatusIndicator(new WorkingStatusIndicator(this.ui, this.defaultWorkingMessage));
+				this.showStatusIndicator(new WorkingStatusIndicator(this.ui));
 				this.ui.requestRender();
 				break;
 
@@ -2021,6 +2027,7 @@ export class InteractiveMode {
 					this.streamingMessage = event.message;
 					this.streamingComponent.setStreaming(true);
 					this.footerTpsTracker.start();
+					this.setWorkingActivity({ kind: "waiting" });
 					this.chatContainer.addChild(this.streamingComponent);
 					this.applyCitationSources(this.streamingComponent, this.streamingMessage);
 					this.streamingComponent.updateContent(this.streamingMessage);
@@ -2039,6 +2046,16 @@ export class InteractiveMode {
 						assistantEvent.type === "server_tool_use_delta"
 					) {
 						this.footerTpsTracker.addChunk(assistantEvent.delta);
+					}
+					if (assistantEvent.type === "thinking_start" || assistantEvent.type === "thinking_delta") {
+						this.setWorkingActivity({ kind: "thinking" });
+					} else if (assistantEvent.type === "text_start" || assistantEvent.type === "text_delta") {
+						this.setWorkingActivity({ kind: "writing" });
+					} else if (assistantEvent.type === "toolcall_start" || assistantEvent.type === "toolcall_delta") {
+						const toolCall = this.streamingMessage.content[assistantEvent.contentIndex];
+						if (toolCall?.type === "toolCall" && toolCall.name) {
+							this.setWorkingActivity({ kind: "tool", toolName: toolCall.name });
+						}
 					}
 					this.applyCitationSources(this.streamingComponent, this.streamingMessage);
 					this.streamingComponent.updateContent(this.streamingMessage);
@@ -2157,6 +2174,7 @@ export class InteractiveMode {
 					this.pendingTools.set(event.toolCallId, component);
 				}
 				component.markExecutionStarted();
+				this.setWorkingActivity({ kind: "tool", toolName: event.toolName });
 				this.ui.requestRender();
 				break;
 			}
@@ -2176,6 +2194,9 @@ export class InteractiveMode {
 					component.updateResult({ ...event.result, isError: event.isError });
 					this.pendingTools.delete(event.toolCallId);
 					this.ui.requestRender();
+				}
+				if (this.pendingTools.size === 0) {
+					this.setWorkingActivity({ kind: "waiting" });
 				}
 				break;
 			}

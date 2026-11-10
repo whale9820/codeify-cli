@@ -10,6 +10,7 @@
 
 ### Changed
 
+- Replace the static `Working...` indicator with activity-aware messages (for example `Thinking...`, `Writing...`, `Editing...`, `Searching the web...`) that follow thinking, text, and each tool call, mix in playful variants such as `Percolating...` or `Squinting at code...`, and rotate every 8 seconds during long phases.
 - Mark completed compact thinking with the therefore symbol (`∴`).
 - Use six-frame clockwise rotating arcs (`◜ ◠ ◝ ◞ ◡ ◟`) for loading, streaming thinking, and installer progress indicators.
 - Animate the single-line thinking indicator while streaming and reserve one column at its right edge.

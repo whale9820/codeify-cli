@@ -2,6 +2,9 @@ import { type Component, Loader, type LoaderIndicatorOptions, type TUI } from "c
 import { theme } from "../theme/theme.ts";
 import { CountdownTimer } from "./countdown-timer.ts";
 import { keyText } from "./keybinding-hints.ts";
+import { pickWorkingVerb, type WorkingActivity, workingActivityKey } from "./working-messages.ts";
+
+const WORKING_ROTATE_MS = 8000;
 
 export type StatusIndicatorKind = "working" | "retry" | "compaction" | "branchSummary" | "check";
 
@@ -25,16 +28,53 @@ export class StatusIndicator extends Loader {
 	}
 }
 
+/**
+ * Working indicator whose message reflects the current activity (thinking, writing, editing, ...).
+ * The verb rotates periodically while the activity stays the same.
+ */
 export class WorkingStatusIndicator extends StatusIndicator {
-	constructor(ui: TUI, message: string, indicator?: LoaderIndicatorOptions) {
+	private activity: WorkingActivity;
+	private verb: string;
+	private rotateTimer: NodeJS.Timeout | undefined;
+
+	constructor(ui: TUI, activity: WorkingActivity = { kind: "waiting" }, indicator?: LoaderIndicatorOptions) {
+		const verb = pickWorkingVerb(activity);
 		super(
 			"working",
 			ui,
 			(spinner) => theme.fg("accent", spinner),
 			(text) => theme.fg("muted", text),
-			message,
+			`${verb}...`,
 			indicator,
 		);
+		this.activity = activity;
+		this.verb = verb;
+		this.scheduleRotation();
+	}
+
+	/** Switch to a new activity. No-op if the activity is unchanged. */
+	setActivity(activity: WorkingActivity): void {
+		if (workingActivityKey(activity) === workingActivityKey(this.activity)) return;
+		this.activity = activity;
+		this.updateVerb();
+		this.scheduleRotation();
+	}
+
+	private updateVerb(): void {
+		this.verb = pickWorkingVerb(this.activity, this.verb);
+		this.setMessage(`${this.verb}...`);
+	}
+
+	private scheduleRotation(): void {
+		if (this.rotateTimer) clearInterval(this.rotateTimer);
+		this.rotateTimer = setInterval(() => this.updateVerb(), WORKING_ROTATE_MS);
+		this.rotateTimer.unref?.();
+	}
+
+	override dispose(): void {
+		if (this.rotateTimer) clearInterval(this.rotateTimer);
+		this.rotateTimer = undefined;
+		super.dispose();
 	}
 }
 
