@@ -395,7 +395,7 @@ describe("AssistantMessageComponent", () => {
 		}
 	});
 
-	test("renders adjacent bold spans in plain assistant text on separate lines", () => {
+	test("does not separate adjacent bold spans in plain assistant text", () => {
 		initTheme("dark");
 
 		const component = new AssistantMessageComponent(
@@ -406,8 +406,7 @@ describe("AssistantMessageComponent", () => {
 		const second = lines.findIndex((line) => line.includes("Second step"));
 
 		expect(first).toBeGreaterThanOrEqual(0);
-		expect(second).toBeGreaterThan(first);
-		expect(lines.slice(first, second).some((line) => line.trim() === "")).toBe(true);
+		expect(second).toBe(first);
 	});
 
 	test("styles wrapped thinking like a real thinking block", () => {

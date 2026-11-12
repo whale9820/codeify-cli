@@ -83,4 +83,10 @@ describe("separateAdjacentBold", () => {
 		expect(separateAdjacentBold("****")).toBe("****");
 		expect(separateAdjacentBold("a **** b")).toBe("a **** b");
 	});
+
+	test("does not split when more than four asterisks sit between spans", () => {
+		expect(separateAdjacentBold("**a*****b**")).toBe("**a*****b**");
+		expect(separateAdjacentBold("**a******b**")).toBe("**a******b**");
+		expect(separateAdjacentBold("***a****b***")).toBe("***a****b***");
+	});
 });

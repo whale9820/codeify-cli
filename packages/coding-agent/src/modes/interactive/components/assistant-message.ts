@@ -221,7 +221,7 @@ export class AssistantMessageComponent extends Container {
 				if (item.text.trim()) {
 					this.contentContainer.addChild(
 						new PrefixedComponent(
-							new Markdown(separateAdjacentBold(item.text.trim()), 0, 0, this.markdownTheme),
+							new Markdown(item.text.trim(), 0, 0, this.markdownTheme),
 							`${theme.fg("text", "●")} `,
 							"  ",
 						),
