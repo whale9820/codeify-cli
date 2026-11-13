@@ -25,7 +25,7 @@ describe("stream idle timeout", () => {
 		expect(signal?.aborted).toBe(false);
 		const message = fauxAssistantMessage("completed");
 		source.push({ type: "done", reason: "stop", message });
-		expect(await output.result()).toBe(message);
+		expect(await output.result()).toEqual(message);
 	});
 
 	test("times out while waiting for the provider to open a stream", async () => {
@@ -43,7 +43,7 @@ describe("stream idle timeout", () => {
 		expect(vi.getTimerCount()).toBe(0);
 	});
 
-	test("finalizes text without discarding it when the completion event never arrives", async () => {
+	test("errors instead of finalizing text when the completion event never arrives", async () => {
 		vi.useFakeTimers();
 		const source = createAssistantMessageEventStream();
 		let signal: AbortSignal | undefined;
@@ -57,31 +57,59 @@ describe("stream idle timeout", () => {
 		expect(signal?.aborted).toBe(false);
 		await vi.advanceTimersByTimeAsync(1);
 		const result = await output.result();
-		expect(result.stopReason).toBe("stop");
-		expect(result.content).toEqual([{ type: "text", text: "partial" }]);
-		expect(result.errorMessage).toBeUndefined();
+		expect(result.stopReason).toBe("error");
+		expect(result.errorMessage).toContain("no streaming chunks for 1s");
 		expect(signal?.aborted).toBe(true);
 		expect(vi.getTimerCount()).toBe(0);
 	});
 
-	test("recovers after 15 seconds, ignores empty deltas, and isolates late mutations", async () => {
+	test("does not end the turn when text is followed by a long pause before a tool call", async () => {
 		vi.useFakeTimers();
 		const source = createAssistantMessageEventStream();
-		const partial = fauxAssistantMessage("finished answer");
+		let signal: AbortSignal | undefined;
+		const output = streamWithIdleTimeout(model, { timeoutMs: 300_000 }, async (requestSignal) => {
+			signal = requestSignal;
+			return source;
+		});
+		source.push({
+			type: "text_delta",
+			contentIndex: 0,
+			delta: "Now the edits.",
+			partial: fauxAssistantMessage("Now the edits."),
+		});
+		await vi.advanceTimersByTimeAsync(60_000);
+		expect(signal?.aborted).toBe(false);
+		const message = fauxAssistantMessage(
+			[
+				{ type: "text", text: "Now the edits." },
+				{ type: "toolCall", id: "call_1", name: "edit", arguments: { path: "a.ts" } },
+			],
+			{ stopReason: "toolUse" },
+		);
+		source.push({ type: "done", reason: "toolUse", message });
+		expect(await output.result()).toEqual(message);
+	});
+
+	test("recovers a tool call after 15 seconds, ignores empty deltas, and isolates late mutations", async () => {
+		vi.useFakeTimers();
+		const source = createAssistantMessageEventStream();
+		const tool = { type: "toolCall" as const, id: "call_1", name: "bash", arguments: { command: "ls" } };
+		const partial = fauxAssistantMessage([{ type: "text", text: "Listing." }, tool], { stopReason: "toolUse" });
 		const output = streamWithIdleTimeout(model, { timeoutMs: 300_000 }, async () => source);
-		source.push({ type: "text_delta", contentIndex: 0, delta: "finished answer", partial });
+		source.push({ type: "toolcall_delta", contentIndex: 1, delta: '{"command":"ls"}', partial });
+		source.push({ type: "toolcall_end", contentIndex: 1, toolCall: tool, partial });
 		await vi.advanceTimersByTimeAsync(10_000);
-		source.push({ type: "text_delta", contentIndex: 0, delta: "", partial });
+		source.push({ type: "toolcall_delta", contentIndex: 1, delta: "", partial });
 		await vi.advanceTimersByTimeAsync(5_000);
 		const result = await output.result();
 		partial.stopReason = "aborted";
 		partial.content = [];
 		source.push({ type: "error", reason: "aborted", error: partial });
-		expect(result.stopReason).toBe("stop");
-		expect(result.content).toEqual([{ type: "text", text: "finished answer" }]);
+		expect(result.stopReason).toBe("toolUse");
+		expect(result.content).toEqual([{ type: "text", text: "Listing." }, tool]);
 		const events = [];
 		for await (const event of output) events.push(event.type);
-		expect(events).toEqual(["text_delta", "text_delta", "done"]);
+		expect(events).toEqual(["toolcall_delta", "toolcall_end", "toolcall_delta", "done"]);
 		expect(vi.getTimerCount()).toBe(0);
 	});
 
@@ -152,7 +180,7 @@ describe("stream idle timeout", () => {
 			source.push({ type: "done", reason: "stop", message });
 			return source;
 		});
-		expect(await output.result()).toBe(message);
+		expect(await output.result()).toEqual(message);
 		expect(signal?.aborted).toBe(false);
 		expect(vi.getTimerCount()).toBe(0);
 	});

@@ -62,10 +62,8 @@ export function streamWithIdleTimeout(
 		if (finished || openThinking.size > 0 || pendingServerTools.size > 0) return false;
 		if (partial.stopReason === "error" || partial.stopReason === "aborted") return false;
 		const message = structuredClone(partial);
-		let hasOutput = false;
 		let hasTools = false;
 		for (const [index, block] of message.content.entries()) {
-			if (block.type === "text" && block.text.trim()) hasOutput = true;
 			if (block.type === "toolCall") {
 				if (!block.id || !block.name || message.stopReason === "length") return false;
 				const raw = toolJson.get(index);
@@ -94,8 +92,10 @@ export function streamWithIdleTimeout(
 			delete scratch.partialArgs;
 			delete scratch.streamIndex;
 		}
-		if (!hasOutput && !hasTools) return false;
-		message.stopReason = hasTools ? "toolUse" : message.stopReason === "length" ? "length" : "stop";
+		// Only complete tool calls are recoverable. A text-only partial is indistinguishable from a model
+		// pausing before its next block (e.g. a large tool call), and finalizing it silently ends the turn.
+		if (!hasTools) return false;
+		message.stopReason = "toolUse";
 		delete message.errorMessage;
 		cleanup();
 		output.push({ type: "done", reason: message.stopReason, message });

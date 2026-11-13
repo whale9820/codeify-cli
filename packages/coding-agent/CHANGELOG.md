@@ -44,6 +44,7 @@
 - Route all `qwen*` models through OpenAI Responses and all `glm*` models through Anthropic Messages so hosted `web_search` is declared on each.
 - Keep the footer tokens-per-second counter always visible: start new sessions at `0.0 tps`, keep the last displayed value between streams, retries, and idle periods instead of blanking, and save it in session data so resumed sessions restore it.
 - Allow MCP tool calls to run for ten minutes by default, extend the timeout when progress arrives, support per-server `timeoutMs` in `mcp.json`, and forward turn cancellation to the server.
+- Stop ending turns when a model pauses for 15 seconds after streaming text: stalled-stream recovery now only finalizes complete tool calls, and text-only stalls wait for the configured request timeout and then retry as errors instead of being treated as a finished reply.
 
 ## [0.83.0] - 2026-10-18
 
