@@ -8,6 +8,7 @@
 
 - Add persistent remote SSH shells with saved profiles managed by the agent through `ssh_manage`. The `ssh` tool reuses one live connection and POSIX shell per profile, preserves working directories and environment changes between calls, and renders `SSH(command) (profile)` with a muted profile label.
 - Estimate missing context and output token limits from known model metadata, using earlier revisions of the same variant when no exact match is available.
+- Remember the thinking level per model (`modelThinkingLevels` in settings) and restore it when switching or cycling to that model; models without a saved level keep the current level.
 
 ### Changed
 

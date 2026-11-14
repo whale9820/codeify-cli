@@ -223,9 +223,12 @@ export async function createAgentSession(options: CreateAgentSessionOptions = {}
 			: (settingsManager.getDefaultThinkingLevel() ?? DEFAULT_THINKING_LEVEL);
 	}
 
-	// Fall back to settings default
+	// Fall back to the level last used with this model, then the settings default
 	if (thinkingLevel === undefined) {
-		thinkingLevel = settingsManager.getDefaultThinkingLevel() ?? DEFAULT_THINKING_LEVEL;
+		thinkingLevel =
+			(model ? settingsManager.getModelThinkingLevel(model.provider, model.id) : undefined) ??
+			settingsManager.getDefaultThinkingLevel() ??
+			DEFAULT_THINKING_LEVEL;
 	}
 
 	// Clamp to model capabilities

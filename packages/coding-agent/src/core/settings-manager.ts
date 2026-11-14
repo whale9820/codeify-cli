@@ -62,6 +62,7 @@ export interface Settings {
 	defaultProvider?: string;
 	defaultModel?: string;
 	defaultThinkingLevel?: ThinkingLevel;
+	modelThinkingLevels?: Record<string, ThinkingLevel>; // Last thinking level per "provider/modelId"
 	transport?: TransportSetting; // default: "auto"
 	steeringMode?: "all" | "one-at-a-time";
 	followUpMode?: "all" | "one-at-a-time";
@@ -717,6 +718,18 @@ export class SettingsManager {
 	setDefaultThinkingLevel(level: ThinkingLevel): void {
 		this.globalSettings.defaultThinkingLevel = level;
 		this.markModified("defaultThinkingLevel");
+		this.save();
+	}
+
+	getModelThinkingLevel(provider: string, modelId: string): ThinkingLevel | undefined {
+		return this.settings.modelThinkingLevels?.[`${provider}/${modelId}`];
+	}
+
+	setModelThinkingLevel(provider: string, modelId: string, level: ThinkingLevel): void {
+		const key = `${provider}/${modelId}`;
+		if (this.globalSettings.modelThinkingLevels?.[key] === level) return;
+		this.globalSettings.modelThinkingLevels = { ...this.globalSettings.modelThinkingLevels, [key]: level };
+		this.markModified("modelThinkingLevels", key);
 		this.save();
 	}
 
