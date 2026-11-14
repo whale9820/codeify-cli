@@ -2,6 +2,13 @@ import { getBuiltinModels, getBuiltinProviders } from "codeify-ai/providers/all"
 
 export type ModelLimits = { contextWindow?: number; maxTokens?: number };
 
+export const DEFAULT_CONTEXT_WINDOW = 272_000;
+
+export function isAstraFallbackContextWindow(id: string, contextWindow: number | undefined): boolean {
+	// Older catalogs saved the generic fallback as a real limit for Astra revisions.
+	return contextWindow === DEFAULT_CONTEXT_WINDOW && /(?:^|\/)gpt-6(?:\.\d+)*-astra$/i.test(id);
+}
+
 type VersionedLimits = { minor: number[]; limits: ModelLimits };
 
 function versionedFamily(id: string): { family: string; minor: number[] } | undefined {
@@ -24,7 +31,8 @@ function compareVersions(a: readonly number[], b: readonly number[]): number {
 
 export function indexModelLimits(models: Iterable<ModelLimits & { id: string }>) {
 	const exact = new Map<string, ModelLimits>();
-	for (const { id, contextWindow, maxTokens } of models) {
+	for (const { id, contextWindow: context, maxTokens } of models) {
+		const contextWindow = isAstraFallbackContextWindow(id, context) ? undefined : context;
 		if (contextWindow === undefined && maxTokens === undefined) continue;
 		const key = id.toLowerCase();
 		const existing = exact.get(key);
@@ -63,6 +71,7 @@ function* olderLimits(id: string, index: ModelLimitIndex | undefined): Generator
 
 export function inferModelLimits(id: string, declared: ModelLimits, live?: ModelLimitIndex): ModelLimits {
 	let { contextWindow, maxTokens } = declared;
+	if (isAstraFallbackContextWindow(id, contextWindow)) contextWindow = undefined;
 	if (contextWindow !== undefined && maxTokens !== undefined) return declared;
 	bundledLimits ??= indexModelLimits(
 		getBuiltinProviders().flatMap((provider) =>

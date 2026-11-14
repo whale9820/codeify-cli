@@ -14,6 +14,7 @@ import {
 	OverrideStore,
 	overrideProviderConfig,
 } from "../src/core/overrides.ts";
+import { formatUsageReport } from "../src/modes/interactive/usage-report.ts";
 
 describe("override backend model refresh", () => {
 	let dir: string;
@@ -101,6 +102,33 @@ describe("override backend model refresh", () => {
 		const models = await refresh(context());
 
 		expect(models[0]).toMatchObject({ id: "gpt-6.2-astra", contextWindow: 720_000, maxTokens: 64_000 });
+	});
+
+	it("repairs a saved Astra placeholder on startup and refresh", async () => {
+		const { store, refresh, context } = setup();
+		const id = "openai/gpt-6.2-astra";
+		const backend = store.get("mine")!;
+		store.upsert({
+			...backend,
+			models: [{ ...toModelDefinition({ id, max_tokens: 64_000 }), contextWindow: 272_000 }],
+		});
+
+		const [offline] = await refresh(context(false));
+		expect(offline).toMatchObject({ id, contextWindow: 1_050_000, maxTokens: 64_000 });
+		expect(
+			formatUsageReport({
+				tokens: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+				contextUsage: { tokens: 31_100, contextWindow: offline.contextWindow },
+			}),
+		).toContain("31.1k/1.1m context");
+
+		listed = [
+			{ id, context: 272_000 },
+			{ id: "openai/gpt-6-astra", context: 720_000 },
+		];
+		const [refreshed] = await refresh(context());
+		expect(refreshed).toMatchObject({ id, contextWindow: 720_000, maxTokens: 64_000 });
+		expect(store.get("mine")?.models[0].contextWindow).toBe(720_000);
 	});
 
 	it("drops models the backend no longer lists", async () => {

@@ -2,7 +2,13 @@ import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { createServer } from "node:http";
 import type { Model, ModelCost, ModelsStoreEntry, OAuthCredentials, OAuthLoginCallbacks } from "codeify-ai";
 import { CODEIFY_DEFAULT_MODEL } from "./defaults.ts";
-import { indexModelLimits, inferModelLimits, type ModelLimits } from "./model-limits.ts";
+import {
+	DEFAULT_CONTEXT_WINDOW,
+	indexModelLimits,
+	inferModelLimits,
+	isAstraFallbackContextWindow,
+	type ModelLimits,
+} from "./model-limits.ts";
 import type { RuntimeProviderConfig } from "./provider-composer.ts";
 
 export { CODEIFY_DEFAULT_MODEL } from "./defaults.ts";
@@ -326,7 +332,13 @@ export function apiForModelId(id: string): "anthropic-messages" | "openai-respon
 }
 
 export function routeModels(models: readonly CodeifyModelDefinition[], baseUrl: string): CodeifyModelDefinition[] {
+	let catalog: ReturnType<typeof indexModelLimits> | undefined;
 	return models.map((model) => {
+		if (isAstraFallbackContextWindow(model.id, model.contextWindow)) {
+			catalog ??= indexModelLimits(models);
+			const { contextWindow } = inferModelLimits(model.id, model, catalog);
+			if (contextWindow !== undefined) model = { ...model, contextWindow };
+		}
 		const api = apiForModelId(model.id);
 		if (api === "anthropic-messages") {
 			return { ...model, api, baseUrl: baseUrl.replace(/\/v1\/?$/u, "") };
@@ -358,7 +370,7 @@ function formatModelDefinition(model: CodeifyModel, limits: ModelLimits): Codeif
 		: undefined;
 	const contextWindow = /^gpt-5\.[56](?:-|$)/i.test(model.id)
 		? Math.max(limits.contextWindow ?? 0, 1_050_000)
-		: (limits.contextWindow ?? 272_000);
+		: (limits.contextWindow ?? DEFAULT_CONTEXT_WINDOW);
 	return {
 		id: model.id,
 		name: model.id,
@@ -414,17 +426,19 @@ async function fetchModels(
 		(credentialFingerprint === undefined && !allowNetwork) ||
 		(stored?.credentialFingerprint === credentialFingerprint && credentialFingerprint !== undefined);
 	const cached = cacheMatchesCredential
-		? stored?.models
-				.filter((model): model is StoredCodeifyModel => model.provider === CODEIFY_PROVIDER_ID)
-				.map((model) => toModelDefinition(cachedCodeifyModel(model)))
-		: undefined;
+		? toModelDefinitions(
+				stored?.models
+					.filter((model): model is StoredCodeifyModel => model.provider === CODEIFY_PROVIDER_ID)
+					.map(cachedCodeifyModel) ?? [],
+			)
+		: [];
 	if (!allowNetwork || signal?.aborted)
-		return cached?.length ? cached : [toModelDefinition({ id: CODEIFY_DEFAULT_MODEL })];
+		return cached.length ? cached : [toModelDefinition({ id: CODEIFY_DEFAULT_MODEL })];
 	if (
 		!force &&
 		stored?.checkedAt !== undefined &&
 		Date.now() - stored.checkedAt < CODEIFY_MODEL_REFRESH_INTERVAL_MS &&
-		cached?.length
+		cached.length
 	) {
 		return cached;
 	}

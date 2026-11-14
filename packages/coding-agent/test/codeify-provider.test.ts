@@ -48,7 +48,7 @@ describe("Codeify provider", () => {
 			contextWindow: 512_000,
 			maxTokens: 128_000,
 		});
-		expect(toModelDefinition({ id: "gpt-6.2-astra", max_output_tokens: 64_000 })).toMatchObject({
+		expect(toModelDefinition({ id: "gpt-6.2-astra", context: 272_000, max_output_tokens: 64_000 })).toMatchObject({
 			contextWindow: 1_050_000,
 			maxTokens: 64_000,
 		});
@@ -59,7 +59,8 @@ describe("Codeify provider", () => {
 			new Response(
 				JSON.stringify({
 					data: [
-						{ id: "gpt-6.10-astra" },
+						{ id: "gpt-6.10-astra", context: 272_000 },
+						{ id: "gpt-6.9.1-astra", context: 272_000 },
 						{ id: "gpt-6.11-astra", context: 4_000_000, max_tokens: 200_000 },
 						{ id: "gpt-6.9-astra", context: 900_000 },
 						{ id: "gpt-6.2-astra", context: 500_000, max_output_tokens: 90_000 },
@@ -83,6 +84,15 @@ describe("Codeify provider", () => {
 			store,
 			allowNetwork: true,
 		});
+		// Simulate a cache written before the placeholder was recognized.
+		stored = {
+			...stored!,
+			models: stored!.models.map((model) =>
+				model.id === "gpt-6.10-astra" || model.id === "gpt-6.9.1-astra"
+					? { ...model, contextWindow: 272_000 }
+					: model,
+			),
+		};
 		const cached = await provider.refreshModels?.({ credential: undefined, store, allowNetwork: false });
 		for (const models of [live, cached]) {
 			expect(models?.find((model) => model.id === "gpt-6.10-astra")).toMatchObject({

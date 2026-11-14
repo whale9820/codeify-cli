@@ -8,6 +8,7 @@ import {
 	toModelDefinition,
 	toModelDefinitions,
 } from "./codeify-provider.ts";
+import { isAstraFallbackContextWindow } from "./model-limits.ts";
 import type { RuntimeProviderConfig } from "./provider-composer.ts";
 
 export const OVERRIDE_PROVIDER_PREFIX = "override-";
@@ -65,16 +66,21 @@ function escapeConfigValue(value: string): string {
 }
 
 /**
- * Keep known models as they are (they may carry metadata inherited from Codeify when the
- * backend was added) and append models the backend newly lists. Models the backend no longer
- * lists are dropped.
+ * Keep metadata from known models (possibly inherited from Codeify), except for stale Astra
+ * context placeholders. Add newly listed models and drop models the backend no longer lists.
  */
 export function mergeProbedModels(
 	existing: readonly CodeifyModelDefinition[],
 	probed: readonly CodeifyModelDefinition[],
 ): CodeifyModelDefinition[] {
 	const known = new Map(existing.map((model) => [model.id, model]));
-	return probed.map((model) => known.get(model.id) ?? model);
+	return probed.map((model) => {
+		const previous = known.get(model.id);
+		if (!previous) return model;
+		return isAstraFallbackContextWindow(previous.id, previous.contextWindow)
+			? { ...previous, contextWindow: model.contextWindow }
+			: previous;
+	});
 }
 
 export function inheritCodeifyMetadata(
