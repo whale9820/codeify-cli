@@ -2,13 +2,12 @@ import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "n
 import { dirname } from "node:path";
 import {
 	CODEIFY_PROVIDER_ID,
+	type CodeifyCatalogModel,
 	type CodeifyModel,
 	type CodeifyModelDefinition,
 	routeModels,
 	toModelDefinition,
-	toModelDefinitions,
 } from "./codeify-provider.ts";
-import { isAstraFallbackContextWindow } from "./model-limits.ts";
 import type { RuntimeProviderConfig } from "./provider-composer.ts";
 
 export const OVERRIDE_PROVIDER_PREFIX = "override-";
@@ -18,7 +17,7 @@ export interface OverrideBackend {
 	name: string;
 	baseUrl: string;
 	apiKey: string;
-	models: CodeifyModelDefinition[];
+	models: CodeifyCatalogModel[];
 }
 
 interface OverrideFile {
@@ -27,7 +26,7 @@ interface OverrideFile {
 
 export interface ProbeResult {
 	ok: boolean;
-	models: CodeifyModelDefinition[];
+	models: CodeifyCatalogModel[];
 	error?: string;
 }
 
@@ -66,27 +65,24 @@ function escapeConfigValue(value: string): string {
 }
 
 /**
- * Keep metadata from known models (possibly inherited from Codeify), except for stale Astra
- * context placeholders. Add newly listed models and drop models the backend no longer lists.
+ * Keep metadata from known models (possibly inherited from Codeify), but use the
+ * current catalog's declared context, including null when no limit is declared.
  */
 export function mergeProbedModels(
-	existing: readonly CodeifyModelDefinition[],
-	probed: readonly CodeifyModelDefinition[],
-): CodeifyModelDefinition[] {
+	existing: readonly CodeifyCatalogModel[],
+	probed: readonly CodeifyCatalogModel[],
+): CodeifyCatalogModel[] {
 	const known = new Map(existing.map((model) => [model.id, model]));
 	return probed.map((model) => {
 		const previous = known.get(model.id);
-		if (!previous) return model;
-		return isAstraFallbackContextWindow(previous.id, previous.contextWindow)
-			? { ...previous, contextWindow: model.contextWindow }
-			: previous;
+		return previous ? { ...previous, contextWindow: model.contextWindow } : model;
 	});
 }
 
 export function inheritCodeifyMetadata(
-	models: readonly CodeifyModelDefinition[],
+	models: readonly CodeifyCatalogModel[],
 	codeifyModels: readonly CodeifyModelDefinition[],
-): CodeifyModelDefinition[] {
+): CodeifyCatalogModel[] {
 	return models.map((definition) => {
 		const namespacedId = definition.id.split("/").at(-1)?.toLowerCase();
 		const unversionedId = namespacedId?.replace(/-\d{4,8}$/u, "");
@@ -105,7 +101,8 @@ export function inheritCodeifyMetadata(
 			thinkingLevels: inherited.thinkingLevels,
 			input: inherited.input,
 			cost: inherited.cost,
-			contextWindow: inherited.contextWindow,
+			contextWindow:
+				definition.contextWindow ?? (inherited.knownContextWindow === null ? null : inherited.contextWindow),
 			maxTokens: inherited.maxTokens,
 			compat: inherited.compat,
 		};
@@ -164,7 +161,7 @@ export class OverrideStore {
 					? [
 							{
 								...backend,
-								models: (backend.models as Array<string | CodeifyModelDefinition>).map((model) =>
+								models: (backend.models as Array<string | CodeifyCatalogModel>).map((model) =>
 									typeof model === "string" ? toModelDefinition({ id: model }) : model,
 								),
 							},
@@ -236,9 +233,9 @@ export async function probeOverrideBackend(
 		if (!Array.isArray(payload.data)) {
 			return { ok: false, models: [], error: "GET /models did not return a model list." };
 		}
-		const models = toModelDefinitions(
-			payload.data.filter((entry) => typeof entry.id === "string" && entry.id.length > 0),
-		);
+		const models = payload.data
+			.filter((entry) => typeof entry.id === "string" && entry.id.length > 0)
+			.map(toModelDefinition);
 		return { ok: true, models };
 	} catch (error) {
 		return { ok: false, models: [], error: error instanceof Error ? error.message : String(error) };

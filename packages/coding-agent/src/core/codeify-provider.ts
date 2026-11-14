@@ -2,13 +2,7 @@ import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { createServer } from "node:http";
 import type { Model, ModelCost, ModelsStoreEntry, OAuthCredentials, OAuthLoginCallbacks } from "codeify-ai";
 import { CODEIFY_DEFAULT_MODEL } from "./defaults.ts";
-import {
-	DEFAULT_CONTEXT_WINDOW,
-	indexModelLimits,
-	inferModelLimits,
-	isAstraFallbackContextWindow,
-	type ModelLimits,
-} from "./model-limits.ts";
+import { indexModelLimits, inferModelLimits, type ModelLimits } from "./model-limits.ts";
 import type { RuntimeProviderConfig } from "./provider-composer.ts";
 
 export { CODEIFY_DEFAULT_MODEL } from "./defaults.ts";
@@ -21,13 +15,13 @@ export type CodeifyModel = {
 	id: string;
 	name?: string;
 	display_name?: string;
-	context?: number;
+	context?: number | null;
 	context_window?: number;
 	contextWindow?: number;
 	context_length?: number;
 	max_context_tokens?: number;
 	max_input_tokens?: number;
-	max_tokens?: number;
+	max_tokens?: number | null;
 	maxTokens?: number;
 	max_output_tokens?: number;
 	maxOutputTokens?: number;
@@ -99,17 +93,23 @@ export type CodeifyModel = {
 	};
 };
 
-export type CodeifyModelDefinition = NonNullable<RuntimeProviderConfig["models"]>[number];
+export type CodeifyModelDefinition = NonNullable<RuntimeProviderConfig["models"]>[number] & {
+	/** The resolved limit before applying the generic fallback. */
+	knownContextWindow?: number | null;
+};
+
+export type CodeifyCatalogModel = Omit<CodeifyModelDefinition, keyof ModelLimits | "knownContextWindow"> & ModelLimits;
 
 type StoredCodeifyModel = Model<"openai-responses"> & {
+	declaredLimits?: ModelLimits;
 	inputModalities?: string[];
 	declaredReasoning?: boolean;
 	declaredThinkingLevels?: string[];
 	supportsThinkingToggle?: boolean;
 };
 
-function firstPositiveNumber(...values: Array<number | undefined>): number | undefined {
-	return values.find((value) => typeof value === "number" && Number.isFinite(value) && value > 0);
+function firstPositiveNumber(...values: Array<number | null | undefined>): number | null {
+	return values.find((value) => typeof value === "number" && Number.isFinite(value) && value > 0) ?? null;
 }
 
 function pricingToCost(pricing: CodeifyModel["pricing"]): ModelCost | undefined {
@@ -331,36 +331,26 @@ export function apiForModelId(id: string): "anthropic-messages" | "openai-respon
 	return "openai-completions";
 }
 
-export function routeModels(models: readonly CodeifyModelDefinition[], baseUrl: string): CodeifyModelDefinition[] {
-	let catalog: ReturnType<typeof indexModelLimits> | undefined;
-	return models.map((model) => {
-		if (isAstraFallbackContextWindow(model.id, model.contextWindow)) {
-			catalog ??= indexModelLimits(models);
-			const { contextWindow } = inferModelLimits(model.id, model, catalog);
-			if (contextWindow !== undefined) model = { ...model, contextWindow };
-		}
+export function routeModels(models: readonly CodeifyCatalogModel[], baseUrl: string): CodeifyModelDefinition[] {
+	const catalog = indexModelLimits(models);
+	return models.map(({ baseUrl: _discarded, ...model }) => {
+		const { contextWindow, maxTokens } = inferModelLimits(model.id, model, catalog);
+		const knownContextWindow = /^gpt-5\.[56](?:-|$)/i.test(model.id)
+			? Math.max(contextWindow ?? 0, 1_050_000)
+			: contextWindow;
 		const api = apiForModelId(model.id);
-		if (api === "anthropic-messages") {
-			return { ...model, api, baseUrl: baseUrl.replace(/\/v1\/?$/u, "") };
-		}
-		const { baseUrl: _discarded, ...rest } = model;
-		return { ...rest, api };
+		return {
+			...model,
+			api,
+			...(api === "anthropic-messages" ? { baseUrl: baseUrl.replace(/\/v1\/?$/u, "") } : {}),
+			knownContextWindow,
+			contextWindow: knownContextWindow ?? 272_000,
+			maxTokens: maxTokens ?? 32_768,
+		};
 	});
 }
 
-export function toModelDefinitions(models: readonly CodeifyModel[]): CodeifyModelDefinition[] {
-	const limits = models.map((model) => ({ id: model.id, ...declaredLimits(model) }));
-	const catalog = indexModelLimits(limits);
-	return models.map((model, index) =>
-		formatModelDefinition(model, inferModelLimits(model.id, limits[index], catalog)),
-	);
-}
-
-export function toModelDefinition(model: CodeifyModel): CodeifyModelDefinition {
-	return formatModelDefinition(model, inferModelLimits(model.id, declaredLimits(model)));
-}
-
-function formatModelDefinition(model: CodeifyModel, limits: ModelLimits): CodeifyModelDefinition {
+export function toModelDefinition(model: CodeifyModel): CodeifyCatalogModel {
 	const reasoning = supportsReasoning(model.id, model);
 	const declaredLevels = extractDeclaredThinkingLevels(model);
 	const thinkingLevels = declaredLevels?.length
@@ -368,9 +358,6 @@ function formatModelDefinition(model: CodeifyModel, limits: ModelLimits): Codeif
 			? ["off", ...declaredLevels]
 			: declaredLevels
 		: undefined;
-	const contextWindow = /^gpt-5\.[56](?:-|$)/i.test(model.id)
-		? Math.max(limits.contextWindow ?? 0, 1_050_000)
-		: (limits.contextWindow ?? DEFAULT_CONTEXT_WINDOW);
 	return {
 		id: model.id,
 		name: model.id,
@@ -380,8 +367,7 @@ function formatModelDefinition(model: CodeifyModel, limits: ModelLimits): Codeif
 		thinkingLevels,
 		input: resolveInput(model),
 		cost: pricingToCost(model.pricing) ?? model.cost ?? { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
-		contextWindow,
-		maxTokens: limits.maxTokens ?? 32_768,
+		...declaredLimits(model),
 		compat: { supportsToolSearch: true, promoteToolResultImages: true },
 	};
 }
@@ -396,10 +382,12 @@ function cachedCodeifyModel(model: StoredCodeifyModel): CodeifyModel {
 		: model.input.includes("image")
 			? ["text", "image"]
 			: undefined;
+	// Legacy caches have no provenance; keep their numeric limits until the next refresh.
+	const limits = model.declaredLimits ?? model;
 	return {
 		id: model.id,
-		context: model.contextWindow,
-		max_tokens: model.maxTokens,
+		context: limits.contextWindow,
+		max_tokens: limits.maxTokens,
 		cost: model.cost,
 		input_modalities: input,
 		...(model.declaredThinkingLevels !== undefined ? { thinking_levels: model.declaredThinkingLevels } : {}),
@@ -426,21 +414,20 @@ async function fetchModels(
 		(credentialFingerprint === undefined && !allowNetwork) ||
 		(stored?.credentialFingerprint === credentialFingerprint && credentialFingerprint !== undefined);
 	const cached = cacheMatchesCredential
-		? toModelDefinitions(
-				stored?.models
-					.filter((model): model is StoredCodeifyModel => model.provider === CODEIFY_PROVIDER_ID)
-					.map(cachedCodeifyModel) ?? [],
-			)
+		? (stored?.models
+				.filter((model): model is StoredCodeifyModel => model.provider === CODEIFY_PROVIDER_ID)
+				.map((model) => toModelDefinition(cachedCodeifyModel(model))) ?? [])
 		: [];
-	if (!allowNetwork || signal?.aborted)
-		return cached.length ? cached : [toModelDefinition({ id: CODEIFY_DEFAULT_MODEL })];
+	if (!allowNetwork || signal?.aborted) {
+		return routeModels(cached.length ? cached : [toModelDefinition({ id: CODEIFY_DEFAULT_MODEL })], CODEIFY_BASE_URL);
+	}
 	if (
 		!force &&
 		stored?.checkedAt !== undefined &&
 		Date.now() - stored.checkedAt < CODEIFY_MODEL_REFRESH_INTERVAL_MS &&
 		cached.length
 	) {
-		return cached;
+		return routeModels(cached, CODEIFY_BASE_URL);
 	}
 
 	let payload: { data?: CodeifyModel[] };
@@ -462,15 +449,18 @@ async function fetchModels(
 	}
 	const models = (payload.data ?? []).filter((model) => typeof model.id === "string" && model.id.length > 0);
 	const discovered: CodeifyModel[] = models.length > 0 ? models : [{ id: CODEIFY_DEFAULT_MODEL }];
-	const definitions = toModelDefinitions(discovered);
+	const catalog = discovered.map(toModelDefinition);
+	const definitions = routeModels(catalog, CODEIFY_BASE_URL);
 	const storedModels = discovered.map((model, index): StoredCodeifyModel => {
 		const inputModalities = declaredModalities(model);
 		const declaredReasoning =
 			model.capabilities?.reasoning ?? (typeof model.reasoning === "boolean" ? model.reasoning : undefined);
 		const declaredThinkingLevels = extractDeclaredThinkingLevels(model);
 		const supportsThinkingToggle = extractSupportsThinkingToggle(model);
+		const { contextWindow, maxTokens } = catalog[index];
 		return {
 			...definitions[index],
+			declaredLimits: { contextWindow, maxTokens },
 			...(inputModalities?.length ? { inputModalities } : {}),
 			...(declaredReasoning !== undefined ? { declaredReasoning } : {}),
 			...(declaredThinkingLevels !== undefined ? { declaredThinkingLevels } : {}),
@@ -738,7 +728,7 @@ export function codeifyProvider(): RuntimeProviderConfig {
 				allowNetwork,
 			);
 			if (allowNetwork) networkRefreshed = true;
-			return routeModels(models, CODEIFY_BASE_URL);
+			return models;
 		},
 	};
 }

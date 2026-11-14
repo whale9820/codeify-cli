@@ -9,7 +9,7 @@ import {
 	serializeSummary,
 } from "../../storage/sqlite-node/src/sqlite/storage/session-materialized.ts";
 import { parseArgs } from "../src/cli/args.ts";
-import { CODEIFY_BASE_URL, codeifyProvider, toModelDefinition } from "../src/core/codeify-provider.ts";
+import { CODEIFY_BASE_URL, codeifyProvider, routeModels, toModelDefinition } from "../src/core/codeify-provider.ts";
 import { ModelConfig } from "../src/core/model-config.ts";
 import { parseModelPattern } from "../src/core/model-resolver.ts";
 import { composeModelProvider } from "../src/core/provider-composer.ts";
@@ -21,8 +21,9 @@ afterEach(() => vi.restoreAllMocks());
 const efforts = ["instant", "low", "maximum", "extra-high", "future-effort"];
 
 function mercuryModel(): Model<"openai-completions"> {
+	const [model] = routeModels([toModelDefinition({ id: "mercury-3", reasoning_efforts: efforts })], CODEIFY_BASE_URL);
 	return {
-		...toModelDefinition({ id: "mercury-3", reasoning_efforts: efforts }),
+		...model,
 		api: "openai-completions",
 		provider: "codeify",
 		baseUrl: CODEIFY_BASE_URL,

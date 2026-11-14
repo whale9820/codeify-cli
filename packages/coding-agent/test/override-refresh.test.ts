@@ -6,7 +6,7 @@ import { join } from "node:path";
 import type { RefreshModelsContext } from "codeify-ai";
 import { InMemoryCredentialStore } from "codeify-ai";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { type CodeifyModel, toModelDefinition } from "../src/core/codeify-provider.ts";
+import { type CodeifyModel, routeModels, toModelDefinition } from "../src/core/codeify-provider.ts";
 import { ModelRuntime } from "../src/core/model-runtime.ts";
 import {
 	inheritCodeifyMetadata,
@@ -63,10 +63,13 @@ describe("override backend model refresh", () => {
 			toModelDefinition({ id: "zai-org/GLM-5.3-Flash" }),
 			toModelDefinition({ id: "deepseek-ai/DeepSeek-V4-Flash-0731" }),
 		];
-		const codeifyModels = [
-			{ ...toModelDefinition({ id: "glm-5.3-flash" }), reasoning: true, contextWindow: 200_000 },
-			{ ...toModelDefinition({ id: "deepseek-v4-flash-0731" }), reasoning: true, contextWindow: 300_000 },
-		];
+		const codeifyModels = routeModels(
+			[
+				toModelDefinition({ id: "glm-5.3-flash", reasoning: true, context: 200_000 }),
+				toModelDefinition({ id: "deepseek-v4-flash-0731", reasoning: true, context: 300_000 }),
+			],
+			baseUrl,
+		);
 
 		const inherited = inheritCodeifyMetadata(models, codeifyModels);
 
@@ -77,9 +80,25 @@ describe("override backend model refresh", () => {
 
 	it("uses the undated Codeify model when a dated API model has no exact catalog entry", () => {
 		const apiModel = toModelDefinition({ id: "deepseek-ai/DeepSeek-V4-Flash-0731" });
-		const codeifyModel = { ...toModelDefinition({ id: "deepseek-v4-flash" }), reasoning: true };
+		const codeifyModels = routeModels([toModelDefinition({ id: "deepseek-v4-flash", reasoning: true })], baseUrl);
 
-		expect(inheritCodeifyMetadata([apiModel], [codeifyModel])[0]).toMatchObject({ reasoning: true });
+		expect(inheritCodeifyMetadata([apiModel], codeifyModels)[0]).toMatchObject({ reasoning: true });
+	});
+
+	it("preserves declared context and does not inherit a generic fallback", () => {
+		const models = [
+			toModelDefinition({ id: "openai/gpt-6.2-astra", context: 272_000 }),
+			toModelDefinition({ id: "unknown-context-model" }),
+		];
+		const codeifyModels = routeModels(
+			[toModelDefinition({ id: "gpt-6.2-astra" }), toModelDefinition({ id: "unknown-context-model" })],
+			baseUrl,
+		);
+
+		expect(inheritCodeifyMetadata(models, codeifyModels).map((model) => model.contextWindow)).toEqual([
+			272_000,
+			null,
+		]);
 	});
 
 	it("picks up models the backend lists now and persists them", async () => {
@@ -104,13 +123,13 @@ describe("override backend model refresh", () => {
 		expect(models[0]).toMatchObject({ id: "gpt-6.2-astra", contextWindow: 720_000, maxTokens: 64_000 });
 	});
 
-	it("repairs a saved Astra placeholder on startup and refresh", async () => {
-		const { store, refresh, context } = setup();
+	it("infers context from null limits on startup and refresh without persisting a fallback", async () => {
+		const { path, store, refresh, context } = setup();
 		const id = "openai/gpt-6.2-astra";
 		const backend = store.get("mine")!;
 		store.upsert({
 			...backend,
-			models: [{ ...toModelDefinition({ id, max_tokens: 64_000 }), contextWindow: 272_000 }],
+			models: [toModelDefinition({ id, max_tokens: 64_000 })],
 		});
 
 		const [offline] = await refresh(context(false));
@@ -123,12 +142,28 @@ describe("override backend model refresh", () => {
 		).toContain("31.1k/1.1m context");
 
 		listed = [
-			{ id, context: 272_000 },
+			{ id, context: null },
 			{ id: "openai/gpt-6-astra", context: 720_000 },
 		];
 		const [refreshed] = await refresh(context());
 		expect(refreshed).toMatchObject({ id, contextWindow: 720_000, maxTokens: 64_000 });
-		expect(store.get("mine")?.models[0].contextWindow).toBe(720_000);
+		const reloaded = new OverrideStore(path).get("mine")!;
+		expect(reloaded.models[0].contextWindow).toBeNull();
+		expect(overrideProviderConfig(reloaded).models?.[0].contextWindow).toBe(720_000);
+	});
+
+	it("replaces a legacy cached context only after the backend reports the current declaration", async () => {
+		const { store, refresh, context } = setup();
+		const id = "gpt-6.2-astra";
+		store.upsert({ ...store.get("mine")!, models: [toModelDefinition({ id, context: 272_000 })] });
+		expect((await refresh(context(false)))[0].contextWindow).toBe(272_000);
+
+		listed = [{ id, context: 272_000 }];
+		expect((await refresh(context()))[0].contextWindow).toBe(272_000);
+
+		listed = [{ id }];
+		expect((await refresh(context()))[0].contextWindow).toBe(1_050_000);
+		expect(store.get("mine")?.models[0].contextWindow).toBeNull();
 	});
 
 	it("drops models the backend no longer lists", async () => {

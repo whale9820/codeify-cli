@@ -5,6 +5,7 @@ import {
 	CODEIFY_BASE_URL,
 	codeifyProvider,
 	loginWithCodeifyOAuth,
+	routeModels,
 	toModelDefinition,
 } from "../src/core/codeify-provider.ts";
 import { openBrowser } from "../src/utils/open-browser.ts";
@@ -38,20 +39,15 @@ describe("Codeify provider", () => {
 		expect(model).toMatchObject({ reasoning: true, thinkingLevelMap: { xhigh: "xhigh" } });
 	});
 
-	it("fills missing token limits from an older revision in the bundled catalog", () => {
-		expect(toModelDefinition({ id: "OpenAI/GPT-6.2-Astra" })).toMatchObject({
-			id: "OpenAI/GPT-6.2-Astra",
-			contextWindow: 1_050_000,
-			maxTokens: 128_000,
-		});
-		expect(toModelDefinition({ id: "gpt-6.2-astra", context: 0, limit: { context: 512_000 } })).toMatchObject({
-			contextWindow: 512_000,
-			maxTokens: 128_000,
-		});
-		expect(toModelDefinition({ id: "gpt-6.2-astra", context: 272_000, max_output_tokens: 64_000 })).toMatchObject({
-			contextWindow: 1_050_000,
-			maxTokens: 64_000,
-		});
+	it.each([
+		[{ id: "OpenAI/GPT-6.2-Astra" }, 1_050_000, 128_000],
+		[{ id: "gpt-6.2-astra", context: null, max_output_tokens: 64_000 }, 1_050_000, 64_000],
+		[{ id: "gpt-6.2-astra", context: 0, limit: { context: 512_000 } }, 512_000, 128_000],
+		[{ id: "gpt-6.2-astra", context: 272_000 }, 272_000, 128_000],
+		[{ id: "unknown-context-model" }, 272_000, 32_768],
+	])("resolves token limits for %j", (model, contextWindow, maxTokens) => {
+		const [resolved] = routeModels([toModelDefinition(model)], CODEIFY_BASE_URL);
+		expect(resolved).toMatchObject({ id: model.id, contextWindow, maxTokens });
 	});
 
 	it("uses the nearest older matching revision with a declared limit and caches the result", async () => {
@@ -59,13 +55,15 @@ describe("Codeify provider", () => {
 			new Response(
 				JSON.stringify({
 					data: [
-						{ id: "gpt-6.10-astra", context: 272_000 },
-						{ id: "gpt-6.9.1-astra", context: 272_000 },
+						{ id: "gpt-6.10-astra" },
+						{ id: "gpt-6.9.1-astra", context: null },
 						{ id: "gpt-6.11-astra", context: 4_000_000, max_tokens: 200_000 },
 						{ id: "gpt-6.9-astra", context: 900_000 },
 						{ id: "gpt-6.2-astra", context: 500_000, max_output_tokens: 90_000 },
 						{ id: "gpt-6-astra", context: 400_000, max_tokens: 70_000 },
 						{ id: "gpt-6.9-other", max_tokens: 180_000 },
+						{ id: "gpt-6.3-astra", context: 272_000 },
+						{ id: "gpt-6.4-astra" },
 					],
 				}),
 			),
@@ -84,13 +82,18 @@ describe("Codeify provider", () => {
 			store,
 			allowNetwork: true,
 		});
-		// Simulate a cache written before the placeholder was recognized.
+		expect(stored?.models.find((model) => model.id === "gpt-6.9-other")).toMatchObject({
+			contextWindow: 272_000,
+			declaredLimits: { contextWindow: null, maxTokens: 180_000 },
+		});
+		expect(stored?.models.find((model) => model.id === "gpt-6.3-astra")).toMatchObject({
+			declaredLimits: { contextWindow: 272_000, maxTokens: null },
+		});
+		// The resolved cache snapshot must not override the null declaration on reload.
 		stored = {
 			...stored!,
 			models: stored!.models.map((model) =>
-				model.id === "gpt-6.10-astra" || model.id === "gpt-6.9.1-astra"
-					? { ...model, contextWindow: 272_000 }
-					: model,
+				model.id === "gpt-6.10-astra" ? { ...model, contextWindow: 272_000 } : model,
 			),
 		};
 		const cached = await provider.refreshModels?.({ credential: undefined, store, allowNetwork: false });
@@ -99,6 +102,8 @@ describe("Codeify provider", () => {
 				contextWindow: 900_000,
 				maxTokens: 90_000,
 			});
+			expect(models?.find((model) => model.id === "gpt-6.3-astra")?.contextWindow).toBe(272_000);
+			expect(models?.find((model) => model.id === "gpt-6.4-astra")?.contextWindow).toBe(272_000);
 			expect(models?.find((model) => model.id === "gpt-6.9-other")).toMatchObject({
 				contextWindow: 272_000,
 				maxTokens: 180_000,

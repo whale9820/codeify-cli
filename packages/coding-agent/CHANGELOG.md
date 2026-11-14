@@ -47,7 +47,7 @@
 - Keep the footer tokens-per-second counter always visible: start new sessions at `0.0 tps`, keep the last displayed value between streams, retries, and idle periods instead of blanking, and save it in session data so resumed sessions restore it.
 - Allow MCP tool calls to run for ten minutes by default, extend the timeout when progress arrives, support per-server `timeoutMs` in `mcp.json`, and forward turn cancellation to the server.
 - Stop ending turns when a model pauses for 15 seconds after streaming text: stalled-stream recovery now only finalizes complete tool calls, and text-only stalls wait for the configured request timeout and then retry as errors instead of being treated as a finished reply.
-- Infer GPT-6 Astra context limits from earlier revisions when a live or cached catalog reports the generic 272k placeholder.
+- Preserve missing context limits as `null` in model catalogs. Infer them from known models and older revisions before using the 272k fallback, without replacing an explicitly declared 272k limit.
 
 ## [0.83.0] - 2026-10-18
 
