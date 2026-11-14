@@ -6,7 +6,7 @@ import { join } from "node:path";
 import type { RefreshModelsContext } from "codeify-ai";
 import { InMemoryCredentialStore } from "codeify-ai";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { toModelDefinition } from "../src/core/codeify-provider.ts";
+import { type CodeifyModel, toModelDefinition } from "../src/core/codeify-provider.ts";
 import { ModelRuntime } from "../src/core/model-runtime.ts";
 import {
 	inheritCodeifyMetadata,
@@ -18,7 +18,7 @@ import {
 describe("override backend model refresh", () => {
 	let dir: string;
 	let server: Server;
-	let listed: Array<{ id: string }>;
+	let listed: CodeifyModel[];
 	let status: number;
 	let seenAuth: string | undefined;
 	let baseUrl: string;
@@ -89,6 +89,18 @@ describe("override backend model refresh", () => {
 		expect(store.get("mine")?.models.map((model) => model.id)).toEqual(["alpha", "beta"]);
 		expect(JSON.parse(readFileSync(path, "utf8")).backends[0].models).toHaveLength(2);
 		expect(seenAuth).toBe("Bearer secret");
+	});
+
+	it("fills missing limits for newly listed models from the backend catalog", async () => {
+		const { refresh, context } = setup();
+		listed = [
+			{ id: "gpt-6.2-astra", max_output_tokens: 64_000 },
+			{ id: "gpt-6-astra", context: 720_000, max_tokens: 128_000 },
+		];
+
+		const models = await refresh(context());
+
+		expect(models[0]).toMatchObject({ id: "gpt-6.2-astra", contextWindow: 720_000, maxTokens: 64_000 });
 	});
 
 	it("drops models the backend no longer lists", async () => {

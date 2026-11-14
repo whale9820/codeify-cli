@@ -11,6 +11,10 @@ describe("model routing", () => {
 		expect(apiForModelId("qwen3-coder-next")).toBe("openai-responses");
 		expect(apiForModelId("qwen-max")).toBe("openai-responses");
 		expect(apiForModelId("gpt-5-mini")).toBe("openai-responses");
+		expect(apiForModelId("openai/gpt-6.2-astra")).toBe("openai-responses");
+		expect(apiForModelId("openai/gpt-6-astra:batch")).toBe("openai-responses");
+		expect(apiForModelId("anthropic/claude-opus-5")).toBe("anthropic-messages");
+		expect(apiForModelId("meta/llama-3")).toBe("openai-completions");
 		expect(apiForModelId("llama-3")).toBe("openai-completions");
 	});
 
@@ -23,6 +27,15 @@ describe("model routing", () => {
 		expect(routed[1].baseUrl).toBeUndefined();
 		expect(routed[2].api).toBe("openai-completions");
 		expect(routed[2].baseUrl).toBeUndefined();
+	});
+
+	it("routes namespaced OpenAI IDs through Responses and strips /v1 only for Anthropic", () => {
+		const models = ["openai/gpt-6.2-astra", "anthropic/claude-opus-5"].map((id) => toModelDefinition({ id }));
+		const routed = routeModels(models, "https://example.com/v1");
+
+		expect(routed[0]).toMatchObject({ id: "openai/gpt-6.2-astra", api: "openai-responses" });
+		expect(routed[0].baseUrl).toBeUndefined();
+		expect(routed[1]).toMatchObject({ api: "anthropic-messages", baseUrl: "https://example.com" });
 	});
 
 	it("routes Qwen through Responses so hosted search is declared", () => {

@@ -2,6 +2,7 @@ import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { createServer } from "node:http";
 import type { Model, ModelCost, ModelsStoreEntry, OAuthCredentials, OAuthLoginCallbacks } from "codeify-ai";
 import { CODEIFY_DEFAULT_MODEL } from "./defaults.ts";
+import { indexModelLimits, inferModelLimits, type ModelLimits } from "./model-limits.ts";
 import type { RuntimeProviderConfig } from "./provider-composer.ts";
 
 export { CODEIFY_DEFAULT_MODEL } from "./defaults.ts";
@@ -101,8 +102,8 @@ type StoredCodeifyModel = Model<"openai-responses"> & {
 	supportsThinkingToggle?: boolean;
 };
 
-function positiveNumber(value: number | undefined): number | undefined {
-	return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : undefined;
+function firstPositiveNumber(...values: Array<number | undefined>): number | undefined {
+	return values.find((value) => typeof value === "number" && Number.isFinite(value) && value > 0);
 }
 
 function pricingToCost(pricing: CodeifyModel["pricing"]): ModelCost | undefined {
@@ -291,40 +292,36 @@ function resolveInput(model: CodeifyModel): ("text" | "image")[] {
 	return toInput(model.input) ?? (VISION_MODEL_FAMILIES.test(model.id) ? ["text", "image"] : ["text"]);
 }
 
-function resolveContextWindow(model: CodeifyModel): number {
-	const raw =
-		model.context ??
-		model.context_window ??
-		model.contextWindow ??
-		model.context_length ??
-		model.max_context_tokens ??
-		model.max_input_tokens ??
-		model.limit?.context ??
-		model.limit?.input;
-	const parsed = positiveNumber(raw);
-	if (/^gpt-5\.[56](?:-|$)/i.test(model.id)) {
-		return Math.max(parsed ?? 0, 1_050_000);
-	}
-	return parsed ?? 272_000;
-}
-
-function resolveMaxTokens(model: CodeifyModel): number {
-	const raw =
-		model.max_tokens ??
-		model.maxTokens ??
-		model.max_output_tokens ??
-		model.maxOutputTokens ??
-		model.output_tokens ??
-		model.limit?.output;
-	return positiveNumber(raw) ?? 32_768;
+function declaredLimits(model: CodeifyModel): ModelLimits {
+	return {
+		contextWindow: firstPositiveNumber(
+			model.context,
+			model.context_window,
+			model.contextWindow,
+			model.context_length,
+			model.max_context_tokens,
+			model.max_input_tokens,
+			model.limit?.context,
+			model.limit?.input,
+		),
+		maxTokens: firstPositiveNumber(
+			model.max_tokens,
+			model.maxTokens,
+			model.max_output_tokens,
+			model.maxOutputTokens,
+			model.output_tokens,
+			model.limit?.output,
+		),
+	};
 }
 
 const ANTHROPIC_MODEL_PATTERN = /^(?:claude-|glm)/i;
 const OPENAI_RESPONSES_MODEL_PATTERN = /^(?:gpt-|qwen)/i;
 
 export function apiForModelId(id: string): "anthropic-messages" | "openai-responses" | "openai-completions" {
-	if (ANTHROPIC_MODEL_PATTERN.test(id)) return "anthropic-messages";
-	if (OPENAI_RESPONSES_MODEL_PATTERN.test(id)) return "openai-responses";
+	const modelSlug = id.slice(id.lastIndexOf("/") + 1);
+	if (ANTHROPIC_MODEL_PATTERN.test(modelSlug)) return "anthropic-messages";
+	if (OPENAI_RESPONSES_MODEL_PATTERN.test(modelSlug)) return "openai-responses";
 	return "openai-completions";
 }
 
@@ -339,7 +336,19 @@ export function routeModels(models: readonly CodeifyModelDefinition[], baseUrl: 
 	});
 }
 
+export function toModelDefinitions(models: readonly CodeifyModel[]): CodeifyModelDefinition[] {
+	const limits = models.map((model) => ({ id: model.id, ...declaredLimits(model) }));
+	const catalog = indexModelLimits(limits);
+	return models.map((model, index) =>
+		formatModelDefinition(model, inferModelLimits(model.id, limits[index], catalog)),
+	);
+}
+
 export function toModelDefinition(model: CodeifyModel): CodeifyModelDefinition {
+	return formatModelDefinition(model, inferModelLimits(model.id, declaredLimits(model)));
+}
+
+function formatModelDefinition(model: CodeifyModel, limits: ModelLimits): CodeifyModelDefinition {
 	const reasoning = supportsReasoning(model.id, model);
 	const declaredLevels = extractDeclaredThinkingLevels(model);
 	const thinkingLevels = declaredLevels?.length
@@ -347,8 +356,9 @@ export function toModelDefinition(model: CodeifyModel): CodeifyModelDefinition {
 			? ["off", ...declaredLevels]
 			: declaredLevels
 		: undefined;
-	const contextWindow = resolveContextWindow(model);
-	const maxTokens = resolveMaxTokens(model);
+	const contextWindow = /^gpt-5\.[56](?:-|$)/i.test(model.id)
+		? Math.max(limits.contextWindow ?? 0, 1_050_000)
+		: (limits.contextWindow ?? 272_000);
 	return {
 		id: model.id,
 		name: model.id,
@@ -359,7 +369,7 @@ export function toModelDefinition(model: CodeifyModel): CodeifyModelDefinition {
 		input: resolveInput(model),
 		cost: pricingToCost(model.pricing) ?? model.cost ?? { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
 		contextWindow,
-		maxTokens,
+		maxTokens: limits.maxTokens ?? 32_768,
 		compat: { supportsToolSearch: true, promoteToolResultImages: true },
 	};
 }
@@ -438,18 +448,15 @@ async function fetchModels(
 	}
 	const models = (payload.data ?? []).filter((model) => typeof model.id === "string" && model.id.length > 0);
 	const discovered: CodeifyModel[] = models.length > 0 ? models : [{ id: CODEIFY_DEFAULT_MODEL }];
-	const definitions: CodeifyModelDefinition[] = [];
-	const storedModels: StoredCodeifyModel[] = [];
-	for (const model of discovered) {
-		const definition = toModelDefinition(model);
+	const definitions = toModelDefinitions(discovered);
+	const storedModels = discovered.map((model, index): StoredCodeifyModel => {
 		const inputModalities = declaredModalities(model);
 		const declaredReasoning =
 			model.capabilities?.reasoning ?? (typeof model.reasoning === "boolean" ? model.reasoning : undefined);
 		const declaredThinkingLevels = extractDeclaredThinkingLevels(model);
 		const supportsThinkingToggle = extractSupportsThinkingToggle(model);
-		definitions.push(definition);
-		storedModels.push({
-			...definition,
+		return {
+			...definitions[index],
 			...(inputModalities?.length ? { inputModalities } : {}),
 			...(declaredReasoning !== undefined ? { declaredReasoning } : {}),
 			...(declaredThinkingLevels !== undefined ? { declaredThinkingLevels } : {}),
@@ -457,8 +464,8 @@ async function fetchModels(
 			api: "openai-responses",
 			provider: CODEIFY_PROVIDER_ID,
 			baseUrl: CODEIFY_BASE_URL,
-		});
-	}
+		};
+	});
 	await store.write({
 		models: storedModels,
 		credentialFingerprint,

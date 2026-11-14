@@ -6,6 +6,7 @@ import {
 	type CodeifyModelDefinition,
 	routeModels,
 	toModelDefinition,
+	toModelDefinitions,
 } from "./codeify-provider.ts";
 import type { RuntimeProviderConfig } from "./provider-composer.ts";
 
@@ -229,9 +230,9 @@ export async function probeOverrideBackend(
 		if (!Array.isArray(payload.data)) {
 			return { ok: false, models: [], error: "GET /models did not return a model list." };
 		}
-		const models = payload.data
-			.filter((entry) => typeof entry.id === "string" && entry.id.length > 0)
-			.map((entry) => toModelDefinition(entry));
+		const models = toModelDefinitions(
+			payload.data.filter((entry) => typeof entry.id === "string" && entry.id.length > 0),
+		);
 		return { ok: true, models };
 	} catch (error) {
 		return { ok: false, models: [], error: error instanceof Error ? error.message : String(error) };

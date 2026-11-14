@@ -1,7 +1,12 @@
 import { createHash } from "node:crypto";
 import { getSupportedThinkingLevels, type ModelsStoreEntry, type OAuthLoginCallbacks } from "codeify-ai";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { CODEIFY_BASE_URL, codeifyProvider, loginWithCodeifyOAuth } from "../src/core/codeify-provider.ts";
+import {
+	CODEIFY_BASE_URL,
+	codeifyProvider,
+	loginWithCodeifyOAuth,
+	toModelDefinition,
+} from "../src/core/codeify-provider.ts";
 import { openBrowser } from "../src/utils/open-browser.ts";
 
 vi.mock("../src/utils/open-browser.ts", () => ({ openBrowser: vi.fn() }));
@@ -33,7 +38,65 @@ describe("Codeify provider", () => {
 		expect(model).toMatchObject({ reasoning: true, thinkingLevelMap: { xhigh: "xhigh" } });
 	});
 
-	it("uses only Codeify model metadata", async () => {
+	it("fills missing token limits from an older revision in the bundled catalog", () => {
+		expect(toModelDefinition({ id: "OpenAI/GPT-6.2-Astra" })).toMatchObject({
+			id: "OpenAI/GPT-6.2-Astra",
+			contextWindow: 1_050_000,
+			maxTokens: 128_000,
+		});
+		expect(toModelDefinition({ id: "gpt-6.2-astra", context: 0, limit: { context: 512_000 } })).toMatchObject({
+			contextWindow: 512_000,
+			maxTokens: 128_000,
+		});
+		expect(toModelDefinition({ id: "gpt-6.2-astra", max_output_tokens: 64_000 })).toMatchObject({
+			contextWindow: 1_050_000,
+			maxTokens: 64_000,
+		});
+	});
+
+	it("uses the nearest older matching revision with a declared limit and caches the result", async () => {
+		vi.spyOn(globalThis, "fetch").mockResolvedValue(
+			new Response(
+				JSON.stringify({
+					data: [
+						{ id: "gpt-6.10-astra" },
+						{ id: "gpt-6.11-astra", context: 4_000_000, max_tokens: 200_000 },
+						{ id: "gpt-6.9-astra", context: 900_000 },
+						{ id: "gpt-6.2-astra", context: 500_000, max_output_tokens: 90_000 },
+						{ id: "gpt-6-astra", context: 400_000, max_tokens: 70_000 },
+						{ id: "gpt-6.9-other", max_tokens: 180_000 },
+					],
+				}),
+			),
+		);
+		let stored: ModelsStoreEntry | undefined;
+		const store = {
+			read: async () => stored,
+			write: async (entry: ModelsStoreEntry) => {
+				stored = entry;
+			},
+			delete: async () => {},
+		};
+		const provider = codeifyProvider();
+		const live = await provider.refreshModels?.({
+			credential: { type: "api_key", key: "test-key" },
+			store,
+			allowNetwork: true,
+		});
+		const cached = await provider.refreshModels?.({ credential: undefined, store, allowNetwork: false });
+		for (const models of [live, cached]) {
+			expect(models?.find((model) => model.id === "gpt-6.10-astra")).toMatchObject({
+				contextWindow: 900_000,
+				maxTokens: 90_000,
+			});
+			expect(models?.find((model) => model.id === "gpt-6.9-other")).toMatchObject({
+				contextWindow: 272_000,
+				maxTokens: 180_000,
+			});
+		}
+	});
+
+	it("prefers explicit Codeify metadata", async () => {
 		const fetchSpy = vi.spyOn(globalThis, "fetch").mockResolvedValue(
 			new Response(
 				JSON.stringify({
