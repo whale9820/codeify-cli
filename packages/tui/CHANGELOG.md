@@ -6,6 +6,10 @@
 
 - Use a six-frame clockwise rotating arc (`◜ ◠ ◝ ◞ ◡ ◟`) for the default loading spinner.
 
+### Fixed
+
+- Fixed render frames slowing down as the transcript grows: unchanged lines reuse their normalized output from the previous frame, and Kitty image scans are skipped when no images are present (about 12x faster per frame at 50k lines).
+
 ## [0.83.0] - 2026-10-18
 
 ### Fixed

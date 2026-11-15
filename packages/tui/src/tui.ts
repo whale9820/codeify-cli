@@ -296,6 +296,10 @@ export class TUI extends Container {
 	public terminal: Terminal;
 	private previousLines: string[] = [];
 	private previousKittyImageIds = new Set<number>();
+	private lineResetRaw: string[] = [];
+	private lineResetOut: string[] = [];
+	private lineResetImage: boolean[] = [];
+	private lineResetHasImages = false;
 	private previousWidth = 0;
 	private previousHeight = 0;
 	private focusedComponent: Component | null = null;
@@ -1097,19 +1101,47 @@ export class TUI extends Container {
 
 	private static readonly SEGMENT_RESET = "\x1b[0m\x1b]8;;\x07";
 
+	/**
+	 * Normalize lines and append segment resets. Reuses the previous frame's output
+	 * string when the input line is unchanged, so unchanged history lines keep the
+	 * same string identity (cheap diff compares, no per-frame allocation).
+	 */
 	private applyLineResets(lines: string[]): string[] {
 		const reset = TUI.SEGMENT_RESET;
+		const prevRaw = this.lineResetRaw;
+		const prevOut = this.lineResetOut;
+		const raw = lines.slice();
+		let hasImages = false;
 		for (let i = 0; i < lines.length; i++) {
 			const line = lines[i];
-			if (!isImageLine(line)) {
+			if (i < prevRaw.length && prevRaw[i] === line) {
+				lines[i] = prevOut[i];
+				if (!hasImages && this.lineResetImage[i]) hasImages = true;
+				continue;
+			}
+			if (isImageLine(line)) {
+				hasImages = true;
+			} else {
 				lines[i] = normalizeTerminalOutput(line) + reset;
 			}
 		}
+		const image: boolean[] = new Array(lines.length);
+		if (hasImages) {
+			for (let i = 0; i < raw.length; i++) image[i] = isImageLine(raw[i]);
+		} else {
+			image.fill(false);
+		}
+		this.lineResetRaw = raw;
+		this.lineResetOut = lines.slice();
+		this.lineResetImage = image;
+		this.lineResetHasImages = hasImages;
 		return lines;
 	}
 
 	private collectKittyImageIds(lines: string[]): Set<number> {
 		const ids = new Set<number>();
+		// Only called with the output of applyLineResets, which records whether any line is an image.
+		if (!this.lineResetHasImages) return ids;
 		for (const line of lines) {
 			for (const id of extractKittyImageIds(line)) {
 				ids.add(id);
@@ -1145,6 +1177,9 @@ export class TUI extends Container {
 		lastChanged: number,
 		newLines: string[],
 	): { firstChanged: number; lastChanged: number } {
+		if (!this.lineResetHasImages && this.previousKittyImageIds.size === 0) {
+			return { firstChanged, lastChanged };
+		}
 		let expandedFirstChanged = firstChanged;
 		let expandedLastChanged = lastChanged;
 		const expandForLines = (lines: string[]): void => {
@@ -1164,7 +1199,7 @@ export class TUI extends Container {
 	}
 
 	private deleteChangedKittyImages(firstChanged: number, lastChanged: number): string {
-		if (firstChanged < 0 || lastChanged < firstChanged) return "";
+		if (firstChanged < 0 || lastChanged < firstChanged || this.previousKittyImageIds.size === 0) return "";
 
 		const ids = new Set<number>();
 		const maxLine = Math.min(lastChanged, this.previousLines.length - 1);
@@ -1333,7 +1368,7 @@ export class TUI extends Container {
 		};
 
 		const viewportRender = (): void => {
-			if (this.previousKittyImageIds.size > 0 || newLines.some((line) => isImageLine(line))) {
+			if (this.previousKittyImageIds.size > 0 || this.lineResetHasImages) {
 				fullRender(true);
 				return;
 			}

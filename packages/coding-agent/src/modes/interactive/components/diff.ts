@@ -187,9 +187,16 @@ export class DiffComponent implements Component {
 		this.lines = renderDiffLines(diffText);
 	}
 
-	invalidate(): void {}
+	private cachedWidth: number | undefined;
+	private cachedLines: string[] | undefined;
+
+	invalidate(): void {
+		this.cachedWidth = undefined;
+		this.cachedLines = undefined;
+	}
 
 	render(width: number): string[] {
+		if (this.cachedLines && this.cachedWidth === width) return this.cachedLines;
 		const out: string[] = [];
 		for (const line of this.lines) {
 			const bg = line.kind === "added" ? "toolSuccessBg" : line.kind === "removed" ? "toolErrorBg" : undefined;
@@ -202,6 +209,8 @@ export class DiffComponent implements Component {
 				out.push(theme.bg(bg, row + padding));
 			}
 		}
+		this.cachedWidth = width;
+		this.cachedLines = out;
 		return out;
 	}
 }
