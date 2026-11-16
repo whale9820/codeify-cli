@@ -1291,6 +1291,28 @@ export class TUI extends Container {
 		return null;
 	}
 
+	/**
+	 * When lines above the viewport changed, the terminal scrollback still holds the old lines.
+	 * Find the index in newLines that directly follows the old scrollback tail, so repainting the
+	 * viewport from there neither duplicates nor skips lines at the scrollback boundary.
+	 */
+	private findScrollbackAlignedStart(newLines: string[], viewportTop: number): number | undefined {
+		const windowSize = Math.min(viewportTop, 8);
+		if (windowSize === 0) return undefined;
+		const tail = this.previousLines.slice(viewportTop - windowSize, viewportTop);
+		if (tail.every((line) => line.trim() === "")) return undefined;
+		const matches = (start: number): boolean =>
+			start >= windowSize &&
+			start < newLines.length &&
+			tail.every((line, index) => newLines[start - windowSize + index] === line);
+		const maxDistance = Math.max(viewportTop, newLines.length - viewportTop);
+		for (let distance = 0; distance <= maxDistance; distance++) {
+			if (matches(viewportTop + distance)) return viewportTop + distance;
+			if (distance > 0 && matches(viewportTop - distance)) return viewportTop - distance;
+		}
+		return undefined;
+	}
+
 	private doRender(): void {
 		if (this.stopped) return;
 		const width = this.terminal.columns;
@@ -1377,7 +1399,8 @@ export class TUI extends Container {
 				newLines.slice(0, prevViewportTop).every((line, index) => line === this.previousLines[index]);
 			const start = preserveScrollback
 				? prevViewportTop
-				: Math.min(prevViewportTop, Math.max(0, newLines.length - height));
+				: (this.findScrollbackAlignedStart(newLines, prevViewportTop) ??
+					Math.min(prevViewportTop, Math.max(0, newLines.length - height)));
 			const currentScreenRow = Math.max(0, Math.min(height - 1, hardwareCursorRow - prevViewportTop));
 			let buffer = "\x1b[?2026h";
 			if (currentScreenRow > 0) buffer += `\x1b[${currentScreenRow}A`;

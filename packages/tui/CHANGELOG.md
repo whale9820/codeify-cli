@@ -9,6 +9,7 @@
 ### Fixed
 
 - Fixed render frames slowing down as the transcript grows: unchanged lines reuse their normalized output from the previous frame, and Kitty image scans are skipped when no images are present (about 12x faster per frame at 50k lines).
+- Fixed a chunk of output appearing twice in the terminal when lines above the visible viewport grew (for example a re-wrapped table or expanded block). The viewport repaint now starts right after the lines already in scrollback.
 
 ## [0.83.0] - 2026-10-18
 
