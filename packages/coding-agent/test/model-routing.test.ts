@@ -16,6 +16,10 @@ describe("model routing", () => {
 		expect(apiForModelId("anthropic/claude-opus-5")).toBe("anthropic-messages");
 		expect(apiForModelId("meta/llama-3")).toBe("openai-completions");
 		expect(apiForModelId("llama-3")).toBe("openai-completions");
+		expect(apiForModelId("grok-4.5")).toBe("openai-responses");
+		expect(apiForModelId("grok-4.3")).toBe("openai-responses");
+		expect(apiForModelId("xai/grok-4.6")).toBe("openai-responses");
+		expect(apiForModelId("Grok-Build-0.1")).toBe("openai-responses");
 	});
 
 	it("strips the trailing /v1 for anthropic models only", () => {
@@ -42,5 +46,14 @@ describe("model routing", () => {
 		const [model] = routeModels([toModelDefinition({ id: "qwen3.8-max" })], "https://codeify.cc/v1");
 		expect(model).toMatchObject({ id: "qwen3.8-max", api: "openai-responses" });
 		expect(model.baseUrl).toBeUndefined();
+	});
+
+	it("routes grok models through Responses", () => {
+		const models = ["grok-4.3", "xai/grok-4.6"].map((id) => toModelDefinition({ id }));
+		const routed = routeModels(models, "https://codeify.cc/v1");
+		expect(routed[0]).toMatchObject({ id: "grok-4.3", api: "openai-responses" });
+		expect(routed[0].baseUrl).toBeUndefined();
+		expect(routed[1]).toMatchObject({ id: "xai/grok-4.6", api: "openai-responses" });
+		expect(routed[1].baseUrl).toBeUndefined();
 	});
 });

@@ -322,7 +322,7 @@ function declaredLimits(model: CodeifyModel): ModelLimits {
 }
 
 const ANTHROPIC_MODEL_PATTERN = /^(?:claude-|glm)/i;
-const OPENAI_RESPONSES_MODEL_PATTERN = /^(?:gpt-|qwen)/i;
+const OPENAI_RESPONSES_MODEL_PATTERN = /^(?:gpt-|qwen|grok-)/i;
 
 export function apiForModelId(id: string): "anthropic-messages" | "openai-responses" | "openai-completions" {
 	const modelSlug = id.slice(id.lastIndexOf("/") + 1);
