@@ -493,4 +493,16 @@ describe("SettingsManager", () => {
 			expect(manager.getShellPath()).toBe(homedir());
 		});
 	});
+
+	describe("providerLastModels", () => {
+		it("remembers the last model per provider", () => {
+			const manager = SettingsManager.inMemory();
+			manager.setDefaultModelAndProvider("codeify", "model-a");
+			manager.setDefaultModelAndProvider("override-x", "model-b");
+			manager.setDefaultModelAndProvider("codeify", "model-c");
+			expect(manager.getProviderLastModel("codeify")).toBe("model-c");
+			expect(manager.getProviderLastModel("override-x")).toBe("model-b");
+			expect(manager.getProviderLastModel("missing")).toBeUndefined();
+		});
+	});
 });

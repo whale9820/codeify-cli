@@ -63,6 +63,7 @@ export interface Settings {
 	defaultModel?: string;
 	defaultThinkingLevel?: ThinkingLevel;
 	modelThinkingLevels?: Record<string, ThinkingLevel>; // Last thinking level per "provider/modelId"
+	providerLastModels?: Record<string, string>; // Last used model id per provider
 	transport?: TransportSetting; // default: "auto"
 	steeringMode?: "all" | "one-at-a-time";
 	followUpMode?: "all" | "one-at-a-time";
@@ -671,7 +672,15 @@ export class SettingsManager {
 		this.globalSettings.defaultModel = modelId;
 		this.markModified("defaultProvider");
 		this.markModified("defaultModel");
+		if (this.globalSettings.providerLastModels?.[provider] !== modelId) {
+			this.globalSettings.providerLastModels = { ...this.globalSettings.providerLastModels, [provider]: modelId };
+			this.markModified("providerLastModels", provider);
+		}
 		this.save();
+	}
+
+	getProviderLastModel(provider: string): string | undefined {
+		return this.settings.providerLastModels?.[provider];
 	}
 
 	getSteeringMode(): "all" | "one-at-a-time" {

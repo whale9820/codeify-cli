@@ -23,6 +23,8 @@
 
 ### Fixed
 
+- `/override use <name>` now restores the last model used on that backend (stored as `providerLastModels` in settings) instead of falling back to the backend's first model or `gpt-6-astra`.
+- Fix the 4167 regression test mock missing `setWorkingActivity`.
 - Render `Update` calls and their partial replacement content immediately across canonical and provider-specific edit argument names.
 
 - Ignore model catalogs cached for a different Codeify credential and remove unavailable models from the selector after refresh.

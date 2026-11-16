@@ -3860,10 +3860,15 @@ export class InteractiveMode {
 	private async switchToOverrideBackend(backend: OverrideBackend): Promise<void> {
 		const id = overrideProviderId(backend.name);
 		const current = this.session.model;
+		const lastModelId = this.settingsManager.getProviderLastModel(id);
+		const isKnown = (modelId: string | undefined) =>
+			modelId !== undefined && backend.models.some((entry) => entry.id === modelId);
 		const modelId =
-			current?.provider === id && backend.models.some((entry) => entry.id === current.id)
+			current?.provider === id && isKnown(current.id)
 				? current.id
-				: backend.models[0]?.id;
+				: isKnown(lastModelId)
+					? lastModelId
+					: backend.models[0]?.id;
 		const model = modelId ? this.session.modelRuntime.getModel(id, modelId) : undefined;
 		if (!model) {
 			this.showError(`${backend.name} has no usable models`);
@@ -3877,7 +3882,13 @@ export class InteractiveMode {
 
 	private async switchToDefaultBackend(): Promise<void> {
 		const models = this.session.modelRuntime.getModels().filter((model) => model.provider === CODEIFY_PROVIDER_ID);
-		const model = models.find((candidate) => candidate.id === CODEIFY_DEFAULT_MODEL) ?? models[0];
+		const lastModelId = this.settingsManager.getProviderLastModel(CODEIFY_PROVIDER_ID);
+		const current = this.session.model;
+		const model =
+			(current?.provider === CODEIFY_PROVIDER_ID ? current : undefined) ??
+			models.find((candidate) => candidate.id === lastModelId) ??
+			models.find((candidate) => candidate.id === CODEIFY_DEFAULT_MODEL) ??
+			models[0];
 		if (!model) {
 			this.showError("The default backend has no models");
 			return;
