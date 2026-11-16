@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
@@ -190,6 +190,38 @@ describe("override backend model refresh", () => {
 		const { refresh, context } = setup();
 		await refresh(context(false));
 		expect(seenAuth).toBeUndefined();
+	});
+
+	it("does not drop backends saved by another process when refreshing", async () => {
+		const { path, refresh, context } = setup();
+		const other = new OverrideStore(path);
+		other.upsert({ name: "local", baseUrl, apiKey: "k", models: [] });
+
+		await refresh(context());
+
+		const names = new OverrideStore(path).list().map((backend) => backend.name);
+		expect(names).toEqual(["mine", "local"]);
+	});
+
+	it("does not resurrect a backend deleted by another process", async () => {
+		const { path, refresh, context } = setup();
+		new OverrideStore(path).remove("mine");
+
+		expect(await refresh(context())).toEqual([]);
+		expect(new OverrideStore(path).list()).toEqual([]);
+	});
+
+	it("keeps an unreadable overrides file instead of overwriting it", () => {
+		const { path, store } = setup();
+		writeFileSync(path, '{"backends": [');
+		expect(store.list().map((backend) => backend.name)).toEqual(["mine"]);
+
+		store.upsert({ name: "other", baseUrl, apiKey: "k", models: [] });
+
+		expect(readdirSync(dir).some((file) => file.startsWith("overrides.json.corrupt-"))).toBe(true);
+		expect(new OverrideStore(path).list().map((backend) => backend.name)).toEqual(["mine", "other"]);
+		expect(readdirSync(dir).some((file) => file.endsWith(".tmp"))).toBe(false);
+		expect(existsSync(path)).toBe(true);
 	});
 
 	it("refreshes through ModelRuntime so the model list and errors reach the /model selector", async () => {
