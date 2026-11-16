@@ -50,6 +50,7 @@
 - Stop ending turns when a model pauses for 15 seconds after streaming text: stalled-stream recovery now only finalizes complete tool calls, and text-only stalls wait for the configured request timeout and then retry as errors instead of being treated as a finished reply.
 - Preserve missing context limits as `null` in model catalogs. Infer them from known models and older revisions before using the 272k fallback, without replacing an explicitly declared 272k limit.
 - Fixed the interactive terminal getting progressively slower (sluggish spinner and typing) in long sessions by caching rendered diff output and avoiding per-frame work over the whole transcript.
+- Keep typing and spinner animation responsive in long sessions by caching compact thinking tails and unchanged prefixed message/tool output between redraws.
 
 ## [0.83.0] - 2026-10-18
 

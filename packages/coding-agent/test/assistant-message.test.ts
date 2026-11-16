@@ -1,5 +1,5 @@
 import type { AssistantMessage } from "codeify-ai";
-import { visibleWidth } from "codeify-tui";
+import * as tui from "codeify-tui";
 import { describe, expect, test, vi } from "vitest";
 import { AssistantMessageComponent } from "../src/modes/interactive/components/assistant-message.ts";
 import { UserMessageComponent } from "../src/modes/interactive/components/user-message.ts";
@@ -119,7 +119,7 @@ describe("AssistantMessageComponent", () => {
 		expect(after[0]).toContain("∴ …");
 		expect(after[0]).toContain("new direction");
 		expect(after).not.toEqual(before);
-		expect(visibleWidth(after[0])).toBe(39);
+		expect(tui.visibleWidth(after[0])).toBe(39);
 	});
 
 	test("animates compact thinking between chunks and stops when the message ends", () => {
@@ -146,6 +146,63 @@ describe("AssistantMessageComponent", () => {
 		}
 	});
 
+	test("caches compact thinking tails while keeping the indicator live", () => {
+		initTheme("dark");
+		vi.useFakeTimers();
+		const sliceByColumn = vi.spyOn(tui, "sliceByColumn");
+		try {
+			const component = new AssistantMessageComponent(
+				createAssistantMessage([{ type: "thinking", thinking: `${"old thought ".repeat(1000)}latest thought` }]),
+				true,
+			);
+			component.setStreaming(true);
+			const first = stripAnsi(component.render(40).join("\n"));
+			vi.advanceTimersByTime(80);
+			const next = stripAnsi(component.render(40).join("\n"));
+			expect(first).toContain("◜ …");
+			expect(next).toContain("◠ …");
+			expect(next).toContain("latest thought");
+			component.setStreaming(false);
+			const completed = component.render(40);
+			vi.advanceTimersByTime(80);
+			expect(component.render(40)).toEqual(completed);
+			expect(stripAnsi(completed.join("\n"))).toContain("∴ …");
+			expect(sliceByColumn).toHaveBeenCalledTimes(1);
+		} finally {
+			sliceByColumn.mockRestore();
+			vi.useRealTimers();
+		}
+	});
+
+	test("refreshes cached compact thinking after resizing, new content, or invalidation", () => {
+		initTheme("dark");
+		const sliceByColumn = vi.spyOn(tui, "sliceByColumn");
+		try {
+			const component = new AssistantMessageComponent(
+				createAssistantMessage([{ type: "thinking", thinking: `${"old thought ".repeat(100)}latest thought` }]),
+				true,
+			);
+			const narrow = component.render(40);
+			expect(component.render(40)).toEqual(narrow);
+			expect(sliceByColumn).toHaveBeenCalledTimes(1);
+			const wide = component.render(80);
+			expect(component.render(80)).toEqual(wide);
+			expect(wide).not.toEqual(narrow);
+			expect(sliceByColumn).toHaveBeenCalledTimes(2);
+			component.updateContent(
+				createAssistantMessage([{ type: "thinking", thinking: `${"old thought ".repeat(100)}new direction` }]),
+			);
+			const updated = component.render(80);
+			expect(stripAnsi(updated.join("\n"))).toContain("new direction");
+			expect(sliceByColumn).toHaveBeenCalledTimes(3);
+			component.invalidate();
+			expect(component.render(80)).toEqual(updated);
+			expect(sliceByColumn).toHaveBeenCalledTimes(4);
+		} finally {
+			sliceByColumn.mockRestore();
+		}
+	});
+
 	test.each([1, 2, 3, 4, 12, 40, 80])("fits compact Unicode thinking within %i columns", (width) => {
 		initTheme("dark");
 		const component = new AssistantMessageComponent(
@@ -157,7 +214,7 @@ describe("AssistantMessageComponent", () => {
 			.map(stripAnsi)
 			.filter((line) => line.trim());
 		expect(lines).toHaveLength(1);
-		expect(visibleWidth(lines[0])).toBeLessThanOrEqual(width);
+		expect(tui.visibleWidth(lines[0])).toBeLessThanOrEqual(width);
 		expect(lines[0]).not.toContain("\uFFFD");
 	});
 

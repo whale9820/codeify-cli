@@ -33,6 +33,8 @@ class SingleLineThinking implements Component {
 	private text: string;
 	private padding: number;
 	private indicator: () => string;
+	private cachedAvailable?: number;
+	private cachedTail = "";
 
 	constructor(text: string, padding: number, indicator: () => string) {
 		this.text = stripAnsi(text)
@@ -43,18 +45,22 @@ class SingleLineThinking implements Component {
 		this.indicator = indicator;
 	}
 
-	invalidate(): void {}
+	invalidate(): void {
+		this.cachedAvailable = undefined;
+	}
 
 	render(width: number): string[] {
 		width = Math.max(1, width - 1);
 		const prefix = `${" ".repeat(Math.min(this.padding, Math.max(0, width - 1)))}${this.indicator()} `;
 		const available = Math.max(0, width - visibleWidth(prefix));
-		const textWidth = visibleWidth(this.text);
-		const tail =
-			textWidth > available
-				? `…${sliceByColumn(this.text, textWidth - Math.max(0, available - 1), Math.max(0, available - 1), true)}`
-				: this.text;
-		return [theme.fg("thinkingText", truncateToWidth(prefix + tail, width, ""))];
+		if (this.cachedAvailable !== available) {
+			const textWidth = visibleWidth(this.text);
+			const tailWidth = Math.max(0, available - 1);
+			this.cachedTail =
+				textWidth > available ? `…${sliceByColumn(this.text, textWidth - tailWidth, tailWidth, true)}` : this.text;
+			this.cachedAvailable = available;
+		}
+		return [theme.fg("thinkingText", truncateToWidth(prefix + this.cachedTail, width, ""))];
 	}
 }
 
