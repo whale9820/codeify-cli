@@ -12,6 +12,7 @@
 
 ### Changed
 
+- Parse and execute text tool calls prefixed with `[assistant 请求调用工具]` or `[assistant 请求调用 tool]`, including `"arguments</arg_key><arg_value>{...}"` and unescaped-string argument envelopes, when every call targets an active tool. Unparseable marker output still regenerates.
 - Accept model-defined reasoning effort names in agent thinking state.
 
 ## [0.83.0] - 2026-10-18

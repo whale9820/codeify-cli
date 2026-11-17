@@ -12,6 +12,7 @@ import {
 	validateToolArguments,
 } from "codeify-ai";
 import { getDefaultStreamFn } from "./stream-fn.ts";
+import { convertTextToolCalls, TEXT_TOOL_CALL_MARKERS } from "./text-tool-calls.ts";
 import type {
 	AgentContext,
 	AgentEvent,
@@ -316,6 +317,7 @@ async function streamAssistantResponse(
 		messages: llmMessages,
 		tools: context.tools,
 	};
+	const toolNames = context.tools?.map((tool) => tool.name) ?? [];
 
 	// Resolve API key (important for expiring tokens)
 	const resolvedApiKey =
@@ -359,8 +361,27 @@ async function streamAssistantResponse(
 			let checking = true;
 			let text = "";
 			let rejected: AssistantMessage | undefined;
+			let converted: AssistantMessage | undefined;
+			let capturing = false;
+			const tryConvert = (message: AssistantMessage) =>
+				message.stopReason === "stop" || message.stopReason === "toolUse"
+					? convertTextToolCalls(message, toolNames)
+					: undefined;
 			for await (const event of source) {
 				if ("partial" in event) latestPartial = event.partial;
+				if (capturing) {
+					// Marker seen: hold all output until the envelope is complete, then parse it.
+					if (event.type === "done") {
+						converted = tryConvert(event.message);
+						if (!converted) rejected = event.message;
+						break;
+					}
+					if (event.type === "error") {
+						response.push(event);
+						break;
+					}
+					continue;
+				}
 				if (checking) {
 					if (
 						buffered.length === 0 &&
@@ -381,14 +402,22 @@ async function streamAssistantResponse(
 							.join("");
 					}
 					const trimmed = text.trimStart();
-					const marker = "[assistant 请求调用 tool";
-					if (trimmed.startsWith(marker) && !signal?.aborted) {
-						rejected = event.type === "done" ? event.message : "partial" in event ? event.partial : undefined;
+					if (TEXT_TOOL_CALL_MARKERS.some((marker) => trimmed.startsWith(marker)) && !signal?.aborted) {
+						if (event.type === "done") {
+							converted = tryConvert(event.message);
+							if (!converted) rejected = event.message;
+							break;
+						}
+						if (toolNames.length > 0 && event.type !== "error") {
+							capturing = true;
+							continue;
+						}
+						rejected = "partial" in event ? event.partial : undefined;
 						controller.abort();
 						break;
 					}
 					if (
-						(trimmed && !marker.startsWith(trimmed)) ||
+						(trimmed && !TEXT_TOOL_CALL_MARKERS.some((marker) => marker.startsWith(trimmed))) ||
 						event.type === "done" ||
 						event.type === "error" ||
 						event.type === "toolcall_start" ||
@@ -400,6 +429,11 @@ async function streamAssistantResponse(
 				} else {
 					response.push(event);
 				}
+			}
+			if (converted) {
+				response.push({ type: "done", reason: "toolUse", message: converted });
+				response.end(converted);
+				return;
 			}
 			if (rejected) {
 				if (attempt < 2 && !signal?.aborted) continue;
