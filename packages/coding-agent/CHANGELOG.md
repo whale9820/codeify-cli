@@ -26,6 +26,7 @@
 
 - Stop override backends from disappearing from `overrides.json` when several Codeify processes run at once (for example an old session still open across an update). Model refreshes previously rewrote the whole file from a stale in-memory list; the store now re-reads the file before every change, only updates the refreshed backend's models, never re-adds a backend deleted elsewhere, writes atomically, and keeps an unreadable file as `overrides.json.corrupt-<time>` instead of overwriting it.
 - `/override use <name>` now restores the last model used on that backend (stored as `providerLastModels` in settings) instead of falling back to the backend's first model or `gpt-6-astra`.
+- The model selector, when limited to the active override backend, now reports refresh failures only for that backend instead of unrelated saved backends.
 - Fix the 4167 regression test mock missing `setWorkingActivity`.
 - Render `Update` calls and their partial replacement content immediately across canonical and provider-specific edit argument names.
 

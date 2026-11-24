@@ -204,12 +204,15 @@ export class ModelSelectorComponent extends Container implements Focusable {
 			});
 			if (this.closed) return;
 			this.refreshStatusMessage = "";
+			const failed = [...result.errors.keys()].filter(
+				(providerId) => !this.providerFilter || providerId === this.providerFilter,
+			);
 			if (result.aborted && timedOut) {
 				this.errorMessage = "Model refresh timed out; showing cached models.";
-			} else if (result.errors.size === 1) {
-				this.errorMessage = `Could not refresh ${result.errors.keys().next().value}; showing cached models.`;
-			} else if (result.errors.size > 1) {
-				this.errorMessage = `Could not refresh ${result.errors.size} model catalogs; showing cached models.`;
+			} else if (failed.length === 1) {
+				this.errorMessage = `Could not refresh ${failed[0]}; showing cached models.`;
+			} else if (failed.length > 1) {
+				this.errorMessage = `Could not refresh ${failed.length} model catalogs; showing cached models.`;
 			} else {
 				this.errorMessage = this.modelRuntime.getError();
 				if (!this.errorMessage) {
