@@ -1,5 +1,11 @@
 import { type Model, modelsAreEqual } from "codeify-ai";
 import { Container, type Focusable, fuzzyFilter, getKeybindings, Input, Spacer, Text, type TUI } from "codeify-tui";
+import {
+	type CodeifyModelHealth,
+	fetchCodeifyModelStatuses,
+	getCachedCodeifyModelStatuses,
+} from "../../../core/codeify-model-status.ts";
+import { CODEIFY_PROVIDER_ID } from "../../../core/codeify-provider.ts";
 import type { ModelRuntime } from "../../../core/model-runtime.ts";
 import type { SettingsManager } from "../../../core/settings-manager.ts";
 import { getModelSelectorSearchText } from "../model-search.ts";
@@ -18,6 +24,12 @@ interface ScopedModelItem {
 }
 
 type ModelScope = "all" | "scoped";
+
+const HEALTH_COLORS = {
+	operational: "success",
+	degraded: "warning",
+	unavailable: "error",
+} as const satisfies Record<CodeifyModelHealth, string>;
 
 /**
  * Component that renders a model selector with search
@@ -57,6 +69,7 @@ export class ModelSelectorComponent extends Container implements Focusable {
 	private refreshTimeout?: ReturnType<typeof setTimeout>;
 	private closed = false;
 	private readonly providerFilter: string | undefined;
+	private modelStatuses: ReadonlyMap<string, CodeifyModelHealth> = getCachedCodeifyModelStatuses();
 
 	constructor(
 		tui: TUI,
@@ -127,6 +140,26 @@ export class ModelSelectorComponent extends Container implements Focusable {
 		else this.updateList();
 		this.tui.requestRender();
 		void this.refreshModels();
+		void this.refreshModelStatuses();
+	}
+
+	private async refreshModelStatuses(): Promise<void> {
+		if (!this.modelRuntime.hasConfiguredAuth(CODEIFY_PROVIDER_ID)) return;
+		try {
+			const apiKey = (await this.modelRuntime.getAuth(CODEIFY_PROVIDER_ID))?.auth.apiKey;
+			if (!apiKey || this.closed) return;
+			const statuses = await fetchCodeifyModelStatuses(apiKey, this.refreshAbortController.signal);
+			if (this.closed) return;
+			this.modelStatuses = statuses;
+			this.updateList();
+			this.tui.requestRender();
+		} catch {}
+	}
+
+	private formatHealth(model: Model<any>): string {
+		if (model.provider !== CODEIFY_PROVIDER_ID) return "";
+		const health = this.modelStatuses.get(model.id);
+		return health ? ` ${theme.fg(HEALTH_COLORS[health], `● ${health}`)}` : "";
 	}
 
 	private loadModelsFromSnapshot(): void {
@@ -262,10 +295,10 @@ export class ModelSelectorComponent extends Container implements Focusable {
 			if (isSelected) {
 				const prefix = theme.fg("accent", "→ ");
 				const checkmark = isCurrent ? theme.fg("success", " ✓") : "";
-				line = `${prefix + theme.fg("accent", item.id)}${checkmark}`;
+				line = `${prefix + theme.fg("accent", item.id)}${checkmark}${this.formatHealth(item.model)}`;
 			} else {
 				const checkmark = isCurrent ? theme.fg("success", " ✓") : "";
-				line = `  ${item.id}${checkmark}`;
+				line = `  ${item.id}${checkmark}${this.formatHealth(item.model)}`;
 			}
 
 			this.listContainer.addChild(new Text(line, 0, 0));
