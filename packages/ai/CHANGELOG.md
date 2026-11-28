@@ -22,6 +22,7 @@
 - Surface Codeify server-side web searches on Chat Completions (`web_search_options`) as `serverToolUse` blocks and keep final usage from being overwritten by interim search usage chunks.
 - Recover from Anthropic Messages providers that reject images inside `tool_result` blocks with a 400 `invalid_request_error`: the request is resent with tool-result images moved into user content, and that layout is reused for the rest of the session.
 - Cap transient assistant retries at two and stop immediately on unclassified errors and permanent HTTP client failures.
+- Stop retrying HTTP 408/429 responses on status alone: only 408/429 bodies that name a listed transient condition (for example `rate limit`, `too many requests`, `overloaded`) are retried, so billing and account failures such as `429 {"code":"1113","message":"Insufficient balance or no resource package"}` fail fast.
 
 ## [0.83.0] - 2026-10-18
 

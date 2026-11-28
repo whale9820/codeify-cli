@@ -171,14 +171,17 @@ describe("AgentSession retry", () => {
 		expect(created.session.isRetrying).toBe(false);
 	});
 
-	it.each(["upstream_error: ANYTHING_HERE", "400 invalid_request_error: timeout must be a number"])(
-		"stops immediately for %s",
-		async (errorMessage) => {
-			const created = await createSession({ failCount: 99, errorMessage });
-			await created.session.prompt("Test");
-			expect(created.getCallCount()).toBe(1);
-		},
-	);
+	it.each([
+		"upstream_error: ANYTHING_HERE",
+		"400 invalid_request_error: timeout must be a number",
+		// 429 is also used for billing/account exhaustion; the status alone must never retry.
+		'Error: 429: {"code":"1113","message":"Insufficient balance or no resource package. Please recharge."}',
+		"429 status code (no body)",
+	])("stops immediately for %s", async (errorMessage) => {
+		const created = await createSession({ failCount: 99, errorMessage });
+		await created.session.prompt("Test");
+		expect(created.getCallCount()).toBe(1);
+	});
 
 	it("retries provider network_error failures", async () => {
 		const created = await createSession({ failCount: 0 });

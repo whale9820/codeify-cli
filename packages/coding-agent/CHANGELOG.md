@@ -27,6 +27,7 @@
 
 - Stop override backends from disappearing from `overrides.json` when several Codeify processes run at once (for example an old session still open across an update). Model refreshes previously rewrote the whole file from a stale in-memory list; the store now re-reads the file before every change, only updates the refreshed backend's models, never re-adds a backend deleted elsewhere, writes atomically, and keeps an unreadable file as `overrides.json.corrupt-<time>` instead of overwriting it.
 - Cap automatic retries at two for transient assistant and delegated-model failures.
+- Stop retrying HTTP 408/429 errors on status alone: a 429 is only retried when its body names a listed transient condition (for example `rate limit`, `too many requests`, `overloaded`), so billing and account errors such as `429 Insufficient balance or no resource package. Please recharge.` are shown immediately instead of being retried.
 - Use Models.dev for override models missing from Codeify's catalog, including GLM-5.4's supported reasoning efforts.
 - `/override use <name>` now restores the last model used on that backend (stored as `providerLastModels` in settings) instead of falling back to the backend's first model or `gpt-6-astra`.
 - The model selector, when limited to the active override backend, now reports refresh failures only for that backend instead of unrelated saved backends.

@@ -135,8 +135,24 @@ describe("provider retry classification", () => {
 		"400 invalid_request_error: timeout must be a number",
 		"API Error (403): provider returned internal server error text",
 		"HTTP 404: model 503 is unknown",
+		// 429 is also used for billing/account exhaustion; the status alone must never retry.
+		'Error: 429: {"code":"1113","message":"Insufficient balance or no resource package. Please recharge."}',
+		"429 status code (no body)",
+		'Error: 429: {"error":{"type":"insufficient_balance","message":"Insufficient balance"}}',
+		"408 status code (no body)",
 	])("does not retry unlisted and permanent errors: %s", (errorMessage) => {
 		expect(isRetryableAssistantError(fauxAssistantMessage("", { stopReason: "error", errorMessage }))).toBe(false);
+	});
+
+	it.each([
+		"429 too many requests",
+		"Error: 429: rate limit exceeded",
+		"HTTP 429: rate limit exceeded; api_key=secret-key",
+		"API Error (429): overloaded_error",
+		"408 Request Timeout",
+		"408 request_timeout",
+	])("retries 408/429 only when the body names a listed transient condition: %s", (errorMessage) => {
+		expect(isRetryableAssistantError(fauxAssistantMessage("", { stopReason: "error", errorMessage }))).toBe(true);
 	});
 
 	it("classifies assistant error messages", () => {
@@ -206,6 +222,20 @@ describe("retryAssistantCall", () => {
 		expect(produce).toHaveBeenCalledTimes(1);
 		expect(onRetryScheduled).not.toHaveBeenCalled();
 		expect(onRetryFinished).not.toHaveBeenCalled();
+	});
+
+	it.each([
+		'Error: 429: {"code":"1113","message":"Insufficient balance or no resource package. Please recharge."}',
+		"429 status code (no body)",
+		"408 status code (no body)",
+	])("does not retry a 4xx whose body is not on the allowlist: %s", async (errorMessage) => {
+		const produce = vi.fn(async () => fauxAssistantMessage("", { stopReason: "error", errorMessage }));
+		const onRetryScheduled = vi.fn();
+		const res = await retryAssistantCall(produce, enabled, undefined, { onRetryScheduled });
+		expect(res.stopReason).toBe("error");
+		expect(res.errorMessage).toBe(errorMessage);
+		expect(produce).toHaveBeenCalledTimes(1);
+		expect(onRetryScheduled).not.toHaveBeenCalled();
 	});
 
 	it("retries a transient error up to maxRetries then returns the final error", async () => {

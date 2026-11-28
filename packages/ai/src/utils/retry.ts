@@ -272,6 +272,12 @@ export async function retryAssistantCall(
  * or transport error, so callers can decide if the last assistant turn should be
  * restarted.
  *
+ * Strict allowlist: an error is retryable only when its text matches one of the
+ * explicit patterns above. HTTP status codes never retry on their own. Client
+ * errors (4xx) are never retried except for 408/429 whose body names a listed
+ * transient condition (e.g. "rate limit", "too many requests"); providers also use
+ * 429 for billing and account limits, which must fail fast.
+ *
  * This does not implement retry policy. Callers should first handle context
  * overflow separately, then apply their own retry budget, backoff, and reporting
  * before restarting the assistant turn.
@@ -281,7 +287,9 @@ export function isRetryableAssistantError(message: AssistantMessage): boolean {
 	const errorMessage = message.errorMessage;
 	if (NON_RETRYABLE_PROVIDER_LIMIT_ERROR_PATTERN.test(errorMessage)) return false;
 	const status = Number(HTTP_STATUS_PATTERN.exec(errorMessage)?.[1]);
-	if (status >= 400 && status < 500) return status === 408 || status === 429;
+	if (status >= 400 && status < 500) {
+		return (status === 408 || status === 429) && RETRYABLE_PROVIDER_ERROR_PATTERN.test(errorMessage);
+	}
 	return (
 		isMalformedJsonError(errorMessage) ||
 		isReconnectableProviderError(errorMessage) ||
