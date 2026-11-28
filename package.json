@@ -36,6 +36,7 @@
     "release:local": "node scripts/local-release.mjs",
     "shrinkwrap:coding-agent": "node scripts/generate-coding-agent-shrinkwrap.mjs",
     "install-lock:coding-agent": "node scripts/generate-coding-agent-install-lock.mjs",
+    "lockfile:refresh": "npm install --package-lock-only --ignore-scripts && node scripts/format-lockfile-tabs.mjs package-lock.json",
     "release:patch": "node scripts/release.mjs patch",
     "release:minor": "node scripts/release.mjs minor",
     "release:major": "node scripts/release.mjs major",
