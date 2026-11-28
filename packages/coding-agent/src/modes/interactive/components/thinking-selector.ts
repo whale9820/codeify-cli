@@ -8,15 +8,15 @@ const THINKING_SELECT_LIST_LAYOUT: SelectListLayoutOptions = {
 	maxPrimaryColumnWidth: 32,
 };
 
-const LEVEL_DESCRIPTIONS: Record<ThinkingLevel, string> = {
-	off: "No reasoning",
-	on: "Adaptive reasoning",
-	minimal: "Very brief reasoning (~1k tokens)",
-	low: "Light reasoning (~2k tokens)",
-	medium: "Moderate reasoning (~8k tokens)",
-	high: "Deep reasoning (~16k tokens)",
-	xhigh: "Extra-high reasoning (~32k tokens)",
-	max: "Maximum reasoning",
+export const LEVEL_DESCRIPTIONS: Record<ThinkingLevel, string> = {
+	off: "Reasoning disabled; answers directly",
+	on: "Model decides how much to think per request",
+	minimal: "Barely thinks; fastest responses for trivial tasks",
+	low: "Quick reasoning; good for simple edits and questions",
+	medium: "Balanced reasoning; the default for everyday coding",
+	high: "Thorough reasoning; for complex changes and tricky bugs",
+	xhigh: "Extensive reasoning; for architectural work and hard debugging",
+	max: "Reasoning maxed out; slowest, for the hardest problems",
 };
 
 /**

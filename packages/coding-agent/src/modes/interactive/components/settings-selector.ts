@@ -23,21 +23,11 @@ import {
 } from "../theme/theme.ts";
 import { DynamicBorder } from "./dynamic-border.ts";
 import { keyDisplayText } from "./keybinding-hints.ts";
+import { LEVEL_DESCRIPTIONS } from "./thinking-selector.ts";
 
 const SETTINGS_SUBMENU_SELECT_LIST_LAYOUT: SelectListLayoutOptions = {
 	minPrimaryColumnWidth: 12,
 	maxPrimaryColumnWidth: 32,
-};
-
-const THINKING_DESCRIPTIONS: Record<ThinkingLevel, string> = {
-	off: "No reasoning",
-	on: "Adaptive reasoning",
-	minimal: "Very brief reasoning (~1k tokens)",
-	low: "Light reasoning (~2k tokens)",
-	medium: "Moderate reasoning (~8k tokens)",
-	high: "Deep reasoning (~16k tokens)",
-	xhigh: "Extra-high reasoning (~32k tokens)",
-	max: "Maximum reasoning",
 };
 
 const DEFAULT_PROJECT_TRUST_LABELS: Record<DefaultProjectTrust, string> = {
@@ -537,7 +527,7 @@ export class SettingsSelectorComponent extends Container {
 						config.availableThinkingLevels.map((level) => ({
 							value: level,
 							label: level,
-							description: THINKING_DESCRIPTIONS[level],
+							description: LEVEL_DESCRIPTIONS[level],
 						})),
 						currentValue,
 						(value) => {
