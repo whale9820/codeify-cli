@@ -632,7 +632,7 @@ describe("AgentHarness", () => {
 			expect(retryEvents).toEqual([]);
 		});
 
-		it("exhausts transient compaction retries after maxRetries failures", async () => {
+		it("caps transient compaction retries at two", async () => {
 			const registration = newFaux();
 			let calls = 0;
 			registration.setResponses(
@@ -664,10 +664,8 @@ describe("AgentHarness", () => {
 
 			await expect(harness.compact()).rejects.toThrow("terminated");
 
-			expect(calls).toBe(4);
+			expect(calls).toBe(3);
 			expect(retryEvents).toEqual([
-				"retry_scheduled:compaction",
-				"retry_attempt_start:compaction",
 				"retry_scheduled:compaction",
 				"retry_attempt_start:compaction",
 				"retry_scheduled:compaction",

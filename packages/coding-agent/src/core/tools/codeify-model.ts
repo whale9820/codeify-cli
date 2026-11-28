@@ -12,7 +12,13 @@ import type {
 	ModelsSimpleStreamOptions,
 	Usage,
 } from "codeify-ai";
-import { createAssistantMessageEventStream, getSupportedThinkingLevels, isRetryableAssistantError } from "codeify-ai";
+import {
+	createAssistantMessageEventStream,
+	getSupportedThinkingLevels,
+	isRetryableAssistantError,
+	MAX_ASSISTANT_RETRIES,
+	resolveAssistantRetryLimit,
+} from "codeify-ai";
 import { Text } from "codeify-tui";
 import { type Static, Type } from "typebox";
 import type { Theme } from "../../modes/interactive/theme/theme.ts";
@@ -559,10 +565,11 @@ export function createCodeifyModelWorkerDefinition(
 											errorMessage: error instanceof Error ? error.message : String(error),
 										};
 									}
-									if (attempt >= 3 || signal?.aborted || !isRetryableAssistantError(response)) break;
+									const maxRetries = resolveAssistantRetryLimit(response.errorMessage, MAX_ASSISTANT_RETRIES);
+									if (attempt >= maxRetries || signal?.aborted || !isRetryableAssistantError(response)) break;
 									addUsage(usage, response.usage);
 									options.onOutput?.(
-										`\nRetrying delegated model (${attempt + 1}/3): ${redactDiagnostics(response.errorMessage || "Upstream error")}\n`,
+										`\nRetrying delegated model (${attempt + 1}/${maxRetries}): ${redactDiagnostics(response.errorMessage || "Upstream error")}\n`,
 									);
 									contentOffsets.clear();
 									contentStarted.clear();

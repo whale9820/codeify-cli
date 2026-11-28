@@ -78,13 +78,13 @@ import { type AppKeybinding, KeybindingsManager } from "../../core/keybindings.t
 import { createCompactionSummaryMessage } from "../../core/messages.ts";
 import { findExactModelReferenceMatch, resolveModelScope } from "../../core/model-resolver.ts";
 import {
-	inheritCodeifyMetadata,
 	normalizeBaseUrl,
 	type OverrideBackend,
 	overrideProviderConfig,
 	overrideProviderId,
 	type ProbeResult,
 	probeOverrideBackend,
+	resolveOverrideMetadata,
 	validateOverrideName,
 } from "../../core/overrides.ts";
 import type { ProjectTrustContext } from "../../core/project-trust.ts";
@@ -3822,10 +3822,7 @@ export class InteractiveMode {
 			probe = { ok: true, models: [toModelDefinition({ id: modelId })] };
 		}
 
-		probe = {
-			ok: true,
-			models: inheritCodeifyMetadata(probe.models, this.session.modelRuntime.getModels(CODEIFY_PROVIDER_ID)),
-		};
+		const models = await resolveOverrideMetadata(probe.models, () => runtime.getModels(CODEIFY_PROVIDER_ID));
 
 		let name = existing?.name;
 		while (true) {
@@ -3843,7 +3840,7 @@ export class InteractiveMode {
 		}
 		if (!name) return;
 
-		const backend: OverrideBackend = { name, baseUrl, apiKey, models: probe.models };
+		const backend: OverrideBackend = { name, baseUrl, apiKey, models };
 		const id = overrideProviderId(name);
 		if (existing && overrideProviderId(existing.name) !== id) {
 			runtime.unregisterProvider(overrideProviderId(existing.name));

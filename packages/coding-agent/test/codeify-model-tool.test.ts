@@ -116,7 +116,7 @@ afterEach(async () => {
 });
 
 describe("codeify_model tool", () => {
-	it("retries upstream errors three times without repeating completed tools or consuming turn budgets", async () => {
+	it("retries upstream errors twice without repeating completed tools or consuming turn budgets", async () => {
 		vi.useFakeTimers();
 		const selected = model("worker");
 		const executeRead = vi.fn(async () => "notes");
@@ -124,7 +124,7 @@ describe("codeify_model tool", () => {
 			[selected],
 			[
 				{ toolCalls: [{ name: "read", args: { path: "notes.txt" } }] },
-				...Array.from({ length: 3 }, () => ({ error: "upstream_error: unexpected EOF", usage })),
+				...Array.from({ length: 2 }, () => ({ error: "upstream_error: unexpected EOF", usage })),
 				"recovered summary",
 			],
 		);
@@ -144,17 +144,17 @@ describe("codeify_model tool", () => {
 		const result = await request;
 		expect(result.details).toMatchObject({ turns: 2, completedToolCalls: 1, stopReason: "stop" });
 		expect(result.content[0]).toMatchObject({ text: expect.stringContaining("recovered summary") });
-		expect(result.usage?.input).toBe(560);
+		expect(result.usage?.input).toBe(440);
 		expect(executeRead).toHaveBeenCalledOnce();
-		expect(contexts).toHaveLength(5);
+		expect(contexts).toHaveLength(4);
 		for (const context of contexts.slice(1)) {
 			expect(context.messages.at(-1)?.role).toBe("toolResult");
 			expect(context.tools).toEqual([]);
 		}
-		expect(onOutput.mock.calls.flat().join("")).toContain("Retrying delegated model (3/3)");
+		expect(onOutput.mock.calls.flat().join("")).toContain("Retrying delegated model (2/2)");
 	});
 
-	it("fails after exactly three upstream retries and redacts retry diagnostics", async () => {
+	it("fails after exactly two upstream retries and redacts retry diagnostics", async () => {
 		vi.useFakeTimers();
 		const { runtime, contexts } = runtimeWith(
 			[model("worker")],
@@ -176,7 +176,7 @@ describe("codeify_model tool", () => {
 		const assertion = expect(request).rejects.toThrow("503 upstream_error: api_key=[redacted]");
 		await vi.runAllTimersAsync();
 		await assertion;
-		expect(contexts).toHaveLength(4);
+		expect(contexts).toHaveLength(3);
 		expect(onOutput.mock.calls.flat().join("")).not.toContain("secret-retry");
 		expect(dispose).toHaveBeenCalledOnce();
 	});
@@ -742,7 +742,7 @@ describe("codeify_model tool", () => {
 	it("reports an exhausted output budget instead of a missing summary", async () => {
 		const main = model("main");
 		const cheap = model("cheap");
-		const { runtime } = runtimeWith([main, cheap], [{ text: "", stopReason: "length" }]);
+		const { runtime, contexts } = runtimeWith([main, cheap], [{ text: "", stopReason: "length" }]);
 		const tool = createCodeifyModelWorkerDefinition(process.cwd(), runtime, {
 			createDelegatedTools: () => ({ tools: [] }),
 		});
@@ -756,6 +756,7 @@ describe("codeify_model tool", () => {
 		);
 
 		const text = (result.content[0] as { text: string }).text;
+		expect(contexts).toHaveLength(3);
 		expect(text).toContain("64-token output limit");
 		expect(text).toContain("maxOutputTokens");
 		expect(text).not.toContain("without a text summary");

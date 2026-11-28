@@ -104,8 +104,8 @@ describe("#6647 compaction retries transient summarization failures", () => {
 		const ends = harness.eventsOfType("summarization_retry_finished");
 		expect(starts).toHaveLength(2);
 		expect(ends).toHaveLength(1);
-		expect(starts[0]).toMatchObject({ attempt: 1, maxAttempts: 3, errorMessage: "terminated" });
-		expect(starts[1]).toMatchObject({ attempt: 2, maxAttempts: 3 });
+		expect(starts[0]).toMatchObject({ attempt: 1, maxAttempts: 2, errorMessage: "terminated" });
+		expect(starts[1]).toMatchObject({ attempt: 2, maxAttempts: 2 });
 		expect(ends[0]).toMatchObject({ type: "summarization_retry_finished" });
 		// model.* referenced to keep imports honest
 		expect(model.id).toBeTruthy();

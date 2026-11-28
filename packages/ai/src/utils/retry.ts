@@ -24,7 +24,7 @@ const NON_RETRYABLE_PROVIDER_LIMIT_ERROR_PATTERN = buildProviderErrorPattern([
 ]);
 
 export const NETWORK_UNSTABLE_ERROR_MESSAGE = "network unstable please try again";
-export const MALFORMED_JSON_MAX_RETRIES = 3;
+export const MAX_ASSISTANT_RETRIES = 2;
 export const SAFEGUARD_BLOCK_MESSAGE = "Blocked by model safeguards";
 
 export function isSafeguardBlock(errorMessage: string | undefined): boolean {
@@ -39,9 +39,8 @@ export function isMalformedJsonError(errorMessage: string): boolean {
 	return MALFORMED_JSON_ERROR_PATTERN.test(errorMessage);
 }
 
-export const RECONNECT_MAX_RETRIES = 5;
-
-const HTTP_5XX_STATUS_PATTERN = /\b5\d{2}\b/;
+const HTTP_STATUS_PATTERN =
+	/^(?:Error:\s*)?(?:(?:API Error\s*\(|HTTP(?: status)?\s+|Request failed with status code\s+))?([45]\d{2})(?=[\s:)]|$)/i;
 const REQUEST_TIMED_OUT_PATTERN = /request timed out/i;
 const NO_OUTPUT_WITHIN_30S_PATTERN = /no output within 30s/i;
 // The gateway envelopes every upstream failure as `upstream_error: ...`; match only the
@@ -55,8 +54,10 @@ const UNEXPECTED_EOF_PATTERN = /unexpected\s*eof/i;
 
 export function isReconnectableProviderError(errorMessage: string): boolean {
 	if (NON_RETRYABLE_PROVIDER_LIMIT_ERROR_PATTERN.test(errorMessage)) return false;
+	const status = Number(HTTP_STATUS_PATTERN.exec(errorMessage)?.[1]);
+	if (status >= 400 && status < 500) return false;
 	return (
-		HTTP_5XX_STATUS_PATTERN.test(errorMessage) ||
+		status >= 500 ||
 		REQUEST_TIMED_OUT_PATTERN.test(errorMessage) ||
 		NO_OUTPUT_WITHIN_30S_PATTERN.test(errorMessage) ||
 		UPSTREAM_ERROR_PATTERN.test(errorMessage) ||
@@ -69,17 +70,8 @@ export function isReconnectableProviderError(errorMessage: string): boolean {
 }
 
 export function resolveAssistantRetryLimit(errorMessage: string | undefined, configuredMaxRetries: number): number {
-	const message = errorMessage ?? "";
-	if (JSON_EXTRA_DATA_ERROR_PATTERN.test(message)) {
-		return Math.min(configuredMaxRetries, 1);
-	}
-	if (isMalformedJsonError(message)) {
-		return Math.min(configuredMaxRetries, MALFORMED_JSON_MAX_RETRIES);
-	}
-	if (configuredMaxRetries > 0 && isReconnectableProviderError(message)) {
-		return Math.max(configuredMaxRetries, RECONNECT_MAX_RETRIES);
-	}
-	return configuredMaxRetries;
+	const limit = JSON_EXTRA_DATA_ERROR_PATTERN.test(errorMessage ?? "") ? 1 : MAX_ASSISTANT_RETRIES;
+	return configuredMaxRetries > 0 ? Math.min(Math.floor(configuredMaxRetries), limit) : 0;
 }
 
 const RETRYABLE_PROVIDER_ERROR_PATTERN = buildProviderErrorPattern([
@@ -87,22 +79,12 @@ const RETRYABLE_PROVIDER_ERROR_PATTERN = buildProviderErrorPattern([
 	"overloaded",
 	"rate.?limit",
 	"too many requests",
-	"429",
-	"500",
-	"502",
-	"503",
-	"504",
-	"524",
 	"service.?unavailable",
 	"server.?error",
-	"internal.?error",
+	"\\binternal[_ -](?:server[_ -])?error\\b",
 	"request could not be completed",
 	"upstream_account_unavailable",
 	"no upstream account is currently available",
-
-	// Wrapper/provider text for transient upstream failures, including OpenRouter
-	// "Provider returned error" responses (#2264).
-	"provider.?returned.?error",
 
 	// Network, proxy, and fetch transport failures. This includes OpenAI Codex
 	// raw-fetch failures such as "upstream connect", "connection refused", and
@@ -118,8 +100,8 @@ const RETRYABLE_PROVIDER_ERROR_PATTERN = buildProviderErrorPattern([
 	"socket hang up",
 	"socket connection was closed",
 	"timed? out",
-	"timeout",
-	"terminated",
+	"\\b(?:request|connection|stream|socket|read|connect)[_ -]timeout\\b",
+	"^(?:[\\w]*Error:\\s*)?terminated(?:\\b|$)",
 
 	// WebSocket transports can report close/error text instead of HTTP/fetch text.
 	"websocket.?closed",
@@ -218,15 +200,10 @@ function sleep(ms: number, signal?: AbortSignal): Promise<void> {
  *   too, so callers do not need to care when cancellation happened.
  * - A non-retryable error (per {@link isRetryableAssistantError}, including quota/
  *   billing exhaustion) is returned immediately so deterministic errors fail fast.
- * - Otherwise retries up to `maxRetries` times with exponential backoff, emitting
+ * - Otherwise retries up to `maxRetries` times (capped at two) with exponential backoff, emitting
  *   `onRetryScheduled` before each sleep, `onRetryAttemptStart` after each sleep before
  *   the retried call starts, and `onRetryFinished` once at the end (whether the loop
  *   ends in success, exhausted retries, or an aborted backoff).
- * - HTTP 5xx responses, `Request timed out.`, errors containing `no output within 30s`,
- *   the listed upstream transport failures (`connection reset`, timeouts, stream
- *   `ReadError`/`RemoteProtocolError`, `upstream_http2_stream_error`), and unexpected
- *   EOF errors use at least {@link RECONNECT_MAX_RETRIES} attempts when the policy is
- *   enabled with a non-zero budget.
  *
  * When `policy` is undefined or disabled, the first response is returned unchanged
  * (equivalent to calling `produce()` directly).
@@ -300,9 +277,11 @@ export async function retryAssistantCall(
  * before restarting the assistant turn.
  */
 export function isRetryableAssistantError(message: AssistantMessage): boolean {
-	if (message.stopReason !== "error" || !message.errorMessage) return false;
+	if (message.stopReason !== "error" || !message.errorMessage || isSafeguardBlock(message.errorMessage)) return false;
 	const errorMessage = message.errorMessage;
 	if (NON_RETRYABLE_PROVIDER_LIMIT_ERROR_PATTERN.test(errorMessage)) return false;
+	const status = Number(HTTP_STATUS_PATTERN.exec(errorMessage)?.[1]);
+	if (status >= 400 && status < 500) return status === 408 || status === 429;
 	return (
 		isMalformedJsonError(errorMessage) ||
 		isReconnectableProviderError(errorMessage) ||

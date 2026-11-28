@@ -151,14 +151,13 @@ describe("AgentSession retry", () => {
 		"Request timed out.",
 		"no output within 30s",
 		"upstream_error: connection reset",
-		"upstream_error: ANYTHING_HERE",
 		'Error: {"type": "error", "error": {"type": "server_tool_error", "code": "upstream_error", "message": "Dahl stream interrupted"}}',
 		"RemoteProtocolError: peer closed connection without sending complete message body (incomplete chunked read)",
 		"Error: upstream stream failed: ReadError: ReadError",
 		"Error: upstream stream failed: RemoteProtocolError: peer closed connection without sending complete message body (incomplete chunked read)",
 		"unexpected EOF",
-	])("retries %s five times before stopping", async (errorMessage) => {
-		const created = await createSession({ failCount: 99, maxRetries: 1, errorMessage });
+	])("retries %s twice before stopping", async (errorMessage) => {
+		const created = await createSession({ failCount: 99, maxRetries: 5, errorMessage });
 		const events: string[] = [];
 		created.session.subscribe((event) => {
 			if (event.type === "auto_retry_start") events.push(`start:${event.attempt}/${event.maxAttempts}`);
@@ -167,10 +166,19 @@ describe("AgentSession retry", () => {
 
 		await created.session.prompt("Test");
 
-		expect(created.getCallCount()).toBe(6);
-		expect(events).toEqual(["start:1/5", "start:2/5", "start:3/5", "start:4/5", "start:5/5", "end:success=false"]);
+		expect(created.getCallCount()).toBe(3);
+		expect(events).toEqual(["start:1/2", "start:2/2", "end:success=false"]);
 		expect(created.session.isRetrying).toBe(false);
 	});
+
+	it.each(["upstream_error: ANYTHING_HERE", "400 invalid_request_error: timeout must be a number"])(
+		"stops immediately for %s",
+		async (errorMessage) => {
+			const created = await createSession({ failCount: 99, errorMessage });
+			await created.session.prompt("Test");
+			expect(created.getCallCount()).toBe(1);
+		},
+	);
 
 	it("retries provider network_error failures", async () => {
 		const created = await createSession({ failCount: 0 });

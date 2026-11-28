@@ -16,7 +16,7 @@ console.log("Current settings:", JSON.stringify(settingsManagerFromDisk.getGloba
 const settingsManager = SettingsManager.create(cwd);
 settingsManager.applyOverrides({
 	compaction: { enabled: false },
-	retry: { enabled: true, maxRetries: 5, baseDelayMs: 1000 },
+	retry: { enabled: true, maxRetries: 2, baseDelayMs: 1000 },
 });
 
 const { session: customSettingsSession } = await createAgentSession({

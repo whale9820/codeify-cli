@@ -56,21 +56,21 @@ describe("malformed JSON parse retry", () => {
 		}
 	});
 
-	it.each(malformedJsonErrors)("caps retries at three for %s", async (malformedJsonError) => {
+	it.each(malformedJsonErrors)("caps retries at two for %s", async (malformedJsonError) => {
 		const harness = await createHarness({
 			settings: { retry: { enabled: true, maxRetries: 5, baseDelayMs: 1 } },
 		});
 		try {
 			harness.setResponses(
-				Array.from({ length: 4 }, () =>
+				Array.from({ length: 3 }, () =>
 					fauxAssistantMessage("", { stopReason: "error", errorMessage: malformedJsonError }),
 				),
 			);
 
 			await harness.session.prompt("test");
 
-			expect(harness.faux.state.callCount).toBe(4);
-			expect(harness.eventsOfType("auto_retry_start")).toHaveLength(3);
+			expect(harness.faux.state.callCount).toBe(3);
+			expect(harness.eventsOfType("auto_retry_start")).toHaveLength(2);
 			expect(harness.eventsOfType("auto_retry_end").map((event) => event.finalError)).toEqual([
 				networkUnstableMessage,
 			]);

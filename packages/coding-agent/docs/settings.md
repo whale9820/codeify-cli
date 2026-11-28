@@ -111,21 +111,21 @@ For VS Code, include `--wait` so Codeify resumes after the editor exits:
 | Setting | Type | Default | Description |
 |---------|------|---------|-------------|
 | `retry.enabled` | boolean | `true` | Enable automatic agent-level retry on transient errors |
-| `retry.maxRetries` | number | `3` | Maximum agent-level retry attempts |
-| `retry.baseDelayMs` | number | `2000` | Base delay for agent-level exponential backoff (2s, 4s, 8s) |
+| `retry.maxRetries` | number | `2` | Agent-level retry attempts, capped at two |
+| `retry.baseDelayMs` | number | `2000` | Base delay for agent-level exponential backoff (2s, 4s) |
 | `retry.provider.timeoutMs` | number | SDK default | Provider/SDK request timeout in milliseconds |
-| `retry.provider.maxRetries` | number | `0` | Provider/SDK retry attempts |
+| `retry.provider.maxRetries` | number | `0` | Provider/SDK retry attempts, capped at two when agent-level retries are disabled |
 | `retry.provider.maxRetryDelayMs` | number | `60000` | Max server-requested delay before failing (60s) |
 
 When the Codeify gateway requests a retry delay longer than `retry.provider.maxRetryDelayMs`, the request fails immediately with an informative error instead of waiting silently. Set to `0` to disable the cap.
 
-Keep `retry.provider.maxRetries` at `0` unless SDK-level retries are explicitly needed. Codeify already performs agent-level retries for transient failures.
+Agent-level retries take precedence when enabled with a positive retry budget. To use SDK-level retries, set `retry.enabled` to `false` or `retry.maxRetries` to `0`.
 
 ```json
 {
   "retry": {
     "enabled": true,
-    "maxRetries": 3,
+    "maxRetries": 2,
     "baseDelayMs": 2000,
     "provider": {
       "timeoutMs": 3600000,
@@ -225,7 +225,7 @@ Arrays support glob patterns and exclusions. Use `!pattern` to exclude. Use `+pa
   },
   "retry": {
     "enabled": true,
-    "maxRetries": 3
+    "maxRetries": 2
   },
   "enabledModels": ["gpt-*", "claude-*"]
 }

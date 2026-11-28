@@ -1,5 +1,5 @@
 import type { ThinkingLevel } from "codeify-agent-core";
-import type { Transport } from "codeify-ai";
+import { MAX_ASSISTANT_RETRIES, resolveAssistantRetryLimit, type Transport } from "codeify-ai";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "fs";
 import { dirname, join } from "path";
 import lockfile from "proper-lockfile";
@@ -26,8 +26,8 @@ export interface ProviderRetrySettings {
 
 export interface RetrySettings {
 	enabled?: boolean; // default: true
-	maxRetries?: number; // default: 3
-	baseDelayMs?: number; // default: 2000 (exponential backoff: 2s, 4s, 8s)
+	maxRetries?: number; // default and maximum: 2
+	baseDelayMs?: number; // default: 2000 (exponential backoff: 2s, 4s)
 	provider?: ProviderRetrySettings;
 }
 
@@ -808,7 +808,7 @@ export class SettingsManager {
 	getRetrySettings(): { enabled: boolean; maxRetries: number; baseDelayMs: number } {
 		return {
 			enabled: this.getRetryEnabled(),
-			maxRetries: this.settings.retry?.maxRetries ?? 3,
+			maxRetries: resolveAssistantRetryLimit(undefined, this.settings.retry?.maxRetries ?? MAX_ASSISTANT_RETRIES),
 			baseDelayMs: this.settings.retry?.baseDelayMs ?? 2000,
 		};
 	}
@@ -827,9 +827,17 @@ export class SettingsManager {
 	}
 
 	getProviderRetrySettings(): { timeoutMs?: number; maxRetries?: number; maxRetryDelayMs: number } {
+		const assistantRetry = this.getRetrySettings();
+		const maxRetries = this.settings.retry?.provider?.maxRetries;
 		return {
 			timeoutMs: this.settings.retry?.provider?.timeoutMs,
-			maxRetries: this.settings.retry?.provider?.maxRetries,
+			maxRetries:
+				maxRetries === undefined
+					? undefined
+					: resolveAssistantRetryLimit(
+							undefined,
+							assistantRetry.enabled && assistantRetry.maxRetries > 0 ? 0 : maxRetries,
+						),
 			maxRetryDelayMs: this.settings.retry?.provider?.maxRetryDelayMs ?? 60000,
 		};
 	}

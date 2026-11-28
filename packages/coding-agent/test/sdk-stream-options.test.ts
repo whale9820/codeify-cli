@@ -12,7 +12,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { AuthStorage } from "../src/core/auth-storage.ts";
 import { createAgentSession } from "../src/core/sdk.ts";
 import { SessionManager } from "../src/core/session-manager.ts";
-import { SettingsManager } from "../src/core/settings-manager.ts";
+import { type Settings, SettingsManager } from "../src/core/settings-manager.ts";
 
 import { createModelRegistry, getModelRuntime } from "./model-runtime-test-utils.ts";
 
@@ -76,7 +76,7 @@ describe("createAgentSession stream options", () => {
 
 	async function captureStreamOptions(
 		api: Api,
-		settings: { httpIdleTimeoutMs?: number; websocketConnectTimeoutMs?: number },
+		settings: Settings,
 		requestOptions: SimpleStreamOptions = {},
 	): Promise<SimpleStreamOptions | undefined> {
 		const model = createModel(api);
@@ -153,5 +153,13 @@ describe("createAgentSession stream options", () => {
 		);
 
 		expect(options?.websocketConnectTimeoutMs).toBe(0);
+	});
+
+	it("prevents SDK retries from stacking with agent retries", async () => {
+		const provider = { maxRetries: 7 };
+		const assistantRetries = await captureStreamOptions("openai-completions", { retry: { provider } });
+		const providerRetries = await captureStreamOptions("openai-completions", { retry: { enabled: false, provider } });
+		expect(assistantRetries?.maxRetries).toBe(0);
+		expect(providerRetries?.maxRetries).toBe(2);
 	});
 });

@@ -115,8 +115,8 @@ describe("provider retry classification", () => {
 	])("reconnects on %s", (errorMessage) => {
 		expect(isReconnectableProviderError(errorMessage)).toBe(true);
 		expect(isRetryableAssistantError(fauxAssistantMessage("", { stopReason: "error", errorMessage }))).toBe(true);
-		expect(resolveAssistantRetryLimit(errorMessage, 3)).toBe(5);
-		expect(resolveAssistantRetryLimit(errorMessage, 8)).toBe(8);
+		expect(resolveAssistantRetryLimit(errorMessage, 1)).toBe(1);
+		expect(resolveAssistantRetryLimit(errorMessage, 8)).toBe(2);
 		expect(resolveAssistantRetryLimit(errorMessage, 0)).toBe(0);
 	});
 
@@ -126,9 +126,17 @@ describe("provider retry classification", () => {
 		expect(isReconnectableProviderError("Codex SSE response headers timed out after 1000ms")).toBe(false);
 		expect(isReconnectableProviderError("upstream_error: ANYTHING_HERE")).toBe(false);
 		expect(isReconnectableProviderError("unknown: Unable to forward upstream stream")).toBe(false);
-		expect(resolveAssistantRetryLimit("API Error (403): 403 status code (no body)", 3)).toBe(3);
-		expect(resolveAssistantRetryLimit("upstream_error: ANYTHING_HERE", 3)).toBe(3);
-		expect(resolveAssistantRetryLimit("unknown: Unable to forward upstream stream", 3)).toBe(3);
+	});
+
+	it.each([
+		"Provider returned error",
+		"upstream_error: model returned an unknown error",
+		"Unknown model with 500 available tokens",
+		"400 invalid_request_error: timeout must be a number",
+		"API Error (403): provider returned internal server error text",
+		"HTTP 404: model 503 is unknown",
+	])("does not retry unlisted and permanent errors: %s", (errorMessage) => {
+		expect(isRetryableAssistantError(fauxAssistantMessage("", { stopReason: "error", errorMessage }))).toBe(false);
 	});
 
 	it("classifies assistant error messages", () => {
@@ -161,14 +169,14 @@ describe("retryAssistantCall", () => {
 		"server_tool_stream_failed: JSONDecodeError: Illegal trailing comma before end of array: line 1 column 1705 (char 1704)",
 		"server_tool_stream_failed: upstream tool stream closed",
 		invalidToolCallArgumentsMessage,
-	])("caps malformed JSON retries at three and retains the final diagnostic for %s", async (errorMessage) => {
+	])("caps malformed JSON retries at two and retains the final diagnostic for %s", async (errorMessage) => {
 		const produce = vi.fn(async () => fauxAssistantMessage("", { stopReason: "error", errorMessage }));
 		const onRetryFinished = vi.fn();
 		const result = await retryAssistantCall(produce, { ...enabled, maxRetries: 10 }, undefined, { onRetryFinished });
-		expect(produce).toHaveBeenCalledTimes(4);
+		expect(produce).toHaveBeenCalledTimes(3);
 		expect(result.errorMessage).toBe("network unstable please try again");
 		expect(result.diagnostics).toMatchObject([{ type: "malformed_json", error: { message: errorMessage } }]);
-		expect(onRetryFinished).toHaveBeenCalledWith(false, 3, "network unstable please try again");
+		expect(onRetryFinished).toHaveBeenCalledWith(false, 2, "network unstable please try again");
 	});
 
 	it("returns a successful response immediately without retrying", async () => {
@@ -204,11 +212,14 @@ describe("retryAssistantCall", () => {
 		const produce = vi.fn(async () => fauxAssistantMessage("", { stopReason: "error", errorMessage: "terminated" }));
 		const onRetryScheduled = vi.fn();
 		const onRetryFinished = vi.fn();
-		const res = await retryAssistantCall(produce, enabled, undefined, { onRetryScheduled, onRetryFinished });
+		const res = await retryAssistantCall(produce, { ...enabled, maxRetries: 1 }, undefined, {
+			onRetryScheduled,
+			onRetryFinished,
+		});
 		expect(res.stopReason).toBe("error");
-		expect(produce).toHaveBeenCalledTimes(4); // 1 initial + 3 retries
-		expect(onRetryScheduled).toHaveBeenCalledTimes(3);
-		expect(onRetryFinished).toHaveBeenCalledWith(false, 3, "terminated");
+		expect(produce).toHaveBeenCalledTimes(2);
+		expect(onRetryScheduled).toHaveBeenCalledTimes(1);
+		expect(onRetryFinished).toHaveBeenCalledWith(false, 1, "terminated");
 	});
 
 	it("stops retrying once a call succeeds", async () => {
@@ -249,9 +260,9 @@ describe("retryAssistantCall", () => {
 		const result = await retryAssistantCall(produce, enabled, undefined, { onRetryScheduled, onRetryFinished });
 		expect(result.stopReason).toBe("error");
 		expect(result.errorMessage).toBe(errorMessage);
-		expect(produce).toHaveBeenCalledTimes(4);
-		expect(onRetryScheduled).toHaveBeenCalledTimes(3);
-		expect(onRetryFinished).toHaveBeenCalledWith(false, 3, errorMessage);
+		expect(produce).toHaveBeenCalledTimes(3);
+		expect(onRetryScheduled).toHaveBeenCalledTimes(2);
+		expect(onRetryFinished).toHaveBeenCalledWith(false, 2, errorMessage);
 	});
 
 	it("reports an aborted retried call as unsuccessful", async () => {
@@ -269,7 +280,7 @@ describe("retryAssistantCall", () => {
 		expect(onRetryFinished).toHaveBeenCalledWith(false, 1);
 	});
 
-	it("retries HTTP 522 and request timeouts at least five times", async () => {
+	it("retries reconnectable failures at most twice", async () => {
 		for (const errorMessage of [
 			"API Error (522): 522 status code (no body)",
 			"Request timed out.",
@@ -286,9 +297,9 @@ describe("retryAssistantCall", () => {
 			const onRetryScheduled = vi.fn();
 			const res = await retryAssistantCall(produce, enabled, undefined, { onRetryScheduled });
 			expect(res.stopReason).toBe("error");
-			expect(produce).toHaveBeenCalledTimes(6);
-			expect(onRetryScheduled).toHaveBeenCalledTimes(5);
-			expect(onRetryScheduled).toHaveBeenLastCalledWith(5, 5, 0, errorMessage);
+			expect(produce).toHaveBeenCalledTimes(3);
+			expect(onRetryScheduled).toHaveBeenCalledTimes(2);
+			expect(onRetryScheduled).toHaveBeenLastCalledWith(2, 2, 0, errorMessage);
 		}
 	});
 

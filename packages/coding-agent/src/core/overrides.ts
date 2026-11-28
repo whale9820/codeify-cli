@@ -17,6 +17,7 @@ import {
 	routeModels,
 	toModelDefinition,
 } from "./codeify-provider.ts";
+import { getModelsDevCatalog, inheritModelsDevMetadata } from "./models-dev.ts";
 import type { RuntimeProviderConfig } from "./provider-composer.ts";
 
 export const OVERRIDE_PROVIDER_PREFIX = "override-";
@@ -88,21 +89,33 @@ export function mergeProbedModels(
 	});
 }
 
-export function inheritCodeifyMetadata(
-	models: readonly CodeifyCatalogModel[],
+function matchCodeifyModel(
+	id: string,
 	codeifyModels: readonly CodeifyModelDefinition[],
-): CodeifyCatalogModel[] {
+): CodeifyModelDefinition | undefined {
+	const exact = id.toLowerCase();
+	const slug = exact.slice(exact.lastIndexOf("/") + 1);
+	for (const key of new Set([exact, slug, slug.replace(/-\d{4,8}$/u, "")])) {
+		const matches = codeifyModels.filter((model) => model.id.toLowerCase() === key);
+		if (matches.length > 0) return matches.length === 1 ? matches[0] : undefined;
+	}
+	return undefined;
+}
+
+export async function resolveOverrideMetadata(
+	models: readonly CodeifyCatalogModel[],
+	getCodeifyModels?: () => readonly CodeifyModelDefinition[],
+	signal?: AbortSignal,
+): Promise<CodeifyCatalogModel[]> {
+	const codeifyModels = getCodeifyModels?.() ?? [];
+	const modelsDev =
+		models.some((model) => !matchCodeifyModel(model.id, codeifyModels)) && !signal?.aborted
+			? await getModelsDevCatalog()
+			: undefined;
+	const latestCodeifyModels = getCodeifyModels?.() ?? codeifyModels;
 	return models.map((definition) => {
-		const namespacedId = definition.id.split("/").at(-1)?.toLowerCase();
-		const unversionedId = namespacedId?.replace(/-\d{4,8}$/u, "");
-		const exactMatches = codeifyModels.filter((model) => model.id.toLowerCase() === namespacedId);
-		const fallbackMatches =
-			exactMatches.length === 0 && unversionedId !== namespacedId
-				? codeifyModels.filter((model) => model.id.toLowerCase() === unversionedId)
-				: [];
-		const matches = exactMatches.length > 0 ? exactMatches : fallbackMatches;
-		const inherited = matches.length === 1 ? matches[0] : undefined;
-		if (!inherited) return definition;
+		const inherited = matchCodeifyModel(definition.id, latestCodeifyModels);
+		if (!inherited) return modelsDev ? inheritModelsDevMetadata(definition, modelsDev) : definition;
 		return {
 			...definition,
 			reasoning: inherited.reasoning,
@@ -143,7 +156,8 @@ export function overrideProviderConfig(
 					const probe = await probeOverrideBackend(current.baseUrl, current.apiKey, context.signal);
 					if (!probe.ok) throw new Error(`Could not refresh ${backend.name}: ${probe.error}`);
 					const merged = mergeProbedModels(current.models, probe.models);
-					const models = codeifyModels ? inheritCodeifyMetadata(merged, codeifyModels()) : merged;
+					const models = await resolveOverrideMetadata(merged, codeifyModels, context.signal);
+					context.signal?.throwIfAborted();
 					const updated = store.updateModels(backend.name, models);
 					return updated ? routeModels(models, updated.baseUrl) : [];
 				}

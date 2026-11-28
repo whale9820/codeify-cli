@@ -28,7 +28,7 @@ import {
 	buildCitationSources,
 	contentText,
 	isMalformedJsonError,
-	MALFORMED_JSON_MAX_RETRIES,
+	MAX_ASSISTANT_RETRIES,
 	NETWORK_UNSTABLE_ERROR_MESSAGE,
 	renderInlineCitations,
 	resolveAssistantRetryLimit,
@@ -556,9 +556,9 @@ export class AgentSession {
 			const message = event.message as AssistantMessage;
 			const settings = this.settingsManager.getRetrySettings();
 			if (
-				message.stopReason === "error" &&
 				isMalformedJsonError(message.errorMessage ?? "") &&
-				(!settings.enabled || this._retryAttempt >= Math.min(settings.maxRetries, MALFORMED_JSON_MAX_RETRIES))
+				isRetryableAssistantError(message) &&
+				(!settings.enabled || this._retryAttempt >= resolveAssistantRetryLimit(undefined, settings.maxRetries))
 			) {
 				message.diagnostics = [
 					...(message.diagnostics ?? []),
@@ -1026,7 +1026,7 @@ export class AgentSession {
 			return false;
 		}
 
-		if (this._applyOutputTokenLimit(msg) && (await this._prepareRetry(msg, this._retryAttempt + 1, true))) {
+		if (this._applyOutputTokenLimit(msg) && (await this._prepareRetry(msg, true))) {
 			return true;
 		}
 
@@ -1048,7 +1048,13 @@ export class AgentSession {
 			return true;
 		}
 
-		if (!this._abortRequested && !this.agent.hasQueuedMessages() && this._textToolRecoveryAttempts < 2) {
+		if (
+			msg.stopReason !== "error" &&
+			msg.stopReason !== "aborted" &&
+			!this._abortRequested &&
+			!this.agent.hasQueuedMessages() &&
+			this._textToolRecoveryAttempts < 2
+		) {
 			const text = contentText(msg.content).trim();
 			const lastUser = this.agent.state.messages
 				.slice()
@@ -2236,10 +2242,7 @@ export class AgentSession {
 	private _isRetryableError(message: AssistantMessage): boolean {
 		// Context overflow is handled by compaction, not retry.
 		if (isContextOverflow(message, this.model?.contextWindow ?? 0)) return false;
-		return (
-			message.stopReason === "error" &&
-			(isMalformedJsonError(message.errorMessage ?? "") || isRetryableAssistantError(message))
-		);
+		return isRetryableAssistantError(message);
 	}
 
 	/**
@@ -2277,17 +2280,16 @@ export class AgentSession {
 	 * Prepare a retryable error for continuation with exponential backoff.
 	 * @returns true if the caller should continue the agent, false otherwise
 	 */
-	private async _prepareRetry(
-		message: AssistantMessage,
-		maxRetriesOverride?: number,
-		force = false,
-	): Promise<boolean> {
+	private async _prepareRetry(message: AssistantMessage, force = false): Promise<boolean> {
 		const settings = this.settingsManager.getRetrySettings();
 		if (!settings.enabled && !force) {
 			return false;
 		}
 
-		const maxRetries = maxRetriesOverride ?? resolveAssistantRetryLimit(message.errorMessage, settings.maxRetries);
+		const maxRetries = resolveAssistantRetryLimit(
+			message.errorMessage,
+			force ? MAX_ASSISTANT_RETRIES : settings.maxRetries,
+		);
 		this._retryAttempt++;
 
 		if (this._retryAttempt > maxRetries) {

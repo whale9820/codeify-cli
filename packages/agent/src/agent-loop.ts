@@ -8,6 +8,7 @@ import {
 	type AssistantMessageEvent,
 	type Context,
 	EventStream,
+	MAX_ASSISTANT_RETRIES,
 	type ToolResultMessage,
 	validateToolArguments,
 } from "codeify-ai";
@@ -165,6 +166,7 @@ async function runLoop(
 	let currentContext = initialContext;
 	let config = initialConfig;
 	let firstTurn = true;
+	let emptyLengthResponses = 0;
 	// Check for steering messages at start (user may have typed while waiting)
 	let pendingMessages: AgentMessage[] = (await config.getSteeringMessages?.()) || [];
 
@@ -260,10 +262,13 @@ async function runLoop(
 
 			pendingMessages = (await config.getSteeringMessages?.()) || [];
 			if (message.stopReason === "length" && toolCalls.length === 0 && !signal?.aborted) {
+				emptyLengthResponses = message.content.some((block) => block.type === "text" && block.text.trim())
+					? 0
+					: emptyLengthResponses + 1;
 				if (pendingMessages.length === 0) {
 					pendingMessages = (await config.getFollowUpMessages?.()) || [];
 				}
-				if (pendingMessages.length === 0 && !signal?.aborted) {
+				if (pendingMessages.length === 0 && !signal?.aborted && emptyLengthResponses <= MAX_ASSISTANT_RETRIES) {
 					pendingMessages = [
 						{
 							role: "user",
@@ -273,6 +278,8 @@ async function runLoop(
 						},
 					];
 				}
+			} else {
+				emptyLengthResponses = 0;
 			}
 		}
 
@@ -402,13 +409,17 @@ async function streamAssistantResponse(
 							.join("");
 					}
 					const trimmed = text.trimStart();
-					if (TEXT_TOOL_CALL_MARKERS.some((marker) => trimmed.startsWith(marker)) && !signal?.aborted) {
+					if (
+						event.type !== "error" &&
+						TEXT_TOOL_CALL_MARKERS.some((marker) => trimmed.startsWith(marker)) &&
+						!signal?.aborted
+					) {
 						if (event.type === "done") {
 							converted = tryConvert(event.message);
 							if (!converted) rejected = event.message;
 							break;
 						}
-						if (toolNames.length > 0 && event.type !== "error") {
+						if (toolNames.length > 0) {
 							capturing = true;
 							continue;
 						}
@@ -436,7 +447,7 @@ async function streamAssistantResponse(
 				return;
 			}
 			if (rejected) {
-				if (attempt < 2 && !signal?.aborted) continue;
+				if (attempt < MAX_ASSISTANT_RETRIES && !signal?.aborted) continue;
 				const error: AssistantMessage = {
 					...rejected,
 					content: [],

@@ -4,15 +4,15 @@ import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { RefreshModelsContext } from "codeify-ai";
-import { InMemoryCredentialStore } from "codeify-ai";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { getSupportedThinkingLevels, InMemoryCredentialStore } from "codeify-ai";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { type CodeifyModel, routeModels, toModelDefinition } from "../src/core/codeify-provider.ts";
 import { ModelRuntime } from "../src/core/model-runtime.ts";
 import {
-	inheritCodeifyMetadata,
 	type OverrideBackend,
 	OverrideStore,
 	overrideProviderConfig,
+	resolveOverrideMetadata,
 } from "../src/core/overrides.ts";
 import { formatUsageReport } from "../src/modes/interactive/usage-report.ts";
 
@@ -23,12 +23,18 @@ describe("override backend model refresh", () => {
 	let status: number;
 	let seenAuth: string | undefined;
 	let baseUrl: string;
+	let modelsDevFetch: ReturnType<typeof vi.fn<() => Response>>;
 
 	beforeEach(async () => {
 		dir = mkdtempSync(join(tmpdir(), "override-refresh-"));
 		listed = [{ id: "alpha" }, { id: "beta" }];
 		status = 200;
 		seenAuth = undefined;
+		const fetchLocal = globalThis.fetch;
+		modelsDevFetch = vi.fn(() => Response.json({}));
+		vi.spyOn(globalThis, "fetch").mockImplementation((input, init) =>
+			input === "https://models.dev/api.json" ? Promise.resolve(modelsDevFetch()) : fetchLocal(input, init),
+		);
 		server = createServer((request, response) => {
 			seenAuth = request.headers.authorization;
 			response.writeHead(status, { "content-type": "application/json" });
@@ -39,6 +45,7 @@ describe("override backend model refresh", () => {
 	});
 
 	afterEach(() => {
+		vi.restoreAllMocks();
 		server.close();
 		rmSync(dir, { recursive: true, force: true });
 	});
@@ -58,7 +65,7 @@ describe("override backend model refresh", () => {
 		return { path, store, refresh, context };
 	}
 
-	it("inherits Codeify metadata from namespaced and dated API model IDs", () => {
+	it("inherits Codeify metadata from namespaced and dated API model IDs", async () => {
 		const models = [
 			toModelDefinition({ id: "zai-org/GLM-5.3-Flash" }),
 			toModelDefinition({ id: "deepseek-ai/DeepSeek-V4-Flash-0731" }),
@@ -71,21 +78,22 @@ describe("override backend model refresh", () => {
 			baseUrl,
 		);
 
-		const inherited = inheritCodeifyMetadata(models, codeifyModels);
+		const inherited = await resolveOverrideMetadata(models, () => codeifyModels);
 
 		expect(inherited.map((model) => model.id)).toEqual(models.map((model) => model.id));
 		expect(inherited[0]).toMatchObject({ reasoning: true, contextWindow: 200_000 });
 		expect(inherited[1]).toMatchObject({ reasoning: true, contextWindow: 300_000 });
+		expect(modelsDevFetch).not.toHaveBeenCalled();
 	});
 
-	it("uses the undated Codeify model when a dated API model has no exact catalog entry", () => {
+	it("uses the undated Codeify model when a dated API model has no exact catalog entry", async () => {
 		const apiModel = toModelDefinition({ id: "deepseek-ai/DeepSeek-V4-Flash-0731" });
 		const codeifyModels = routeModels([toModelDefinition({ id: "deepseek-v4-flash", reasoning: true })], baseUrl);
 
-		expect(inheritCodeifyMetadata([apiModel], codeifyModels)[0]).toMatchObject({ reasoning: true });
+		expect((await resolveOverrideMetadata([apiModel], () => codeifyModels))[0]).toMatchObject({ reasoning: true });
 	});
 
-	it("preserves declared context and does not inherit a generic fallback", () => {
+	it("preserves declared context and does not inherit a generic fallback", async () => {
 		const models = [
 			toModelDefinition({ id: "openai/gpt-6.2-astra", context: 272_000 }),
 			toModelDefinition({ id: "unknown-context-model" }),
@@ -95,10 +103,18 @@ describe("override backend model refresh", () => {
 			baseUrl,
 		);
 
-		expect(inheritCodeifyMetadata(models, codeifyModels).map((model) => model.contextWindow)).toEqual([
+		expect((await resolveOverrideMetadata(models, () => codeifyModels)).map((model) => model.contextWindow)).toEqual([
 			272_000,
 			null,
 		]);
+	});
+
+	it("keeps the override catalog usable when Models.dev is unreachable", async () => {
+		modelsDevFetch.mockImplementation(() => {
+			throw new Error("Models.dev unreachable");
+		});
+		const { refresh, context } = setup();
+		expect((await refresh(context())).map((model) => model.id)).toEqual(["alpha", "beta"]);
 	});
 
 	it("picks up models the backend lists now and persists them", async () => {
@@ -251,5 +267,45 @@ describe("override backend model refresh", () => {
 		const failed = await runtime.refresh({ allowNetwork: true });
 		expect(failed.errors.has("override-mine")).toBe(true);
 		expect(ids()).toEqual(["alpha", "beta"]);
+	});
+
+	it("resolves and persists the GLM-5.4 efforts from Models.dev when Codeify has no match", async () => {
+		const id = "zai-org/GLM-5.4";
+		const glm54 = {
+			id: "glm-5.4",
+			canonical_model_id: "zhipuai/glm-5.4",
+			reasoning: true,
+			reasoning_options: [{ type: "effort", values: ["low", "high", "max"] }],
+			limit: { context: 1_000_000, output: 131_072 },
+		};
+		modelsDevFetch.mockReturnValue(
+			Response.json({
+				"tencent-token-plan": { models: { "glm-5.4": glm54 } },
+				"zai-coding-plan": { models: { "glm-5.4": glm54 } },
+			}),
+		);
+		const { store, refresh, context } = setup();
+		listed = [{ id, context: 950_000 }, { id: "glm-5.4" }];
+		await refresh(context());
+
+		const runtime = await ModelRuntime.create({
+			credentials: new InMemoryCredentialStore(),
+			modelsPath: null,
+			overridesPath: join(dir, "overrides.json"),
+			allowModelNetwork: false,
+		});
+		const model = runtime.getModel("override-mine", id)!;
+		expect(getSupportedThinkingLevels(model)).toEqual(["low", "high", "max"]);
+		expect(model).toMatchObject({
+			api: "anthropic-messages",
+			contextWindow: 950_000,
+			maxTokens: 131_072,
+			thinkingLevelMap: { off: null, low: "low", high: "high", max: "max" },
+		});
+		expect(store.get("mine")?.models[1]).toMatchObject({
+			contextWindow: 1_000_000,
+			thinkingLevels: ["low", "high", "max"],
+		});
+		expect(modelsDevFetch).toHaveBeenCalledOnce();
 	});
 });
